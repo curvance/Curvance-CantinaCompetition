@@ -6,7 +6,7 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 
 abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
@@ -19,7 +19,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool isConfigured;
         /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @param max the max valid price of the asset.
+        /// @notice max the max valid price of the asset.
         uint256 max;
     }
 
@@ -73,7 +73,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Redstone Core Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
@@ -133,7 +133,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit RedstoneCoreAssetRemoved(asset);
     }

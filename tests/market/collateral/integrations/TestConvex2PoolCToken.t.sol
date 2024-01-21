@@ -48,14 +48,14 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         centralRegistry.setFeeAccumulator(address(this));
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
         cSTETH = new Convex2PoolCToken(
             ICentralRegistry(address(centralRegistry)),
             CONVEX_STETH_ETH_POOL,
-            address(lendtroller),
+            address(marketManager),
             CONVEX_STETH_ETH_POOL_ID,
             CONVEX_STETH_ETH_REWARD,
             CONVEX_BOOSTER
@@ -64,7 +64,7 @@ contract TestConvex2PoolCToken is TestBaseMarket {
         address owner = address(this);
         deal(address(CONVEX_STETH_ETH_POOL), address(owner), 1 ether);
         CONVEX_STETH_ETH_POOL.approve(address(cSTETH), 1 ether);
-        lendtroller.listToken(address(cSTETH));
+        marketManager.listToken(address(cSTETH));
     }
 
     function testConvexStethEthPool() public {

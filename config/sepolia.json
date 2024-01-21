@@ -6,10 +6,13 @@
     "genesisEpoch": 0,
     "lockBoostMultiplier": 10000,
     "harvester": "0x28553EadE22d3C044350b611bfE71cfb81aB7717",
-    "sequencer": "0x0000000000000000000000000000000000000000"
+    "sequencer": "0x0000000000000000000000000000000000000000",
+    "feeToken": "0x5f02510c29bEa0EF858Ad802b6205a26B66Bf26A",
+    "wormholeRelayer": "0x0000000000000000000000000000000000000000",
+    "circleRelayer": "0x0000000000000000000000000000000000000000",
+    "tokenBridgeRelayer": "0x0000000000000000000000000000000000000000"
   },
   "cve": {
-    "tokenBridgeRelayer": "0x0000000000000000000000000000000000000000",
     "teamAddress": "0x28553EadE22d3C044350b611bfE71cfb81aB7717",
     "daoTreasuryAllocation": 1450e18,
     "callOptionAllocation": 375e18,
@@ -23,14 +26,7 @@
   "cveLocker": {
     "rewardToken": "0x5f02510c29bEa0EF858Ad802b6205a26B66Bf26A"
   },
-  "protocolMessagingHub": {
-    "feeToken": "0x5f02510c29bEa0EF858Ad802b6205a26B66Bf26A",
-    "wormholeRelayer": "0x0000000000000000000000000000000000000000",
-    "circleRelayer": "0x0000000000000000000000000000000000000000",
-    "tokenBridgeRelayer": "0x0000000000000000000000000000000000000000"
-  },
   "feeAccumulator": {
-    "feeToken": "0x5f02510c29bEa0EF858Ad802b6205a26B66Bf26A",
     "gasForCalldata": 1e9,
     "gasForCrosschain": 1e9
   },

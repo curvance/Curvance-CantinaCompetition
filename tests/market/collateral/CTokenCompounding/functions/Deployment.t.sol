@@ -12,7 +12,7 @@ pragma solidity ^0.8.17;
 // {
 //     using stdStorage for StdStorage;
 
-//     event NewLendtroller(address oldLendtroller, address newLendtroller);
+//     event NewMarketManager(address oldMarketManager, address newMarketManager);
 
 //     function test_CTokenCompoundingDeployment_fail_whenCentralRegistryIsInvalid()
 //         public
@@ -25,16 +25,16 @@ pragma solidity ^0.8.17;
 //         new CTokenCompounding(
 //             ICentralRegistry(address(0)),
 //             _BALANCER_WETH_RETH,
-//             address(lendtroller)
+//             address(marketManager)
 //         );
 //     }
 
-//     function test_CTokenCompoundingDeployment_fail_whenLendtrollerIsNotSet()
+//     function test_CTokenCompoundingDeployment_fail_whenMarketManagerIsNotSet()
 //         public
 //     {
 //         vm.expectRevert(
 //             CTokenCompounding
-//                 .CTokenCompounding__LendtrollerIsNotLendingMarket
+//                 .CTokenCompounding__MarketManagerIsNotLendingMarket
 //                 .selector
 //         );
 //         new CTokenCompounding(
@@ -60,18 +60,18 @@ pragma solidity ^0.8.17;
 //         new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
 //             _BALANCER_WETH_RETH,
-//             address(lendtroller)
+//             address(marketManager)
 //         );
 //     }
 
 //     function test_CTokenCompoundingDeployment_success() public {
 //         vm.expectEmit(true, true, true, true);
-//         emit NewLendtroller(address(0), address(lendtroller));
+//         emit NewMarketManager(address(0), address(marketManager));
 
 //         cBALRETH = new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
 //             _BALANCER_WETH_RETH,
-//             address(lendtroller)
+//             address(marketManager)
 //         );
 
 //         assertEq(
@@ -80,7 +80,7 @@ pragma solidity ^0.8.17;
 //         );
 //         assertEq(cBALRETH.underlying(), _BALANCER_WETH_RETH);
 //         assertEq(address(cBALRETH.vault()), address(0));
-//         assertEq(address(cBALRETH.lendtroller()), address(lendtroller));
+//         assertEq(address(cBALRETH.marketManager()), address(marketManager));
 //         //assertEq(cBALRETH.name(), "Curvance collateralized cBAL-WETH-RETH");
 //     }
 // }

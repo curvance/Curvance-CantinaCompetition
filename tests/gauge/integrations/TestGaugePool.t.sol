@@ -49,17 +49,17 @@ contract TestGaugePool is TestBaseMarket {
         gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
 
         for (uint256 i = 0; i < 10; i++) {
             tokens[i] = address(_deployDDAI());
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listToken(tokens[i]);
+            marketManager.listToken(tokens[i]);
 
             // add MToken support on price router
-            priceRouter.addMTokenSupport(tokens[i]);
+            oracleRouter.addMTokenSupport(tokens[i]);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
@@ -79,14 +79,14 @@ contract TestGaugePool is TestBaseMarket {
             }
         }
 
-        vm.warp(gaugePool.startTime());
-        vm.roll(block.number + 1000);
-
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
     }
 
     function testManageEmissionRatesOfEachEpoch() public {
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         assertEq(gaugePool.currentEpoch(), 0);
         assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
         assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
@@ -114,6 +114,9 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testCanOnlyUpdateEmissionRatesOfNextEpoch() public {
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         assertEq(gaugePool.currentEpoch(), 0);
         assertEq(gaugePool.epochOfTimestamp(block.timestamp + 3 weeks), 1);
         assertEq(gaugePool.epochStartTime(1), block.timestamp + 2 weeks);
@@ -150,6 +153,17 @@ contract TestGaugePool is TestBaseMarket {
     }
 
     function testRewardRatioOfDifferentPools() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user2 deposit 100 token1
+        vm.prank(users[2]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -165,18 +179,16 @@ contract TestGaugePool is TestBaseMarket {
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user2 deposit 100 token1
-        vm.prank(users[2]);
-        IMToken(tokens[1]).mint(100 ether);
-
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            10000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            20000
+        );
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
@@ -188,10 +200,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            12000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            8000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            24000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            16000
+        );
 
         // user0, user3 claims
         vm.prank(users[0]);
@@ -203,10 +227,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2000);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 16000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            2000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            16000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            28000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            16000
+        );
 
         // user0 withdraw half
         vm.prank(users[0]);
@@ -218,10 +254,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 3111);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 24888);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 29333);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            3111
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            24888
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            34666
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            29333
+        );
 
         // user0, user1, user2, user3 claims
         vm.prank(users[0]);
@@ -239,13 +287,36 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 1111);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8889);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 13333);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            1111
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            8889
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            6667
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            13333
+        );
     }
 
     function testRewardCalculationWithDifferentEpoch() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user1 deposit 100 token1
+        vm.prank(users[1]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -261,18 +332,16 @@ contract TestGaugePool is TestBaseMarket {
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user1 deposit 100 token1
-        vm.prank(users[1]);
-        IMToken(tokens[1]).mint(100 ether);
-
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 20000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            10000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[1], address(cve)),
+            20000
+        );
 
         // set gauge weights
         tokensParam[0] = tokens[0];
@@ -288,11 +357,11 @@ contract TestGaugePool is TestBaseMarket {
         vm.warp(block.timestamp + 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         assertEq(
-            gaugePool.pendingRewards(tokens[0], users[0]),
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
             2 weeks * 100 + 100 * 200
         );
         assertEq(
-            gaugePool.pendingRewards(tokens[1], users[1]),
+            gaugePool.pendingRewards(tokens[1], users[1], address(cve)),
             2 weeks * 200 + 100 * 200
         );
 
@@ -304,11 +373,28 @@ contract TestGaugePool is TestBaseMarket {
 
         assertEq(cve.balanceOf(users[0]), 2 weeks * 100 + 100 * 200);
         assertEq(cve.balanceOf(users[1]), 2 weeks * 200 + 100 * 200);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 0);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[1]), 0);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            0
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[1], address(cve)),
+            0
+        );
     }
 
     function testUpdatePoolDoesNotMessUpTheRewardCalculation() public {
+        // user0 deposit 100 token0
+        vm.prank(users[0]);
+        IMToken(tokens[0]).mint(100 ether);
+
+        // user2 deposit 100 token1
+        vm.prank(users[2]);
+        IMToken(tokens[1]).mint(100 ether);
+
+        vm.warp(gaugePool.startTime());
+        vm.roll(block.number + 1000);
+
         // set gauge weights
         address[] memory tokensParam = new address[](2);
         tokensParam[0] = tokens[0];
@@ -324,20 +410,18 @@ contract TestGaugePool is TestBaseMarket {
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
 
-        // user0 deposit 100 token0
-        vm.prank(users[0]);
-        IMToken(tokens[0]).mint(100 ether);
-
-        // user2 deposit 100 token1
-        vm.prank(users[2]);
-        IMToken(tokens[1]).mint(100 ether);
-
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            10000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            20000
+        );
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
@@ -352,10 +436,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            12000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            8000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            24000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            16000
+        );
 
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);
@@ -370,10 +466,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 2000);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 16000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 28000);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            2000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            16000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            28000
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            16000
+        );
 
         // user0 withdraw half
         vm.prank(users[0]);
@@ -388,10 +496,22 @@ contract TestGaugePool is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 3111);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 24888);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 34666);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 29333);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            3111
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            24888
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            34666
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            29333
+        );
 
         // user0, user1, user2, user3 claims
         vm.prank(users[0]);
@@ -416,9 +536,21 @@ contract TestGaugePool is TestBaseMarket {
         gaugePool.updatePool(tokens[0]);
         gaugePool.updatePool(tokens[1]);
 
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 1111);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8889);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 6667);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 13333);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            1111
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            8889
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            6667
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            13333
+        );
     }
 }

@@ -13,8 +13,8 @@ import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.so
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
-import { ILendtroller } from "contracts/interfaces/market/ILendtroller.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
@@ -46,14 +46,14 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     uint256 public constant MAX_LEVERAGE = 9900; // 99%
 
     ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    ILendtroller public immutable lendtroller; // Lendtroller linked
+    IMarketManager public immutable marketManager; // MarketManager linked
 
     /// ERRORS ///
 
     error PositionFolding__Unauthorized();
     error PositionFolding__InvalidSlippage();
     error PositionFolding__InvalidCentralRegistry();
-    error PositionFolding__InvalidLendtroller();
+    error PositionFolding__InvalidMarketManager();
     error PositionFolding__InvalidSwapper(address invalidSwapper);
     error PositionFolding__InvalidParam();
     error PositionFolding__InvalidAmount();
@@ -68,13 +68,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// MODIFIERS ///
 
     modifier checkSlippage(address user, uint256 slippage) {
-        (uint256 collateralBefore, uint256 debtBefore) = lendtroller
+        (uint256 collateralBefore, uint256 debtBefore) = marketManager
             .solvencyOf(user);
         uint256 liquidityBefore = collateralBefore - debtBefore;
 
         _;
 
-        (uint256 sumCollateral, uint256 sumDebt) = lendtroller.solvencyOf(
+        (uint256 sumCollateral, uint256 sumDebt) = marketManager.solvencyOf(
             user
         );
 
@@ -94,7 +94,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address lendtroller_) {
+    constructor(ICentralRegistry centralRegistry_, address marketManager_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -104,12 +104,12 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidCentralRegistry();
         }
 
-        if (!centralRegistry_.isLendingMarket(lendtroller_)) {
-            revert PositionFolding__InvalidLendtroller();
+        if (!centralRegistry_.isMarketManager(marketManager_)) {
+            revert PositionFolding__InvalidMarketManager();
         }
 
         centralRegistry = centralRegistry_;
-        lendtroller = ILendtroller(lendtroller_);
+        marketManager = IMarketManager(marketManager_);
     }
 
     function getProtocolLeverageFee() public view returns (uint256) {
@@ -138,7 +138,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        if (!lendtroller.isListed(borrowToken) && msg.sender != borrowToken) {
+        if (!marketManager.isListed(borrowToken) || msg.sender != borrowToken) {
             revert PositionFolding__Unauthorized();
         }
 
@@ -246,7 +246,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__Unauthorized();
         }
 
-        if (!lendtroller.isListed(collateralToken)) {
+        if (!marketManager.isListed(collateralToken)) {
             revert PositionFolding__Unauthorized();
         }
 
@@ -358,7 +358,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address user,
         address borrowToken
     ) public view returns (uint256) {
-        (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = lendtroller
+        (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = marketManager
             .statusOf(user);
         uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
@@ -367,8 +367,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             DENOMINATOR -
             sumCollateral;
 
-        (uint256 price, uint256 errorCode) = IPriceRouter(
-            ICentralRegistry(centralRegistry).priceRouter()
+        (uint256 price, uint256 errorCode) = IOracleRouter(
+            ICentralRegistry(centralRegistry).oracleRouter()
         ).getPrice(address(borrowToken), true, false);
 
         if (errorCode != 0) {

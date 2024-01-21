@@ -12,7 +12,7 @@ contract SetOptionsTermsTest is TestBaseOCVE {
 
         skip(1000);
 
-        (paymentTokenCurrentPrice, ) = priceRouter.getPrice(
+        (paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
             _USDC_ADDRESS,
             true,
             true

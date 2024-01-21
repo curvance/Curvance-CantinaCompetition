@@ -47,7 +47,7 @@ contract TestPendleLPCToken is TestBaseMarket {
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -55,13 +55,13 @@ contract TestPendleLPCToken is TestBaseMarket {
         cSTETH = new PendleLPCToken(
             ICentralRegistry(address(centralRegistry)),
             _LP_STETH,
-            address(lendtroller),
+            address(marketManager),
             _ROUTER
         );
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime());
     }
 
@@ -71,7 +71,7 @@ contract TestPendleLPCToken is TestBaseMarket {
         deal(address(_LP_STETH), address(this), 42069);
 
         _LP_STETH.approve(address(cSTETH), 42069);
-        lendtroller.listToken(address(cSTETH));
+        marketManager.listToken(address(cSTETH));
 
         vm.prank(user1);
         _LP_STETH.approve(address(cSTETH), assets);

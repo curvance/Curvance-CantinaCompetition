@@ -36,9 +36,9 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         uint256 exitFee_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         _setExitFee(exitFee_);
     }
 

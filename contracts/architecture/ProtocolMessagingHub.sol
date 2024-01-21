@@ -2,29 +2,20 @@
 pragma solidity ^0.8.17;
 
 import { GaugeController } from "contracts/gauge/GaugeController.sol";
+import { FeeTokenBridgingHub } from "contracts/architecture/FeeTokenBridgingHub.sol";
 
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { IERC20Metadata } from "contracts/interfaces/IERC20Metadata.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { IWormholeRelayer } from "contracts/interfaces/wormhole/IWormholeRelayer.sol";
-import { ICircleRelayer } from "contracts/interfaces/wormhole/ICircleRelayer.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
-contract ProtocolMessagingHub is ReentrancyGuard {
+contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// CONSTANTS ///
-
-    /// @notice Gas limit with which to call `targetAddress` via wormhole.
-    uint256 internal constant _GAS_LIMIT = 250_000;
 
     /// @notice CVE contract address.
     ICVE public immutable cve;
@@ -32,28 +23,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// @notice veCVE contract address.
     address public immutable veCVE;
 
-    /// @notice Address of fee token.
-    address public immutable feeToken;
-
-    /// @notice Curvance DAO hub.
-    ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
-
-    /// @notice Address of Wormhole Relayer.
-    IWormholeRelayer public immutable wormholeRelayer;
-
-    /// @notice Address of Wormhole Circle Relayer.
-    ICircleRelayer public immutable circleRelayer;
-
-    /// @notice Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-
-    /// @notice Wormhole specific chain ID for evm chain ID.
-    mapping(uint256 => uint16) public wormholeChainId;
-
-    /// `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
+    /// @dev `bytes4(keccak256(bytes("ProtocolMessagingHub__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0xc70c67ab;
 
     /// STORAGE ///
@@ -66,11 +36,6 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// ERRORS ///
 
     error ProtocolMessagingHub__Unauthorized();
-    error ProtocolMessagingHub__InvalidCentralRegistry();
-    error ProtocolMessagingHub__FeeTokenIsZeroAddress();
-    error ProtocolMessagingHub__WormholeRelayerIsZeroAddress();
-    error ProtocolMessagingHub__CircleRelayerIsZeroAddress();
-    error ProtocolMessagingHub__TokenBridgeRelayerIsZeroAddress();
     error ProtocolMessagingHub__ChainIsNotSupported();
     error ProtocolMessagingHub__OperatorIsNotAuthorized(
         address to,
@@ -92,41 +57,10 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     /// CONSTRUCTOR ///
 
     constructor(
-        ICentralRegistry centralRegistry_,
-        address feeToken_,
-        address wormholeRelayer_,
-        address circleRelayer_,
-        address tokenBridgeRelayer_
-    ) {
-        if (
-            !ERC165Checker.supportsInterface(
-                address(centralRegistry_),
-                type(ICentralRegistry).interfaceId
-            )
-        ) {
-            revert ProtocolMessagingHub__InvalidCentralRegistry();
-        }
-        if (feeToken_ == address(0)) {
-            revert ProtocolMessagingHub__FeeTokenIsZeroAddress();
-        }
-        if (wormholeRelayer_ == address(0)) {
-            revert ProtocolMessagingHub__WormholeRelayerIsZeroAddress();
-        }
-        if (circleRelayer_ == address(0)) {
-            revert ProtocolMessagingHub__CircleRelayerIsZeroAddress();
-        }
-        if (tokenBridgeRelayer_ == address(0)) {
-            revert ProtocolMessagingHub__TokenBridgeRelayerIsZeroAddress();
-        }
-
-        centralRegistry = centralRegistry_;
+        ICentralRegistry centralRegistry_
+    ) FeeTokenBridgingHub(centralRegistry_) {
         cve = ICVE(centralRegistry.cve());
         veCVE = centralRegistry.veCVE();
-        feeToken = feeToken_;
-        wormholeRelayer = IWormholeRelayer(wormholeRelayer_);
-        circleRelayer = ICircleRelayer(circleRelayer_);
-        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
-        wormhole = ICircleRelayer(circleRelayer_).wormhole();
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -161,7 +95,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         isDeliveredMessageHash[deliveryHash] = true;
 
-        if (msg.sender != address(wormholeRelayer)) {
+        address wormholeRelayer = address(centralRegistry.wormholeRelayer());
+
+        if (msg.sender != wormholeRelayer) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -198,6 +134,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 payload,
                 (uint8, bytes32, uint256)
             );
+
+            address feeToken = centralRegistry.feeToken();
 
             if (address(uint160(uint256(token))) == feeToken) {
                 address locker = centralRegistry.cveLocker();
@@ -305,7 +243,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     }
 
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`.
-    /// @param dstChainId Wormhole specific destination chain ID .
+    /// @param dstChainId Wormhole specific destination chain ID.
     /// @param to The address of Messaging Hub on `dstChainId`.
     /// @param amount The amount of token to transfer.
     function sendFees(uint16 dstChainId, address to, uint256 amount) external {
@@ -347,37 +285,17 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             }
         }
 
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, true);
-
-        // Validate that we have sufficient fees to send crosschain.
-        if (address(this).balance < messageFee) {
-            revert ProtocolMessagingHub__InsufficientGasToken();
-        }
-
         // Pull the fee token from the fee accumulator.
         // This will revert if we've misconfigured fee token contract supply
         // by `amount`.
         SafeTransferLib.safeTransferFrom(
-            feeToken,
+            centralRegistry.feeToken(),
             centralRegistry.feeAccumulator(),
             address(this),
             amount
         );
 
-        SwapperLib._approveTokenIfNeeded(
-            feeToken,
-            address(circleRelayer),
-            amount
-        );
-
-        // Sends funds to feeAccumulator on another chain.
-        circleRelayer.transferTokensWithRelay{ value: messageFee }(
-            IERC20Metadata(feeToken),
-            amount,
-            0,
-            dstChainId,
-            bytes32(uint256(uint160(to)))
-        );
+        _sendFeeToken(dstChainId, to, amount);
     }
 
     /// @notice Send wormhole message to bridge CVE.
@@ -396,6 +314,9 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         _checkMessagingHubStatus();
 
+        ITokenBridgeRelayer tokenBridgeRelayer = centralRegistry
+            .tokenBridgeRelayer();
+
         cve.approve(address(tokenBridgeRelayer), amount);
 
         return
@@ -403,7 +324,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
                 address(cve),
                 amount,
                 0,
-                wormholeChainId[dstChainId],
+                centralRegistry.wormholeChainId(dstChainId),
                 bytes32(uint256(uint160(recipient))),
                 0
             );
@@ -434,7 +355,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
 
         return
             _sendWormholeMessages(
-                wormholeChainId[dstChainId],
+                centralRegistry.wormholeChainId(dstChainId),
                 dstMessagingHub,
                 msg.value,
                 5,
@@ -456,7 +377,7 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         _checkMessagingHubStatus();
         _checkPermissions();
 
-        (uint256 messageFee, ) = _quoteWormholeFee(dstChainId, false);
+        uint256 messageFee = _quoteWormholeFee(dstChainId, false);
 
         return
             _sendWormholeMessages(
@@ -468,36 +389,27 @@ contract ProtocolMessagingHub is ReentrancyGuard {
             );
     }
 
-    /// @notice Quotes gas cost and token fee for executing crosschain
-    ///         wormhole deposit and messaging.
-    /// @param dstChainId Wormhole specific destination chain ID.
-    /// @param transferToken Whether deliver token or not.
-    /// @return Total gas cost.
-    /// @return Deliverying fee.
-    function quoteWormholeFee(
-        uint16 dstChainId,
-        bool transferToken
-    ) external view returns (uint256, uint256) {
-        return _quoteWormholeFee(dstChainId, transferToken);
+    /// @notice Returns required amount of CVE for relayer fee.
+    /// @param dstChainId Chain ID of the target blockchain.
+    /// @return Required fee.
+    function cveRelayerFee(
+        uint256 dstChainId
+    ) external view returns (uint256) {
+        return
+            centralRegistry.tokenBridgeRelayer().calculateRelayerFee(
+                centralRegistry.wormholeChainId(dstChainId),
+                address(cve),
+                18
+            );
     }
 
-    /// DAO PERMISSIONED EXTERNAL FUNCTIONS ///
-
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkAuthorizedPermissions(true);
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
-        }
+    /// @notice Returns required amount of native asset for message fee.
+    /// @return Required fee.
+    function cveBridgeFee() external view returns (uint256) {
+        return centralRegistry.wormholeCore().messageFee();
     }
+
+    /// PERMISSIONED EXTERNAL FUNCTIONS ///
 
     /// @notice Permissioned function that flips the pause status of the
     ///         Messaging Hub.
@@ -526,6 +438,8 @@ contract ProtocolMessagingHub is ReentrancyGuard {
     ///       system already. Thus, we only need to check for DAO perms here.
     function returnReimbursedFees() external {
         _checkAuthorizedPermissions(true);
+
+        address feeToken = centralRegistry.feeToken();
 
         SafeTransferLib.safeTransfer(
             feeToken,
@@ -562,38 +476,15 @@ contract ProtocolMessagingHub is ReentrancyGuard {
         }
 
         return
-            wormholeRelayer.sendPayloadToEvm{ value: messageFee }(
+            centralRegistry.wormholeRelayer().sendPayloadToEvm{
+                value: messageFee
+            }(
                 dstChainId,
                 toAddress,
-                abi.encode(payloadId, payload), // payload.
-                0, // no receiver value needed since we're just passing a message.
+                abi.encode(payloadId, payload), // payload
+                0, // no receiver value needed since we're just passing a message
                 _GAS_LIMIT
             );
-    }
-
-    /// @notice Quotes gas cost and token fee for executing crosschain
-    ///         wormhole deposit and messaging.
-    /// @param dstChainId Wormhole specific destination chain ID.
-    /// @param transferToken Whether deliver token or not.
-    /// @return nativeFee Total gas cost.
-    /// @return tokenFee Deliverying fee.
-    function _quoteWormholeFee(
-        uint16 dstChainId,
-        bool transferToken
-    ) internal view returns (uint256 nativeFee, uint256 tokenFee) {
-        // Cost of delivering token and payload to targetChain.
-        (nativeFee, ) = wormholeRelayer.quoteEVMDeliveryPrice(
-            dstChainId,
-            0,
-            _GAS_LIMIT
-        );
-
-        if (transferToken) {
-            // Add cost of publishing the 'sending token' wormhole message.
-            nativeFee += wormhole.messageFee();
-        }
-
-        tokenFee = circleRelayer.relayerFee(dstChainId, feeToken);
     }
 
     /// @dev Internal helper for reverting efficiently.

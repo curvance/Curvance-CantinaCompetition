@@ -7,7 +7,6 @@ import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLi
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
 abstract contract BaseWrappedAggregator is IChainlink {
-
     /// ERRORS ///
 
     error BaseWrappedAggregator__UintToIntError();
@@ -21,8 +20,10 @@ abstract contract BaseWrappedAggregator is IChainlink {
 
     function maxAnswer() external view returns (int192) {
         uint256 max = uint256(
-            uint192(IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
-                .maxAnswer()
+            uint192(
+                IChainlink(
+                    IChainlink(underlyingAssetAggregator()).aggregator()
+                ).maxAnswer()
             )
         );
 
@@ -40,8 +41,10 @@ abstract contract BaseWrappedAggregator is IChainlink {
 
     function minAnswer() external view returns (int192) {
         uint256 min = uint256(
-            uint192(IChainlink(IChainlink(underlyingAssetAggregator()).aggregator())
-                .minAnswer()
+            uint192(
+                IChainlink(
+                    IChainlink(underlyingAssetAggregator()).aggregator()
+                ).minAnswer()
             )
         );
 
@@ -77,7 +80,9 @@ abstract contract BaseWrappedAggregator is IChainlink {
             underlyingAssetAggregator()
         ).latestRoundData();
 
-        answer = (answer * _toInt256(getWrappedAssetWeight())) / _toInt256(WAD);
+        answer =
+            (answer * _toInt256(getWrappedAssetWeight())) /
+            _toInt256(WAD);
     }
 
     /// PUBLIC FUNCTIONS TO OVERRIDE ///
@@ -91,12 +96,14 @@ abstract contract BaseWrappedAggregator is IChainlink {
 
     function getWrappedAssetWeight() public view virtual returns (uint256) {}
 
-    /// INTERNAl FUNCTIONS /// 
+    /// INTERNAl FUNCTIONS ///
 
     /// @dev Returns the downcasted int192 from int256, reverting on
     ///      overflow (when the input is less than smallest int192 or
     ///      greater than largest int192).
-    function _toInt192(int256 value) internal pure returns (int192 downcasted) {
+    function _toInt192(
+        int256 value
+    ) internal pure returns (int192 downcasted) {
         downcasted = int192(value);
         if (downcasted != value) {
             revert BaseWrappedAggregator__UintToIntError();

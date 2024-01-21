@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggregators/BaseWrappedAggregator.sol";
 import { IPotLike } from "contracts/interfaces/external/maker/IPotLike.sol";
+import { ISavingsDai } from "contracts/interfaces/external/maker/ISavingsDai.sol";
 
 contract SavingsDaiAggregator is BaseWrappedAggregator {
     address public sDai;
@@ -29,7 +30,7 @@ contract SavingsDaiAggregator is BaseWrappedAggregator {
     ///         and the underlying aggregator, in `WAD`.
     function getWrappedAssetWeight() public view override returns (uint256) {
         // We divide by 1e9 since chi returns in 1e27 format,
-        // so we need to offset by 1e9 to get to standard 1e18 format.
-        return IPotLike(sDai).chi() / 1e9;
+        // so we need to offset by 1e9 to get to standard `WAD` format.
+        return IPotLike(ISavingsDai(sDai).pot()).chi() / 1e9;
     }
 }

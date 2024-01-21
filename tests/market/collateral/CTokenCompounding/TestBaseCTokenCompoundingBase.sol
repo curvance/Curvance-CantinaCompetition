@@ -48,7 +48,7 @@ contract TestBaseCTokenCompounding is TestBaseMarket {
             true
         );
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -65,6 +65,6 @@ contract TestBaseCTokenCompounding is TestBaseMarket {
             address(cBALRETH),
             _ONE
         );
-        lendtroller.listToken(address(cBALRETH));
+        marketManager.listToken(address(cBALRETH));
     }
 }

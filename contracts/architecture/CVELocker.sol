@@ -26,9 +26,9 @@ contract CVELocker is ReentrancyGuard {
     address public immutable rewardToken;
     /// @notice Genesis Epoch timestamp.
     uint256 public immutable genesisEpoch;
-    /// `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`.
+    /// @dev `bytes4(keccak256(bytes("CVELocker__Unauthorized()")))`.
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x82274acf;
-    /// `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`.
+    /// @dev `bytes4(keccak256(bytes("CVELocker__NoEpochRewards()")))`.
     uint256 internal constant _NO_EPOCH_REWARDS_SELECTOR = 0x95721ba7;
 
     /// STORAGE ///

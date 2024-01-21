@@ -57,11 +57,11 @@ contract AuraCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         uint256 pid_,
         address rewarder_,
         address booster_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 

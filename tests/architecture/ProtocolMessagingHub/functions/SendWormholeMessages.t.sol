@@ -45,10 +45,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
     }
 
     function test_sendWormholeMessages_success() public {
-        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
-            23,
-            false
-        );
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
         deal(address(feeAccumulator), messageFee);
 
         centralRegistry.addChainSupport(

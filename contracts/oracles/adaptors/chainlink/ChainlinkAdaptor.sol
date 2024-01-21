@@ -5,7 +5,7 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
@@ -79,7 +79,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function getPrice(
         address asset,
         bool inUSD,
-        bool
+        bool  /* getLower */
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
@@ -93,7 +93,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Chainlink Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for
     /// @param aggregator Chainlink aggregator to use for pricing `asset`
     /// @param heartbeat Chainlink heartbeat to use when validating prices
@@ -190,7 +190,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit ChainlinkAssetRemoved(asset);
     }
 
@@ -236,7 +236,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         bool inUSD
     ) internal view returns (PriceReturnData memory pData) {
         pData.inUSD = inUSD;
-        if (!IPriceRouter(centralRegistry.priceRouter()).isSequencerValid()) {
+        if (!IOracleRouter(centralRegistry.oracleRouter()).isSequencerValid()) {
             pData.hadError = true;
             return pData;
         }

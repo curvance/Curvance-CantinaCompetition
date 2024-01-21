@@ -61,11 +61,11 @@ contract VelodromeVolatileCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         IVeloGauge gauge,
         IVeloPairFactory pairFactory,
         IVeloRouter router
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         if (block.chainid != 10) {
             revert VelodromeVolatileCToken__ChainIsNotSupported();
         }

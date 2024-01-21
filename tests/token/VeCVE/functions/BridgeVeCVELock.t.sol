@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
 contract BridgeVeCVELockTest is TestBaseVeCVE {
     ITokenBridgeRelayer public tokenBridgeRelayer =
@@ -19,21 +19,18 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
             address(this),
             address(protocolMessagingHub),
             address(cve),
-            137,
+            42161,
             1,
             1,
-            5
+            23
         );
 
         chainIDs.push(1);
         wormholeChainIDs.push(2);
-        chainIDs.push(137);
-        wormholeChainIDs.push(5);
+        chainIDs.push(42161);
+        wormholeChainIDs.push(23);
 
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
@@ -61,7 +58,7 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.bridgeVeCVELock(1, 137, true, rewardsData, "", 0);
+        veCVE.bridgeVeCVELock(1, 42161, true, rewardsData, "", 0);
     }
 
     function test_bridgeVeCVELock_fail_whenNativeTokenIsNotEnoughToCoverFee(
@@ -69,15 +66,12 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
-            5,
-            false
-        );
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
 
         vm.expectRevert();
         veCVE.bridgeVeCVELock{ value: messageFee - 1 }(
             1,
-            137,
+            42161,
             true,
             rewardsData,
             "",
@@ -90,10 +84,7 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
-            5,
-            false
-        );
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
 
         centralRegistry.setEarlyUnlockPenaltyMultiplier(3000);
 
@@ -103,7 +94,7 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
 
         veCVE.bridgeVeCVELock{ value: messageFee }(
             0,
-            137,
+            42161,
             true,
             rewardsData,
             "",

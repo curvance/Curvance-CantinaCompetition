@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
@@ -42,15 +42,15 @@ contract UpdateCTokenConfig is Script, DeployConfiguration {
         string memory deploymentName,
         string memory pathName
     ) internal {
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
 
         address cToken = _getDeployedContract(deploymentName);
         console.log("cToken =", cToken);
         require(cToken != address(0), "Set the cToken!");
 
-        Lendtroller(lendtroller).updateCollateralToken(
+        MarketManager(marketManager).updateCollateralToken(
             IMToken(cToken),
             _readConfigUint256(string.concat(pathName, ".collRatio")),
             _readConfigUint256(string.concat(pathName, ".collReqA")),
@@ -68,7 +68,7 @@ contract UpdateCTokenConfig is Script, DeployConfiguration {
         newCollateralCaps[0] = _readConfigUint256(
             string.concat(pathName, ".collateralCaps")
         );
-        Lendtroller(lendtroller).setCTokenCollateralCaps(
+        MarketManager(marketManager).setCTokenCollateralCaps(
             mTokens,
             newCollateralCaps
         );

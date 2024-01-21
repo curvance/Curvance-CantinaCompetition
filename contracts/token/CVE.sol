@@ -5,8 +5,6 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 /// @notice Curvance DAO's Canonical CVE Contract.
@@ -18,19 +16,16 @@ contract CVE is ERC20 {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-    /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
-    /// @notice Timestamp when token was created
+
+    // Timestamp when token was created
     uint256 public immutable tokenGenerationEventTimestamp;
-    /// @notice DAO treasury allocation of CVE, 
+    /// @notice DAO treasury allocation of CVE,
     ///         can be minted as needed by the DAO. 14.5%.
     uint256 public immutable daoTreasuryAllocation;
-    /// @notice Initial community allocation of CVE, 
+    /// @notice Initial community allocation of CVE,
     ///         can be minted as needed by the DAO. 3.75%.
     uint256 public immutable initialCommunityAllocation;
-    /// @notice Buildier allocation of CVE, 
+    /// @notice Buildier allocation of CVE,
     ///         can be minted on a monthly basis. 13.5%
     uint256 public immutable builderAllocation;
     /// @notice 3% as veCVE immediately, 10.5% vested over 4 years.
@@ -55,15 +50,10 @@ contract CVE is ERC20 {
     error CVE__Unauthorized();
     error CVE__InsufficientCVEAllocation();
     error CVE__ParametersAreInvalid();
-    error CVE__TokenBridgeRelayerIsZeroAddress();
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address tokenBridgeRelayer_,
-        address builder_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address builder_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -72,17 +62,12 @@ contract CVE is ERC20 {
         ) {
             revert CVE__ParametersAreInvalid();
         }
-        if (tokenBridgeRelayer_ == address(0)) {
-            revert CVE__TokenBridgeRelayerIsZeroAddress();
-        }
 
         if (builder_ == address(0)) {
             builder_ = msg.sender;
         }
 
         centralRegistry = centralRegistry_;
-        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
-        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
         tokenGenerationEventTimestamp = block.timestamp;
         builderAddress = builder_;
 
@@ -132,7 +117,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Mint CVE to msg.sender, 
+    /// @notice Mint CVE to msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by the ProtocolMessagingHub.
     ///      This function is used only for creating a bridged VeCVE lock.
@@ -145,7 +130,7 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Burn CVE from msg.sender, 
+    /// @notice Burn CVE from msg.sender,
     ///         which will always be the VeCVE contract.
     /// @dev Only callable by VeCVE.
     ///      This function is used only for bridging VeCVE lock.
@@ -262,18 +247,16 @@ contract CVE is ERC20 {
     /// @return Required fee.
     function relayerFee(uint256 dstChainId) external view returns (uint256) {
         return
-            tokenBridgeRelayer.calculateRelayerFee(
-                IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
-                    .wormholeChainId(dstChainId),
-                address(this),
-                18
-            );
+            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                .cveRelayerFee(dstChainId);
     }
 
     /// @notice Returns required amount of native asset for message fee.
     /// @return Required fee.
     function bridgeFee() external view returns (uint256) {
-        return wormhole.messageFee();
+        return
+            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                .cveBridgeFee();
     }
 
     /// PUBLIC FUNCTIONS ///

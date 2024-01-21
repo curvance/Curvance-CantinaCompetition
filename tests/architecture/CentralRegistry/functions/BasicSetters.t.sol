@@ -20,7 +20,7 @@ contract BasicSettersTest is TestBaseMarket {
             "setOCVE(address)",
             "setCVELocker(address)",
             "setProtocolMessagingHub(address)",
-            "setPriceRouter(address)",
+            "setOracleRouter(address)",
             "setFeeAccumulator(address)"
         ];
         getters = [
@@ -29,7 +29,7 @@ contract BasicSettersTest is TestBaseMarket {
             "oCVE()",
             "cveLocker()",
             "protocolMessagingHub()",
-            "priceRouter()",
+            "oracleRouter()",
             "feeAccumulator()"
         ];
         expectedLogs = [
@@ -38,7 +38,7 @@ contract BasicSettersTest is TestBaseMarket {
             "oCVE",
             "CVE Locker",
             "Protocol Messaging Hub",
-            "Price Router",
+            "Oracle Router",
             "Fee Accumulator"
         ];
     }

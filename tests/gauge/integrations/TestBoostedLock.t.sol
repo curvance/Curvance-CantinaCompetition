@@ -49,17 +49,17 @@ contract TestBoostedLock is TestBaseMarket {
         gaugePool.setEmissionRates(0, tokensParam, poolWeights);
 
         // start epoch
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
 
         for (uint256 i = 0; i < 10; i++) {
             tokens[i] = address(_deployDDAI());
 
             // support market
             dai.approve(address(tokens[i]), 200000e18);
-            lendtroller.listToken(tokens[i]);
+            marketManager.listToken(tokens[i]);
 
             // add MToken support on price router
-            priceRouter.addMTokenSupport(tokens[i]);
+            oracleRouter.addMTokenSupport(tokens[i]);
 
             for (uint256 j = 0; j < 10; j++) {
                 address user = users[j];
@@ -108,8 +108,14 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 10000e18);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 20000e18);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            10000e18
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            20000e18
+        );
 
         // user1 deposit 400 token0
         vm.prank(users[1]);
@@ -121,10 +127,22 @@ contract TestBoostedLock is TestBaseMarket {
 
         // check pending rewards after 100 seconds
         vm.warp(block.timestamp + 100);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[0]), 12000e18);
-        assertEq(gaugePool.pendingRewards(tokens[0], users[1]), 8000e18);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[2]), 24000e18);
-        assertEq(gaugePool.pendingRewards(tokens[1], users[3]), 16000e18);
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[0], address(cve)),
+            12000e18
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[0], users[1], address(cve)),
+            8000e18
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[2], address(cve)),
+            24000e18
+        );
+        assertEq(
+            gaugePool.pendingRewards(tokens[1], users[3], address(cve)),
+            16000e18
+        );
 
         // user0, user3 claims
         RewardsData memory rewardData;

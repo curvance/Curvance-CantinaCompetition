@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
 contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
@@ -19,21 +19,18 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
             address(this),
             address(protocolMessagingHub),
             address(cve),
-            137,
+            42161,
             1,
             1,
-            5
+            23
         );
 
         chainIDs.push(1);
         wormholeChainIDs.push(2);
-        chainIDs.push(137);
-        wormholeChainIDs.push(5);
+        chainIDs.push(42161);
+        wormholeChainIDs.push(23);
 
-        protocolMessagingHub.registerWormholeChainIDs(
-            chainIDs,
-            wormholeChainIDs
-        );
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
@@ -56,7 +53,7 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.bridgeVeCVELock(137, user1, _ONE, true);
+        protocolMessagingHub.bridgeVeCVELock(42161, user1, _ONE, true);
     }
 
     function test_bridgeVeCVELock_fail_whenDestinationChainIsNotRegistered()
@@ -75,16 +72,13 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
     function test_bridgeVeCVELock_fail_whenNativeTokenIsNotEnoughToCoverFee()
         public
     {
-        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
-            5,
-            false
-        );
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
 
         vm.prank(address(veCVE));
 
         vm.expectRevert();
         protocolMessagingHub.bridgeVeCVELock{ value: messageFee - 1 }(
-            137,
+            42161,
             user1,
             _ONE,
             true
@@ -92,15 +86,12 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
     }
 
     function test_bridgeVeCVELock_success() public {
-        (uint256 messageFee, ) = protocolMessagingHub.quoteWormholeFee(
-            5,
-            false
-        );
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
 
         vm.prank(address(veCVE));
 
         protocolMessagingHub.bridgeVeCVELock{ value: messageFee }(
-            137,
+            42161,
             user1,
             _ONE,
             true

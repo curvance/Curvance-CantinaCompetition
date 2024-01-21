@@ -6,7 +6,7 @@ import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IProxy } from "contracts/interfaces/external/api3/IProxy.sol";
 
@@ -89,7 +89,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Api3 Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for.
     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.
     /// @param heartbeat Api3 heartbeat to use when validating prices
@@ -170,7 +170,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit Api3AssetRemoved(asset);
     }
