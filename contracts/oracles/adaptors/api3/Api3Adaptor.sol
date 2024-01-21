@@ -128,15 +128,15 @@ contract Api3Adaptor is BaseOracleAdaptor {
             revert Api3Adaptor__DAPINameHashError();
         }
 
-        AdaptorData storage adaptorData;
+        AdaptorData storage data;
 
         if (inUSD) {
-            adaptorData = adaptorDataUSD[asset];
+            data = adaptorDataUSD[asset];
         } else {
-            adaptorData = adaptorDataNonUSD[asset];
+            data = adaptorDataNonUSD[asset];
         }
 
-        adaptorData.heartbeat = heartbeat != 0
+        data.heartbeat = heartbeat != 0
             ? heartbeat
             : DEFAULT_HEART_BEAT;
 
@@ -144,13 +144,13 @@ contract Api3Adaptor is BaseOracleAdaptor {
         // updating its price before/above the min/max price. We use a maximum
         // buffered price of 2^224 - 1, which could overflow when trying to
         // save the final value into an uint240.
-        adaptorData.max = (uint256(int256(type(int224).max)) * 9) / 10;
-        adaptorData.dapiNameHash = dapiNameHash;
-        adaptorData.proxyFeed = IProxy(proxyFeed);
-        adaptorData.isConfigured = true;
+        data.max = (uint256(int256(type(int224).max)) * 9) / 10;
+        data.dapiNameHash = dapiNameHash;
+        data.proxyFeed = IProxy(proxyFeed);
+        data.isConfigured = true;
         isSupportedAsset[asset] = true;
 
-        emit Api3AssetAdded(asset, adaptorData);
+        emit Api3AssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.

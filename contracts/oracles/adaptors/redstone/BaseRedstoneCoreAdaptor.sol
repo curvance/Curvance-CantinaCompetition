@@ -102,22 +102,22 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             symbolHash = Bytes32Helper._toBytes32WithETH(asset);
         }
 
-        AdaptorData storage adaptorData;
+        AdaptorData storage data;
 
         if (inUSD) {
-            adaptorData = adaptorDataUSD[asset];
+            data = adaptorDataUSD[asset];
         } else {
-            adaptorData = adaptorDataNonUSD[asset];
+            data = adaptorDataNonUSD[asset];
         }
 
         // If decimals == 0 we want default 8 decimals that
         // redstone typically returns in.
         if (decimals == 0) {
-            adaptorData.decimals = 8;
+            data.decimals = 8;
         } else {
             // Otherwise coerce uint8 to uint256 for cheaper
             // runtime conversion.
-            adaptorData.decimals = uint256(decimals);
+            data.decimals = uint256(decimals);
         }
 
         // Add a ~10% buffer to maximum price allowed from redstone can stop 
@@ -126,12 +126,12 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         // reports pricing in 8 decimal format, requiring multiplication by
         // 10e10 to standardize to 18 decimal format, which could overflow 
         // when trying to save the final value into an uint240.
-        adaptorData.max = (type(uint192).max * 9) / 10;
-        adaptorData.symbolHash = symbolHash;
-        adaptorData.isConfigured = true;
+        data.max = (type(uint192).max * 9) / 10;
+        data.symbolHash = symbolHash;
+        data.isConfigured = true;
         isSupportedAsset[asset] = true;
 
-        emit RedstoneCoreAssetAdded(asset, adaptorData);
+        emit RedstoneCoreAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -207,7 +207,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        uint256 quoteDecimals = adaptorData.decimals;
+        uint256 quoteDecimals = data.decimals;
         if (quoteDecimals != 18) {
             // Decimals are < 18 so we need to multiply up.
             if (quoteDecimals < 18) {
