@@ -608,7 +608,6 @@ contract CentralRegistry is ERC165 {
         supportedChains++;
         omnichainOperators[newOmnichainOperator][chainId] = OmnichainData({
             isAuthorized: 2,
-            chainId: chainId,
             messagingChainId: messagingChainId,
             cveAddress: cveAddress
         });
@@ -628,21 +627,21 @@ contract CentralRegistry is ERC165 {
         OmnichainData storage operatorToRemove = omnichainOperators[
             currentOmnichainOperator
         ][chainId];
+        // Validate that `currentOmnichainOperator` is currently supported.
         if (
             omnichainOperators[currentOmnichainOperator][chainId]
                 .isAuthorized < 2
         ) {
-            // Operator unsupported
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        if (supportedChainData[operatorToRemove.chainId].isSupported < 2) {
-            // Chain already added
+        // Validate that `chainId` is currently supported.
+        if (supportedChainData[chainId].isSupported < 2) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         // Remove chain support from protocol
-        supportedChainData[operatorToRemove.chainId].isSupported = 1;
+        supportedChainData[chainId].isSupported = 1;
         // Remove operator support from protocol
         operatorToRemove.isAuthorized = 1;
         // Decrease supportedChains
@@ -653,7 +652,7 @@ contract CentralRegistry is ERC165 {
         ];
         delete messagingToGETHChainId[operatorToRemove.messagingChainId];
 
-        emit RemovedChain(operatorToRemove.chainId, currentOmnichainOperator);
+        emit RemovedChain(chainId, currentOmnichainOperator);
     }
 
     /// CONTRACT MAPPING LOGIC
