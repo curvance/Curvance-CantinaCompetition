@@ -7,11 +7,11 @@ import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLi
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
-contract Curve2AssetAdaptor is CurveBaseAdaptor {
+contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
     /// TYPES ///
 
     struct AdaptorData {
@@ -103,8 +103,8 @@ contract Curve2AssetAdaptor is CurveBaseAdaptor {
         ICurvePool pool = ICurvePool(data.pool);
 
         // Get underlying token prices.
-        IPriceRouter priceRouter = IPriceRouter(centralRegistry.priceRouter());
-        (uint256 basePrice, uint256 errorCode) = priceRouter.getPrice(
+        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        (uint256 basePrice, uint256 errorCode) = oracleRouter.getPrice(
             data.baseToken,
             inUSD,
             getLower
@@ -140,7 +140,7 @@ contract Curve2AssetAdaptor is CurveBaseAdaptor {
     }
 
     /// @notice Adds a Curve LP as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset the address of the lp to add
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
@@ -159,9 +159,9 @@ contract Curve2AssetAdaptor is CurveBaseAdaptor {
             revert Curve2AssetAdaptor__InvalidAsset();
         }
 
-        address priceRouter = centralRegistry.priceRouter();
+        address oracleRouter = centralRegistry.oracleRouter();
 
-        if (!IPriceRouter(priceRouter).isSupportedAsset(data.baseToken)) {
+        if (!IOracleRouter(oracleRouter).isSupportedAsset(data.baseToken)) {
             revert Curve2AssetAdaptor__BaseAssetIsNotSupported();
         }
 
@@ -218,7 +218,7 @@ contract Curve2AssetAdaptor is CurveBaseAdaptor {
 
         // Notify the price router that we are going to stop supporting
         // the asset.
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);
     }
 

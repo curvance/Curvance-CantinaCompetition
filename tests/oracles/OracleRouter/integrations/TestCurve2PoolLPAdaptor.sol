@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestBasePriceRouter } from "../TestBasePriceRouter.sol";
-import { Curve2PoolAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolAdaptor.sol";
+import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
+import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
-contract TestCurve2PoolAdaptor is TestBasePriceRouter {
+contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
     address private CHAINLINK_PRICE_FEED_ETH =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private CHAINLINK_PRICE_FEED_STETH =
@@ -18,15 +18,15 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
     address private ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address private STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
 
-    Curve2PoolAdaptor adaptor;
+    Curve2PoolLPAdaptor adaptor;
 
     function setUp() public override {
         _fork(18031848);
 
         _deployCentralRegistry();
-        _deployPriceRouter();
+        _deployOracleRouter();
 
-        adaptor = new Curve2PoolAdaptor(
+        adaptor = new Curve2PoolLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
 
@@ -34,7 +34,7 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        Curve2PoolAdaptor.AdaptorData memory data;
+        Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         data.underlyingOrConstituent0 = ETH;
         data.underlyingOrConstituent1 = STETH;
@@ -44,8 +44,8 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         data.upperBound = 10200;
         data.lowerBound = 10000;
         vm.expectRevert(
-            Curve2PoolAdaptor
-                .Curve2PoolAdaptor__QuoteAssetIsNotSupported
+            Curve2PoolLPAdaptor
+                .Curve2PoolLPAdaptor__QuoteAssetIsNotSupported
                 .selector
         );
         adaptor.addAsset(ETH_STETH, data);
@@ -57,11 +57,11 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         );
         chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
         chainlinkAdaptor.addAsset(STETH, CHAINLINK_PRICE_FEED_STETH, 0, true);
-        priceRouter.addApprovedAdaptor(address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
-        priceRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
 
-        Curve2PoolAdaptor.AdaptorData memory data;
+        Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
         data.underlyingOrConstituent0 = ETH;
         data.underlyingOrConstituent1 = STETH;
@@ -72,11 +72,11 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         data.lowerBound = 10000;
         adaptor.addAsset(ETH_STETH, data);
 
-        priceRouter.addApprovedAdaptor(address(adaptor));
-        priceRouter.addAssetPriceFeed(ETH_STETH, address(adaptor));
-        (uint256 ethPrice, ) = priceRouter.getPrice(ETH, true, false);
+        oracleRouter.addApprovedAdaptor(address(adaptor));
+        oracleRouter.addAssetPriceFeed(ETH_STETH, address(adaptor));
+        (uint256 ethPrice, ) = oracleRouter.getPrice(ETH, true, false);
 
-        (uint256 price, uint256 errorCode) = priceRouter.getPrice(
+        (uint256 price, uint256 errorCode) = oracleRouter.getPrice(
             ETH_STETH,
             true,
             false
@@ -89,7 +89,7 @@ contract TestCurve2PoolAdaptor is TestBasePriceRouter {
         testReturnsCorrectPrice();
         adaptor.removeAsset(ETH_STETH);
 
-        vm.expectRevert(PriceRouter.PriceRouter__NotSupported.selector);
-        priceRouter.getPrice(ETH_STETH, true, false);
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(ETH_STETH, true, false);
     }
 }
