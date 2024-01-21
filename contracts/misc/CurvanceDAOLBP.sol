@@ -156,8 +156,8 @@ contract CurvanceDAOLBP {
     ///         `paymentToken` for `recipient` to receive a proportional
     ///         share of CVE from Curvance DAO.
     /// @param amount The amount of `paymentToken` to commit.
-    /// @param receiver The address of the user who should benefit from
-    ///                 the commitment.
+    /// @param recipient The address of the user who should benefit from
+    ///                  the commitment.
     function commitFor(uint256 amount, address recipient) external {
         // Validate that LBP is active.
         _canCommit();
@@ -279,8 +279,8 @@ contract CurvanceDAOLBP {
 
     /// @notice Documents a commitment of `amount` for `recipient`.
     /// @param amount The amount of `paymentToken` committed.
-    /// @param receiver The address of the user who should benefit from
-    ///                 the commitment.
+    /// @param recipient The address of the user who should benefit from
+    ///                  the commitment.
     function _commit(uint256 amount, address recipient) internal {
         userCommitted[recipient] += amount;
         saleCommitted += amount;
