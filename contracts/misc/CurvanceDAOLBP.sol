@@ -23,18 +23,17 @@ contract CurvanceDAOLBP {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
     /// @notice CVE contract address.
     address public immutable cve;
-
-    /// PUBLIC SALE CONFIGURATIONS
 
     /// @notice The duration of the LBP.
     uint256 public constant SALE_PERIOD = 3 days;
 
     /// STORAGE ///
 
-    /// @notice The starting timestamp of the LBP, in unix time.
+    /// PUBLIC SALE CONFIGURATIONS
+
+    /// @notice The starting timestamp of the LBP, in Unix time.
     uint256 public startTime;
     /// @notice The number of CVE tokens up for grabs from the DAO.
     uint256 public cveAmountForSale;
@@ -91,7 +90,7 @@ contract CurvanceDAOLBP {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Starts the configuration of the LBP.
-    /// @param startTimestamp LBP start timestamp, in unix time.
+    /// @param startTimestamp LBP start timestamp, in Unix time.
     /// @param softPriceInUSD LBP base token price, in USD.
     /// @param cveAmountInLBP CVE amount included in LBP.
     /// @param paymentTokenAddress The address of the payment token.

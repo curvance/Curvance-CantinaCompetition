@@ -115,6 +115,13 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocks(
+        address user
+    ) external view returns (Lock[] memory) {
+        return userLocks[user];
+    }
+
     /// @notice Rescue any token sent by mistake.
     /// @param token token to rescue.
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all.
