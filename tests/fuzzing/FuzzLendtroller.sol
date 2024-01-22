@@ -84,6 +84,9 @@ contract FuzzLendtroller is StatefulBaseMarket {
                 false,
                 "LENDTROLLER - expected mtoken.deposit() to be successful"
             );
+            if (safeBounds.collRatio == 0) {
+                isCollateralRatioZero[mtoken] = true;
+            }
         }
     }
 
