@@ -72,7 +72,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
-    PartnerGaugePool public partnerGaugePool;
 
     address public harvester;
     uint256 public clPointMultiplier = 11000; // 110%
@@ -328,14 +327,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployGaugePool() internal {
         gaugePool = new GaugePool(ICentralRegistry(address(centralRegistry)));
         centralRegistry.addGaugeController(address(gaugePool));
-
-        // Additional logic for partner gauge pool fuzzing logic
-        // partnerGaugePool = new PartnerGaugePool(
-        //     address(gaugePool),
-        //     address(usdc),
-        //     ICentralRegistry(address(centralRegistry))
-        // );
-        // gaugePool.addPartnerGauge(address(partnerGaugePool));
     }
 
     function _deployMarketManager() internal {
