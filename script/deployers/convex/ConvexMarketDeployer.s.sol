@@ -21,11 +21,19 @@ contract ConvexMarketDeployer is DeployConfiguration {
         address chainlinkEth;
         address chainlinkUsd;
     }
+    struct PriceBound {
+        bool divideRate0;
+        bool divideRate1;
+        bool isCorrelated;
+        uint256 lowerBound;
+        uint256 upperBound;
+    }
     struct ConvexMarketParam {
         address asset;
         address booster;
         uint256 pid;
         address pool;
+        PriceBound priceBound;
         address rewarder;
         ConvexUnderlyingParam[] underlyings;
     }
@@ -97,7 +105,9 @@ contract ConvexMarketDeployer is DeployConfiguration {
             if (
                 !OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)
             ) {
-                OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
+                OracleRouter(oracleRouter).addApprovedAdaptor(
+                    chainlinkAdaptor
+                );
                 console.log(
                     "oracleRouter.addApprovedAdaptor: ",
                     chainlinkAdaptor
@@ -127,12 +137,22 @@ contract ConvexMarketDeployer is DeployConfiguration {
             console.log("oracleRouter.addApprovedAdaptor: ", curveAdaptor);
         }
         if (!Curve2PoolLPAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
-            Curve2PoolLPAdaptor(curveAdaptor).addAsset(param.asset, param.pool);
+            Curve2PoolLPAdaptor.AdaptorData memory data;
+            data.pool = param.pool;
+            data.underlyingOrConstituent0 = param.underlyings[0].asset;
+            data.underlyingOrConstituent1 = param.underlyings[1].asset;
+            data.divideRate0 = param.priceBound.divideRate0;
+            data.divideRate1 = param.priceBound.divideRate1;
+            data.isCorrelated = param.priceBound.isCorrelated;
+            data.upperBound = param.priceBound.upperBound;
+            data.lowerBound = param.priceBound.lowerBound;
+
+            Curve2PoolLPAdaptor(curveAdaptor).addAsset(param.asset, data);
             console.log("curveAdaptor.addAsset");
         }
-        try OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0) returns (
-            address feed
-        ) {} catch {
+        try
+            OracleRouter(oracleRouter).assetPriceFeeds(param.asset, 0)
+        returns (address feed) {} catch {
             OracleRouter(oracleRouter).addAssetPriceFeed(
                 param.asset,
                 curveAdaptor

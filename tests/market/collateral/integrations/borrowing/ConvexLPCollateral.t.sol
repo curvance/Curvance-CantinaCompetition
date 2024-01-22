@@ -65,10 +65,17 @@ contract ConvexLPCollateral is TestBaseMarket {
             ICentralRegistry(address(centralRegistry))
         );
         crvAdaptor.setReentrancyConfig(2, 50_000);
-        crvAdaptor.addAsset(
-            address(CONVEX_STETH_ETH_POOL),
-            address(CONVEX_STETH_ETH_POOL)
-        );
+
+        Curve2PoolLPAdaptor.AdaptorData memory data;
+        data.pool = address(CONVEX_STETH_ETH_POOL);
+        data.underlyingOrConstituent0 = ETH_ADDRESS;
+        data.underlyingOrConstituent1 = _STETH_ADDRESS;
+        data.divideRate0 = true;
+        data.divideRate1 = true;
+        data.isCorrelated = true;
+        data.upperBound = 10200;
+        data.lowerBound = 10000;
+        crvAdaptor.addAsset(address(CONVEX_STETH_ETH_POOL), data);
         oracleRouter.addApprovedAdaptor(address(crvAdaptor));
         oracleRouter.addAssetPriceFeed(
             address(CONVEX_STETH_ETH_POOL),
@@ -178,7 +185,9 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         vm.startPrank(user1);
         usdc.approve(address(dUSDC), type(uint256).max);
-        vm.expectRevert(MarketManager.MarketManager__MinimumHoldPeriod.selector);
+        vm.expectRevert(
+            MarketManager.MarketManager__MinimumHoldPeriod.selector
+        );
         dUSDC.repay(0);
 
         // Must hold for a minimum of 20 minutes before debt can be repaid
