@@ -534,6 +534,10 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     /// @custom:property vecve-33 - Increasing amount and extending lock should succeed when the lock is continuous.
+    /// @custom:property vecve-34 – Increasing amount and extending lock decrease of CVE tokens.
+    /// @custom:property vecve-35 – Increasing amount and extending lock increase of VECVE lock balance
+    /// @custom:precondition  veCVE is not shut down
+    /// @custom:precondition  unlock time for lock is CONTINUOUS_LOCK_VALUE
     function increaseAmountAndExtendLock_should_succeed_if_continuous(
         uint256 amount,
         uint256 number
@@ -566,6 +570,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             )
         {
             uint256 postLockCVEBalance = cve.balanceOf(address(this));
+
+            // vecve-34
             assertEq(
                 preLockCVEBalance,
                 postLockCVEBalance + amount,
@@ -573,6 +579,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
 
             uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
+
+            // vecve-35
             assertEq(
                 preLockVECVEBalance + amount,
                 postLockVECVEBalance,
@@ -586,7 +594,12 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property vecve-34 - Increasing amount and extending lock should succeed when the lock is non-continuous
+    /// @custom:property vecve-36 - Increasing amount and extending lock should succeed when the lock is non-continuous
+    /// @custom:property vecve-37 – Increasing amount and extending lock for a non continuous lock results in decrease of CVE tokens.
+    /// @custom:property vecve-38 – Increasing amount and extending lock for a non continuous lock results in increase of VECVE tokens.
+    /// @custom:precondition veCVE is not shut down
+    /// @custom:precondition unlock time for lock is not continuous
+    /// @custom:precondition unlock time is not yet expired
     function increaseAmountAndExtendLock_should_succeed_if_non_continuous(
         uint256 amount,
         uint256 number,
@@ -622,6 +635,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             )
         {
             uint256 postLockCVEBalance = cve.balanceOf(address(this));
+
+            // vecve-37
             assertEq(
                 preLockCVEBalance,
                 postLockCVEBalance + amount,
@@ -629,6 +644,8 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
 
             uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
+
+            // vecve-38
             assertEq(
                 preLockVECVEBalance + amount,
                 postLockVECVEBalance,
@@ -642,8 +659,15 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property vecve-39 PROPERTY_ID <description>
-    // TODO: Add additional pre and post conditions on processExpiredLock
+    /// @custom:property vecve-39 - Processing a lock in a shutdown contract should complete successfully
+    /// @custom:property vecve-40 – Processing a lock in a shutdown contract results in decreasing number of user locks
+    /// @custom:property vecve-41 – Processing a lock in a shutdown contract results in decreasing user points
+    /// @custom:property vecve-42 – Processing a lock in a shutdown contract results in decreasing chain points
+    /// @custom:property vecve-43 – Processing a lock in a shutdown contract results in increasing cve tokens
+    /// @custom:property vecve-44 – Processing a lock in a shutdown contract results in decreasing vecve tokens
+    /// @custom:property vecve-45 – Processing an non-continuous lock in a shutdown contract results in preChainUnlocksByEpoch - amount being equal to postChainUnlocksByEpoch
+    /// @custom:property vecve-46 – Processing an non-continuous lock in a shutdown contract results in preUserUnlocksByEpoch - amount being equal to postUserUnlocksByEpoch
+    /// @custom:precondition veCVE is shut down
     function processExpiredLock_should_succeed_if_shutdown(
         uint256 seed
     ) public {
@@ -675,6 +699,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 defaultContinuous.aux
             )
         {
+            // vecve-40
             numLocks--;
             uint256 postUserPoints = veCVE.userPoints((address(this)));
             uint256 postChainPoints = veCVE.chainPoints();
@@ -687,24 +712,29 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
             uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
             uint256 postLockCVEBalance = cve.balanceOf(address(this));
+
+            // vecve-41
             assertGt(
                 preUserPoints,
                 postUserPoints,
                 "VE_CVE - processExpiredLock() - userPoints should have decreased"
             );
 
+            // vecve-42
             assertGt(
                 preChainPoints,
                 postChainPoints,
                 "VE_CVE - processExpiredLock() - chainPoints should have decreased"
             );
 
+            // vecve-43
             assertGt(
                 postLockCVEBalance,
                 preLockCVEBalance,
                 "VE_CVE - processExpiredLock() - cve balance should be increased"
             );
 
+            // vecve-44
             assertEq(
                 preLockVECVEBalance - amount,
                 postLockVECVEBalance,
@@ -712,12 +742,15 @@ contract FuzzVECVE is StatefulBaseMarket {
             );
 
             require(unlockTime != veCVE.CONTINUOUS_LOCK_VALUE());
+
+            // vecve-45
             assertEq(
                 preChainUnlocksByEpoch - amount,
                 postChainUnlocksByEpoch,
                 "VE_CVE - processExpiredLock() - postChainUnlocksByEpoch should be decreased by amount"
             );
 
+            // vecve-46
             assertEq(
                 preUserUnlocksByEpoch - amount,
                 postUserUnlocksByEpoch,
@@ -726,7 +759,15 @@ contract FuzzVECVE is StatefulBaseMarket {
         } catch {}
     }
 
-    /// @custom:property vecve-40 PROPERTY_ID <description>
+    /// @custom:property vecve-47 - Processing a lock should complete successfully if unlock time is expired
+    /// @custom:property vecve-48 – Processing an expired lock in a shutdown contract results in decreasing user points
+    /// @custom:property vecve-49 – Processing an expired lock in a shutdown contract results in decreasing chain points
+    /// @custom:property vecve-50 – Processing a non-continuous expired lock in a shutdown contract results in preChainUnlocksByEpoch - amount being equal to postChainUnlocksByEpoch
+    /// @custom:property vecve-51 – Processing a non-continuous expired lock in a shutdown contract results in preUserUnlocksByEpoch - amount being equal to postUserUnlocksByEpoch
+    /// @custom:property vecve-52 – Processing an expired lock without a relocking option results in decreasing number of user locks
+    /// @custom:property vecve-53 – Processing an expired lock without a relocking option results in increasing cve tokens
+    /// @custom:property vecve-54 – Processing an expired lock without a relocking option results in decreasing vecve tokens
+    /// @custom:precondition unlock time is expired
     function processExpiredLock_should_succeed_if_unlocktime_expired(
         bool relock
     ) public {
@@ -771,12 +812,14 @@ contract FuzzVECVE is StatefulBaseMarket {
                 );
 
                 if (veCVE.isShutdown() == 2) {
+                    // vecve-48
                     assertGt(
                         preUserPoints,
                         postUserPoints,
                         "VE_CVE - processExpiredLock() - userPoints should have decreased"
                     );
 
+                    // vecve-49
                     assertGt(
                         preChainPoints,
                         postChainPoints,
@@ -784,12 +827,15 @@ contract FuzzVECVE is StatefulBaseMarket {
                     );
 
                     require(unlockTime != veCVE.CONTINUOUS_LOCK_VALUE());
+
+                    // vecve-50
                     assertEq(
                         preChainUnlocksByEpoch - amount,
                         postChainUnlocksByEpoch,
                         "VE_CVE - processExpiredLock() - postChainUnlocksByEpoch should be decreased by amount"
                     );
 
+                    // vecve-51
                     assertEq(
                         preUserUnlocksByEpoch - amount,
                         postUserUnlocksByEpoch,
@@ -802,13 +848,17 @@ contract FuzzVECVE is StatefulBaseMarket {
             uint256 postLockCVEBalance = cve.balanceOf(address(this));
 
             if (relock == false) {
+                // vecve-52
                 numLocks--;
+
+                // vecve-53
                 assertGt(
                     postLockCVEBalance,
                     preLockCVEBalance,
                     "VE_CVE - processExpiredLock() - cve balance should be increased"
                 );
 
+                // vecve-54
                 assertEq(
                     preLockVECVEBalance - amount,
                     postLockVECVEBalance,
