@@ -500,20 +500,22 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         // use mock pricing for testing
         // StatefulBaseMarket - chainlinkAdaptor - usdc, dai
         mockUsdcFeed = new MockDataFeed(address(chainlinkUsdcUsd));
-        chainlinkAdaptor.addAsset(address(cUSDC), address(mockUsdcFeed), true);
-        chainlinkAdaptor.addAsset(address(dUSDC), address(mockUsdcFeed), true);
+        chainlinkAdaptor.addAsset(address(cUSDC), address(mockUsdcFeed), 0, true);
+        chainlinkAdaptor.addAsset(address(dUSDC), address(mockUsdcFeed), 0, true);
 
         dualChainlinkAdaptor.addAsset(
             address(cUSDC),
             address(mockUsdcFeed),
+            0,
             true
         );
         mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
-        chainlinkAdaptor.addAsset(address(cDAI), address(mockDaiFeed), true);
-        chainlinkAdaptor.addAsset(address(dDAI), address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(address(cDAI), address(mockDaiFeed), 0, true);
+        chainlinkAdaptor.addAsset(address(dDAI), address(mockDaiFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             address(cDAI),
             address(mockDaiFeed),
+            0,
             true
         );
 
