@@ -3,28 +3,33 @@ pragma solidity ^0.8.17;
 
 import "forge-std/console.sol";
 
-import { PriceRouter } from "contracts/oracles/PriceRouter.sol";
+import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { GMAdaptor } from "contracts/oracles/adaptors/gmx/GMAdaptor.sol";
 import { GMCToken } from "contracts/market/collateral/GMCToken.sol";
+
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 import { DeployConfiguration } from "../../utils/DeployConfiguration.sol";
 
 contract GMXMarketDeployer is DeployConfiguration {
-    function _deployGMXMarket(string memory name, address asset) internal {
+    function _deployGMXMarket(
+        string memory name,
+        address asset,
+        address alteredToken
+    ) internal {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
-        address lendtroller = _getDeployedContract("lendtroller");
-        console.log("lendtroller =", lendtroller);
-        require(lendtroller != address(0), "Set the lendtroller!");
+        address marketManager = _getDeployedContract("marketManager");
+        console.log("marketManager =", marketManager);
+        require(marketManager != address(0), "Set the marketManager!");
 
-        address priceRouter = _getDeployedContract("priceRouter");
-        console.log("priceRouter =", priceRouter);
-        require(priceRouter != address(0), "Set the priceRouter!");
+        address oracleRouter = _getDeployedContract("oracleRouter");
+        console.log("oracleRouter =", oracleRouter);
+        require(oracleRouter != address(0), "Set the oracleRouter!");
 
         address chainlinkAdaptor = _getDeployedContract("chainlinkAdaptor");
         if (chainlinkAdaptor == address(0)) {
@@ -48,25 +53,25 @@ contract GMXMarketDeployer is DeployConfiguration {
             _saveDeployedContracts("gmAdaptor", gmAdaptor);
         }
 
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(chainlinkAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(chainlinkAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", chainlinkAdaptor);
+        if (!OracleRouter(oracleRouter).isApprovedAdaptor(chainlinkAdaptor)) {
+            OracleRouter(oracleRouter).addApprovedAdaptor(chainlinkAdaptor);
+            console.log("oracleRouter.addApprovedAdaptor: ", chainlinkAdaptor);
         }
 
-        if (!PriceRouter(priceRouter).isApprovedAdaptor(gmAdaptor)) {
-            PriceRouter(priceRouter).addApprovedAdaptor(gmAdaptor);
-            console.log("priceRouter.addApprovedAdaptor: ", gmAdaptor);
+        if (!OracleRouter(oracleRouter).isApprovedAdaptor(gmAdaptor)) {
+            OracleRouter(oracleRouter).addApprovedAdaptor(gmAdaptor);
+            console.log("oracleRouter.addApprovedAdaptor: ", gmAdaptor);
         }
 
         if (!GMAdaptor(gmAdaptor).isSupportedAsset(asset)) {
-            GMAdaptor(gmAdaptor).addAsset(asset);
+            GMAdaptor(gmAdaptor).addAsset(asset, alteredToken);
         }
 
-        try PriceRouter(priceRouter).assetPriceFeeds(asset, 0) returns (
+        try OracleRouter(oracleRouter).assetPriceFeeds(asset, 0) returns (
             address
         ) {} catch {
-            PriceRouter(priceRouter).addAssetPriceFeed(asset, gmAdaptor);
-            console.log("priceRouter.addAssetPriceFeed: ", asset);
+            OracleRouter(oracleRouter).addAssetPriceFeed(asset, gmAdaptor);
+            console.log("oracleRouter.addAssetPriceFeed: ", asset);
         }
 
         // Deploy CToken
@@ -77,7 +82,13 @@ contract GMXMarketDeployer is DeployConfiguration {
                 new GMCToken(
                     ICentralRegistry(centralRegistry),
                     IERC20(asset),
-                    lendtroller
+                    marketManager,
+                    _readConfigAddress(".gmx.depositVault"),
+                    _readConfigAddress(".gmx.exchangeRouter"),
+                    _readConfigAddress(".gmx.router"),
+                    _readConfigAddress(".gmx.reader"),
+                    _readConfigAddress(".gmx.dataStore"),
+                    _readConfigAddress(".gmx.depositHandler")
                 )
             );
 

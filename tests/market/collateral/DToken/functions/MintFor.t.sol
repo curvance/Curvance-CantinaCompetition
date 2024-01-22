@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 
 contract DTokenMintForTest is TestBaseDToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
@@ -14,9 +14,9 @@ contract DTokenMintForTest is TestBaseDToken {
     }
 
     function test_dTokenMintFor_fail_whenMintIsNotAllowed() public {
-        lendtroller.setMintPaused(address(dUSDC), true);
+        marketManager.setMintPaused(address(dUSDC), true);
 
-        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
+        vm.expectRevert(MarketManager.MarketManager__Paused.selector);
         dUSDC.mintFor(100e6, user1);
     }
 

@@ -2,12 +2,12 @@
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
+import { WAD } from "contracts/libraries/Constants.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPriceRouter } from "contracts/interfaces/IPriceRouter.sol";
+import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// TYPES ///
@@ -36,7 +36,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice If zero is specified for a Chainlink asset heartbeat,
     ///         this value is used instead.
-    uint24 public constant DEFAULT_HEART_BEAT = 1 days;
+    uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
@@ -49,12 +49,12 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// EVENTS ///
 
     event ChainlinkAssetAdded(address asset, AdaptorData assetConfig);
-
     event ChainlinkAssetRemoved(address asset);
 
     /// ERRORS ///
 
     error ChainlinkAdaptor__AssetIsNotSupported();
+    error ChainlinkAdaptor__InvalidHeartbeat();
     error ChainlinkAdaptor__InvalidMinPrice();
     error ChainlinkAdaptor__InvalidMaxPrice();
     error ChainlinkAdaptor__InvalidMinMaxConfig();
@@ -79,27 +79,40 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     function getPrice(
         address asset,
         bool inUSD,
-        bool
+        bool  /* getLower */
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
         }
 
         if (inUSD) {
-            return _getPriceinUSD(asset);
+            return _getPriceInUSD(asset);
         }
 
-        return _getPriceinETH(asset);
+        return _getPriceInETH(asset);
     }
 
     /// @notice Add a Chainlink Price Feed as an asset.
-    /// @dev Should be called before `PriceRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the token to add pricing for
     /// @param aggregator Chainlink aggregator to use for pricing `asset`
+    /// @param heartbeat Chainlink heartbeat to use when validating prices
+    ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
-    ///              or ETH (inUSD = false)
-    function addAsset(address asset, address aggregator, bool inUSD) external {
+    ///              or ETH (inUSD = false).
+    function addAsset(
+        address asset, 
+        address aggregator, 
+        uint256 heartbeat, 
+        bool inUSD
+    ) external {
         _checkElevatedPermissions();
+
+        if (heartbeat != 0) {
+            if (heartbeat > DEFAULT_HEART_BEAT) {
+                revert ChainlinkAdaptor__InvalidHeartbeat();
+            }
+        }
 
         // Use Chainlink to get the min and max of the asset.
         IChainlink feedAggregator = IChainlink(
@@ -116,8 +129,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         // Add a ~10% buffer to minimum and maximum price from Chainlink
         // because Chainlink can stop updating its price before/above
         // the min/max price.
-        uint256 bufferedMaxPrice = (maxFromChainlink * 0.9e18) / WAD;
-        uint256 bufferedMinPrice = (minFromChainklink * 1.1e18) / WAD;
+        uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;
+        uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;
 
         AdaptorData storage adaptorData;
 
@@ -145,12 +158,13 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             adaptorData.max = bufferedMaxPrice;
         }
 
-        if (minFromChainklink >= maxFromChainlink)
+        if (bufferedMinPrice >= bufferedMaxPrice) {
             revert ChainlinkAdaptor__InvalidMinMaxConfig();
-
+        }
+       
         adaptorData.decimals = feedAggregator.decimals();
-        adaptorData.heartbeat = adaptorData.heartbeat != 0
-            ? adaptorData.heartbeat
+        adaptorData.heartbeat = heartbeat != 0
+            ? heartbeat
             : DEFAULT_HEART_BEAT;
 
         adaptorData.aggregator = IChainlink(aggregator);
@@ -176,7 +190,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         delete adaptorDataNonUSD[asset];
 
         // Notify the price router that we are going to stop supporting the asset
-        IPriceRouter(centralRegistry.priceRouter()).notifyFeedRemoval(asset);
+        IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit ChainlinkAssetRemoved(asset);
     }
 
@@ -186,7 +200,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (USD).
-    function _getPriceinUSD(
+    function _getPriceInUSD(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataUSD[asset].isConfigured) {
@@ -200,7 +214,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @return A structure containing the price, error status,
     ///         and the quote format of the price (ETH).
-    function _getPriceinETH(
+    function _getPriceInETH(
         address asset
     ) internal view returns (PriceReturnData memory) {
         if (adaptorDataNonUSD[asset].isConfigured) {
@@ -215,33 +229,37 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     ///      for pricing and staleness.
     /// @param data Chainlink feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
-    /// @return A structure containing the price, error status,
-    ///         and the currency of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the currency of the price.
     function _parseData(
         AdaptorData memory data,
         bool inUSD
-    ) internal view returns (PriceReturnData memory) {
-        if (!IPriceRouter(centralRegistry.priceRouter()).isSequencerValid()) {
-            return PriceReturnData({ price: 0, hadError: true, inUSD: inUSD });
+    ) internal view returns (PriceReturnData memory pData) {
+        pData.inUSD = inUSD;
+        if (!IOracleRouter(centralRegistry.oracleRouter()).isSequencerValid()) {
+            pData.hadError = true;
+            return pData;
         }
 
         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)
             .latestRoundData();
+
+        // If we got a price of 0 or less, bubble up an error immediately.
+        if (price <= 0) {
+            pData.hadError = true;
+            return pData;
+        }
+
         uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);
 
-        return (
-            PriceReturnData({
-                price: uint240(newPrice),
-                hadError: _verifyData(
-                    uint256(price),
-                    updatedAt,
-                    data.max,
-                    data.min,
-                    data.heartbeat
-                ),
-                inUSD: inUSD
-            })
-        );
+        pData.price = uint240(newPrice);
+        pData.hadError = _verifyData(
+                        uint256(price),
+                        updatedAt,
+                        data.max,
+                        data.min,
+                        data.heartbeat
+                    );
     }
 
     /// @notice Validates the feed data based on various constraints.

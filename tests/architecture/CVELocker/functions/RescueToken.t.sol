@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
-import { SafeTransferLib } from "contracts/libraries/SafeTransferLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 contract CVELockerrescueTokenTest is TestBaseCVELocker {
 

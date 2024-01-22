@@ -1,44 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { ERC20 } from "contracts/libraries/ERC20.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { ERC165Checker } from "contracts/libraries/ERC165Checker.sol";
-import { IWormhole } from "contracts/interfaces/wormhole/IWormhole.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
+import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
+
+/// @notice Curvance DAO's Child CVE Contract.
 contract CVE is ERC20 {
     /// CONSTANTS ///
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
-    /// @notice Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public immutable tokenBridgeRelayer;
-
-    /// @notice Address of Wormhole core contract.
-    IWormhole public immutable wormhole;
-
-    /// `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
+    /// @dev `bytes4(keccak256(bytes("CVE__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x15f37077;
-
-    /// STORAGE ///
-
-    /// @notice Wormhole specific chain ID for evm chain ID.
-    mapping(uint256 => uint16) public wormholeChainId;
 
     /// ERRORS ///
 
     error CVE__Unauthorized();
     error CVE__ParametersAreInvalid();
+    error CVE__WormholeCoreIsZeroAddress();
     error CVE__TokenBridgeRelayerIsZeroAddress();
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address tokenBridgeRelayer_
-    ) {
+    constructor(ICentralRegistry centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -47,22 +35,16 @@ contract CVE is ERC20 {
         ) {
             revert CVE__ParametersAreInvalid();
         }
-        if (tokenBridgeRelayer_ == address(0)) {
-            revert CVE__TokenBridgeRelayerIsZeroAddress();
-        }
-
         centralRegistry = centralRegistry_;
-        tokenBridgeRelayer = ITokenBridgeRelayer(tokenBridgeRelayer_);
-        wormhole = ITokenBridgeRelayer(tokenBridgeRelayer_).wormhole();
     }
 
     /// EXTERNAL FUNCTIONIS ///
 
     /// @notice Mints gauge emissions for the desired gauge pool
-    /// @dev Allows the VotingHub to mint new gauge emissions.
+    /// @dev Only callable by the ProtocolMessagingHub.
     /// @param gaugePool The address of the gauge pool where emissions will be
     ///                  configured.
-    /// @param amount The amount of gauge emissions to be minted
+    /// @param amount The amount of gauge emissions to be minted.
     function mintGaugeEmissions(address gaugePool, uint256 amount) external {
         if (msg.sender != centralRegistry.protocolMessagingHub()) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -82,20 +64,30 @@ contract CVE is ERC20 {
         _mint(msg.sender, amount);
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
-    /// @param chainIds EVM chain IDs.
-    /// @param wormholeChainIds Wormhole specific chain IDs.
-    function registerWormholeChainIDs(
-        uint256[] calldata chainIds,
-        uint16[] calldata wormholeChainIds
-    ) external {
-        _checkDaoPermissions();
-
-        uint256 numChainIds = chainIds.length;
-
-        for (uint256 i = 0; i < numChainIds; ++i) {
-            wormholeChainId[chainIds[i]] = wormholeChainIds[i];
+    /// @notice Mint CVE to msg.sender,
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by the ProtocolMessagingHub.
+    ///      This function is used only for creating a bridged VeCVE lock.
+    /// @param amount The amount of token to mint for the new veCVE lock.
+    function mintVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.protocolMessagingHub()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
+
+        _mint(msg.sender, amount);
+    }
+
+    /// @notice Burn CVE from msg.sender,
+    ///         which will always be the VeCVE contract.
+    /// @dev Only callable by VeCVE.
+    ///      This function is used only for bridging VeCVE lock.
+    /// @param amount The amount of token to burn for a bridging veCVE lock.
+    function burnVeCVELock(uint256 amount) external {
+        if (msg.sender != centralRegistry.veCVE()) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _burn(msg.sender, amount);
     }
 
     /// @param dstChainId Chain ID of the target blockchain.
@@ -107,18 +99,15 @@ contract CVE is ERC20 {
         address recipient,
         uint256 amount
     ) external payable returns (uint64) {
+        address messagingHub = centralRegistry.protocolMessagingHub();
         _burn(msg.sender, amount);
-        _mint(address(this), amount);
-        _approve(address(this), address(tokenBridgeRelayer), amount);
+        _mint(messagingHub, amount);
 
         return
-            tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
-                address(this),
-                amount,
-                0,
-                wormholeChainId[dstChainId],
-                bytes32(uint256(uint160(recipient))),
-                0
+            IProtocolMessagingHub(messagingHub).bridgeCVE{ value: msg.value }(
+                dstChainId,
+                recipient,
+                amount
             );
     }
 
@@ -127,17 +116,16 @@ contract CVE is ERC20 {
     /// @return Required fee.
     function relayerFee(uint256 dstChainId) external view returns (uint256) {
         return
-            tokenBridgeRelayer.calculateRelayerFee(
-                wormholeChainId[dstChainId],
-                address(this),
-                18
-            );
+            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                .cveRelayerFee(dstChainId);
     }
 
     /// @notice Returns required amount of native asset for message fee.
     /// @return Required fee.
     function bridgeFee() external view returns (uint256) {
-        return wormhole.messageFee();
+        return
+            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
+                .cveBridgeFee();
     }
 
     /// PUBLIC FUNCTIONS ///

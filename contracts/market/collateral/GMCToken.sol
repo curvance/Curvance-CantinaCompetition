@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+
 import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
@@ -12,32 +13,22 @@ import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchan
 contract GMCToken is CTokenCompounding {
     using Math for uint256;
 
-    /// CONSTANTS ///
+    /// STORAGE ///
 
     /// @notice The address of GMX Deposit Vault.
-    address public constant GMX_DEPOSIT_VAULT =
-        0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55;
+    address gmxDepositVault;
 
     /// @notice The address of GMX Exchange Router.
-    address public constant GMX_EXCHANGE_ROUTER =
-        0x7C68C7866A64FA2160F78EEaE12217FFbf871fa8;
+    address gmxExchangeRouter;
 
     /// @notice The address of GMX Router.
-    address public constant GMX_ROUTER =
-        0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6;
-
-    /// @notice The address of GMX Reader.
-    address public constant GMX_READER =
-        0xf60becbba223EEA9495Da3f606753867eC10d139;
+    address gmxRouter;
 
     /// @notice The address of GMX Datastore.
-    address public constant GMX_DATASTORE =
-        0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
+    address gmxDataStore;
 
-    address public constant GMX_DEPOSIT_HANDLER =
-        0x9Dc4f12Eb2d8405b499FB5B8AF79a5f64aB8a457;
-
-    /// STORAGE ///
+    /// @notice The address of GMX Deposit Handler.
+    address gmxDepositHandler;
 
     /// @notice An array of underlying tokens.
     /// First element is long token and second one is short token.
@@ -52,6 +43,11 @@ contract GMCToken is CTokenCompounding {
     /// ERRORS ///
 
     error GMCToken__ChainIsNotSupported();
+    error GMCToken__GMXDepositVaultIsZeroAddress();
+    error GMCToken__GMXExchangeRouterIsZeroAddress();
+    error GMCToken__GMXRouterIsZeroAddress();
+    error GMCToken__GMXDataStoreIsZeroAddress();
+    error GMCToken__GMXDepositHandlerIsZeroAddress();
     error GMCToken__MarketIsInvalid();
     error GMCToken__CallerIsNotGMXDepositHandler();
     error GMCToken__InvalidDepositKey();
@@ -61,19 +57,33 @@ contract GMCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+        address marketManager_,
+        address gmxDepositVault_,
+        address gmxExchangeRouter_,
+        address gmxRouter_,
+        address gmxReader_,
+        address gmxDataStore_,
+        address gmxDepositHandler_
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         if (block.chainid != 42161) {
             revert GMCToken__ChainIsNotSupported();
         }
 
-        IReader.MarketProps memory market = IReader(GMX_READER).getMarket(
-            GMX_DATASTORE,
+        _setGMXDepositVault(gmxDepositVault_);
+        _setGMXExchangeRouter(gmxExchangeRouter_);
+        _setGMXRouter(gmxRouter_);
+        _setGMXDataStore(gmxDataStore_);
+        _setGMXDepositHandler(gmxDepositHandler_);
+
+        IReader.MarketProps memory market = IReader(gmxReader_).getMarket(
+            gmxDataStore_,
             address(asset_)
         );
 
         if (
-            market.longToken == address(0) && market.shortToken == address(0)
+            market.indexToken == address(0) ||
+            market.longToken == address(0) ||
+            market.shortToken == address(0)
         ) {
             revert GMCToken__MarketIsInvalid();
         }
@@ -128,20 +138,20 @@ contract GMCToken is CTokenCompounding {
 
             data[0] = abi.encodeWithSelector(
                 IGMXExchangeRouter.sendWnt.selector,
-                GMX_DEPOSIT_VAULT,
+                gmxDepositVault,
                 0.01e18
             );
 
             for (uint256 i = 0; i < 2; ) {
                 SafeTransferLib.safeApprove(
                     underlyingTokens[i],
-                    GMX_ROUTER,
+                    gmxRouter,
                     rewardAmounts[i]
                 );
                 data[++i] = abi.encodeWithSelector(
                     IGMXExchangeRouter.sendTokens.selector,
                     underlyingTokens[i],
-                    GMX_DEPOSIT_VAULT,
+                    gmxDepositVault,
                     rewardAmounts[i]
                 );
             }
@@ -163,7 +173,7 @@ contract GMCToken is CTokenCompounding {
                 )
             );
 
-            bytes[] memory results = IGMXExchangeRouter(GMX_EXCHANGE_ROUTER)
+            bytes[] memory results = IGMXExchangeRouter(gmxExchangeRouter)
                 .multicall{ value: 0.01e18 }(data);
             _isDepositKey[bytes32(results[3])] = true;
             // Return a 1 for harvester to recognize success
@@ -177,7 +187,7 @@ contract GMCToken is CTokenCompounding {
         IGMXDeposit.Props memory,
         IGMXEventUtils.EventLogData memory eventData
     ) external {
-        if (msg.sender != GMX_DEPOSIT_HANDLER) {
+        if (msg.sender != gmxDepositHandler) {
             revert GMCToken__CallerIsNotGMXDepositHandler();
         }
         if (!_isDepositKey[key]) {
@@ -199,7 +209,87 @@ contract GMCToken is CTokenCompounding {
         emit Harvest(yield);
     }
 
+    /// @notice Set GMX Deposit Vault address
+    function setGMXDepositVault(address newDepositVault) external {
+        _checkDaoPermissions();
+
+        _setGMXDepositVault(newDepositVault);
+    }
+
+    /// @notice Set GMX Exchange Router address
+    function setGMXExchangeRouter(address newExchangeRouter) external {
+        _checkDaoPermissions();
+
+        _setGMXExchangeRouter(newExchangeRouter);
+    }
+
+    /// @notice Set GMX Router address
+    function setGMXRouter(address newRouter) external {
+        _checkDaoPermissions();
+
+        _setGMXRouter(newRouter);
+    }
+
+    /// @notice Set GMX DataStore address
+    function setGMXDataStore(address newDataStore) external {
+        _checkDaoPermissions();
+
+        _setGMXDataStore(newDataStore);
+    }
+
+    /// @notice Set GMX Deposit Handler address
+    function setGMXDepositHandler(address newDepositHandler) external {
+        _checkDaoPermissions();
+
+        _setGMXDepositHandler(newDepositHandler);
+    }
+
     /// INTERNAL FUNCTIONS ///
+
+    /// @notice Set GMX Deposit Vault address
+    function _setGMXDepositVault(address newDepositVault) internal {
+        if (newDepositVault == address(0)) {
+            revert GMCToken__GMXDepositVaultIsZeroAddress();
+        }
+
+        gmxDepositVault = newDepositVault;
+    }
+
+    /// @notice Set GMX Exchange Router address
+    function _setGMXExchangeRouter(address newExchangeRouter) internal {
+        if (newExchangeRouter == address(0)) {
+            revert GMCToken__GMXExchangeRouterIsZeroAddress();
+        }
+
+        gmxExchangeRouter = newExchangeRouter;
+    }
+
+    /// @notice Set GMX Router address
+    function _setGMXRouter(address newRouter) internal {
+        if (newRouter == address(0)) {
+            revert GMCToken__GMXRouterIsZeroAddress();
+        }
+
+        gmxRouter = newRouter;
+    }
+
+    /// @notice Set GMX DataStore address
+    function _setGMXDataStore(address newDataStore) internal {
+        if (newDataStore == address(0)) {
+            revert GMCToken__GMXDataStoreIsZeroAddress();
+        }
+
+        gmxDataStore = newDataStore;
+    }
+
+    /// @notice Set GMX Deposit Handler address
+    function _setGMXDepositHandler(address newDepositHandler) internal {
+        if (newDepositHandler == address(0)) {
+            revert GMCToken__GMXDepositHandlerIsZeroAddress();
+        }
+
+        gmxDepositHandler = newDepositHandler;
+    }
 
     // INTERNAL POSITION LOGIC
 
@@ -221,7 +311,10 @@ contract GMCToken is CTokenCompounding {
         markets[0] = asset();
         markets[1] = asset();
 
-        rewardAmounts = IGMXExchangeRouter(GMX_EXCHANGE_ROUTER)
-            .claimFundingFees(markets, underlyingTokens, address(this));
+        rewardAmounts = IGMXExchangeRouter(gmxExchangeRouter).claimFundingFees(
+            markets,
+            underlyingTokens,
+            address(this)
+        );
     }
 }

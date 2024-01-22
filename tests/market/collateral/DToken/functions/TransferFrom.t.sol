@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { Lendtroller } from "contracts/market/lendtroller/Lendtroller.sol";
+import { MarketManager } from "contracts/market/MarketManager.sol";
 
 contract DTokenTransferFromTest is TestBaseDToken {
     event Transfer(address indexed from, address indexed to, uint256 amount);
@@ -27,9 +27,9 @@ contract DTokenTransferFromTest is TestBaseDToken {
     }
 
     function test_transfer_fail_whenTransferIsNotAllowed() public {
-        lendtroller.setTransferPaused(true);
+        marketManager.setTransferPaused(true);
 
-        vm.expectRevert(Lendtroller.Lendtroller__Paused.selector);
+        vm.expectRevert(MarketManager.MarketManager__Paused.selector);
         dUSDC.transferFrom(address(this), user1, 100e6);
     }
 

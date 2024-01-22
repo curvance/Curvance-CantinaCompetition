@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -52,9 +53,9 @@ contract PendleLPCToken is CTokenCompounding {
     constructor(
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
-        address lendtroller_,
+        address marketManager_,
         IPendleRouter router_
-    ) CTokenCompounding(centralRegistry_, asset_, lendtroller_) {
+    ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         strategyData.router = router_;
         strategyData.lp = IPMarket(address(asset_));
         (strategyData.sy, strategyData.pt, strategyData.yt) = strategyData
@@ -85,18 +86,18 @@ contract PendleLPCToken is CTokenCompounding {
     function reQueryUnderlyingTokens() external {
         address[] memory underlyingTokens = strategyData.underlyingTokens;
         uint256 numUnderlyingTokens = underlyingTokens.length;
-        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+        for (uint256 i; i < numUnderlyingTokens; ) {
             unchecked {
                 isUnderlyingToken[underlyingTokens[i++]] = false;
             }
         }
 
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
+        numUnderlyingTokens = strategyData.underlyingTokens.length;
 
-        numUnderlyingTokens = underlyingTokens.length;
         for (uint256 i = 0; i < numUnderlyingTokens; ) {
             unchecked {
-                isUnderlyingToken[underlyingTokens[i++]] = true;
+                isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
             }
         }
     }

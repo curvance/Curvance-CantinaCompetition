@@ -10,10 +10,18 @@ contract TestGMCToken is TestBaseMarket {
     address private _ARB_SYS = 0x0000000000000000000000000000000000000064;
     address private _GMX_ORDER_KEEPER =
         0xf1e1B2F4796d984CCb8485d43db0c64B83C1FA6d;
-    address private _GMX_DEPOSIT_HANDLER =
-        0x9Dc4f12Eb2d8405b499FB5B8AF79a5f64aB8a457;
     address private _GMX_GM_WETH_USDC_POOL =
         0x70d95587d40A2caf56bd97485aB3Eec10Bee6336;
+    address private _GMX_DEPOSIT_VAULT =
+        0xF89e77e8Dc11691C9e8757e84aaFbCD8A67d7A55;
+    address private _GMX_EXCHANGE_ROUTER =
+        0x7C68C7866A64FA2160F78EEaE12217FFbf871fa8;
+    address private _GMX_ROUTER = 0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6;
+    address private _GMX_READER = 0xf60becbba223EEA9495Da3f606753867eC10d139;
+    address private _GMX_DATASTORE =
+        0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
+    address private _GMX_DEPOSIT_HANDLER =
+        0x9Dc4f12Eb2d8405b499FB5B8AF79a5f64aB8a457;
 
     // GM pool token holder.
     address private _DEPOSITOR = 0x7575d9eb64CCe0DF0D570Ae88049382Ce6fB0D31;
@@ -39,7 +47,7 @@ contract TestGMCToken is TestBaseMarket {
         _deployCVELocker();
         _deployVeCVE();
         _deployGaugePool();
-        _deployLendtroller();
+        _deployMarketManager();
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -52,7 +60,13 @@ contract TestGMCToken is TestBaseMarket {
             abi.encode(
                 ICentralRegistry(address(centralRegistry)),
                 gmxGM,
-                address(lendtroller)
+                address(marketManager),
+                _GMX_DEPOSIT_VAULT,
+                _GMX_EXCHANGE_ROUTER,
+                _GMX_ROUTER,
+                _GMX_READER,
+                _GMX_DATASTORE,
+                _GMX_DEPOSIT_HANDLER
             ),
             _DEPOSITOR
         );
@@ -62,7 +76,7 @@ contract TestGMCToken is TestBaseMarket {
         // Update code on existing ArbSys contract with mock contract.
         vm.etch(_ARB_SYS, address(new MockArbSys()).code);
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         skip(2 weeks);
     }
 
@@ -72,7 +86,7 @@ contract TestGMCToken is TestBaseMarket {
         deal(_GMX_GM_WETH_USDC_POOL, address(this), 42069);
 
         gmxGM.approve(address(cGM), 42069);
-        lendtroller.listToken(address(cGM));
+        marketManager.listToken(address(cGM));
 
         vm.prank(user1);
         gmxGM.approve(address(cGM), assets);

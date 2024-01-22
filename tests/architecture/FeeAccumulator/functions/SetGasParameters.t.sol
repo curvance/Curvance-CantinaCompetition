@@ -5,8 +5,8 @@ import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 
 contract SetGasParametersTest is TestBaseFeeAccumulator {
-    bytes32 internal constant _GAS_FOR_CALLDATA_SLOT = bytes32(uint256(3));
-    bytes32 internal constant _GAS_FOR_CROSS_CHAIN_SLOT = bytes32(uint256(4));
+    bytes32 internal constant _GAS_FOR_CALLDATA_SLOT = bytes32(uint256(1));
+    bytes32 internal constant _GAS_FOR_CROSS_CHAIN_SLOT = bytes32(uint256(2));
 
     function test_setGasParameters_fail_whenCallerIsNotAuthorized() public {
         vm.prank(user1);

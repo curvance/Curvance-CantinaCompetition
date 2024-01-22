@@ -16,35 +16,54 @@ contract TestBaseDToken is TestBaseMarket {
 
         // use mock pricing for testing
         mockUsdcFeed = new MockDataFeed(_CHAINLINK_USDC_USD);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, address(mockUsdcFeed), true);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            address(mockUsdcFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
             address(mockUsdcFeed),
+            0,
             true
         );
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
-        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), true);
+        chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
         dualChainlinkAdaptor.addAsset(
             _DAI_ADDRESS,
             address(mockDaiFeed),
+            0,
             true
         );
         mockWethFeed = new MockDataFeed(_CHAINLINK_ETH_USD);
-        chainlinkAdaptor.addAsset(_WETH_ADDRESS, address(mockWethFeed), true);
+        chainlinkAdaptor.addAsset(
+            _WETH_ADDRESS,
+            address(mockWethFeed),
+            0,
+            true
+        );
         dualChainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(mockWethFeed),
+            0,
             true
         );
         mockRethFeed = new MockDataFeed(_CHAINLINK_RETH_ETH);
-        chainlinkAdaptor.addAsset(_RETH_ADDRESS, address(mockRethFeed), false);
+        chainlinkAdaptor.addAsset(
+            _RETH_ADDRESS,
+            address(mockRethFeed),
+            0,
+            false
+        );
         dualChainlinkAdaptor.addAsset(
             _RETH_ADDRESS,
             address(mockRethFeed),
+            0,
             true
         );
 
-        gaugePool.start(address(lendtroller));
+        gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
@@ -60,20 +79,20 @@ contract TestBaseDToken is TestBaseMarket {
         usdc.approve(address(dUSDC), _ONE);
 
         usdc.approve(address(dUSDC), _ONE);
-        lendtroller.listToken(address(dUSDC));
+        marketManager.listToken(address(dUSDC));
 
         dUSDC.depositReserves(1000e6);
         _prepareBALRETH(address(this), 10e18);
         balRETH.approve(address(cBALRETH), 10e18);
 
-        lendtroller.listToken(address(cBALRETH));
-        lendtroller.updateCollateralToken(
+        marketManager.listToken(address(cBALRETH));
+        marketManager.updateCollateralToken(
             IMToken(address(cBALRETH)),
-            5000,
-            1200,
-            1000,
-            200,
-            200,
+            7000,
+            4000, // liquidate at 71%
+            3000,
+            200, // 2% liq incentive
+            400,
             0,
             1000
         );

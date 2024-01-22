@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseChildCVE } from "../TestBaseChildCVE.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/wormhole/ITokenBridgeRelayer.sol";
-import { ERC20 } from "contracts/libraries/ERC20.sol";
+import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 contract BridgeTest is TestBaseChildCVE {
     ITokenBridgeRelayer public tokenBridgeRelayer =
@@ -15,12 +15,15 @@ contract BridgeTest is TestBaseChildCVE {
     function setUp() public override {
         super.setUp();
 
+        centralRegistry.setCVE(address(childCVE));
+        _deployProtocolMessagingHub();
+
         chainIDs.push(1);
         wormholeChainIDs.push(2);
         chainIDs.push(137);
         wormholeChainIDs.push(5);
 
-        childCVE.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
+        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         ITokenBridgeRelayer.SwapRateUpdate[]
             memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](

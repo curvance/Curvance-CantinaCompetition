@@ -9,14 +9,16 @@ contract MockCentralRegistry is CentralRegistry {
         address timelock_,
         address emergencyCouncil_,
         uint256 genesisEpoch_,
-        address sequencer_
+        address sequencer_,
+        address feeToken_
     )
         CentralRegistry(
             daoAddress_,
             timelock_,
             emergencyCouncil_,
             genesisEpoch_,
-            sequencer_
+            sequencer_,
+            feeToken_
         )
     {}
 }
