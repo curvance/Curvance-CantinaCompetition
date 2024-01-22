@@ -18,7 +18,7 @@ contract FuzzDToken is StatefulBaseMarket {
         is_supported_dtoken(dtoken);
         require(gaugePool.startTime() < block.timestamp);
         check_price_feed();
-        (bool mintingPossible, ) = address(lendtroller).call(
+        (bool mintingPossible, ) = address(marketManager).call(
             abi.encodeWithSignature("canMint(address)", dtoken)
         );
         require(mintingPossible);
@@ -123,13 +123,13 @@ contract FuzzDToken is StatefulBaseMarket {
         is_supported_dtoken(dtoken);
         check_price_feed();
         address underlying = DToken(dtoken).underlying();
-        require(lendtroller.isListed(dtoken));
-        require(lendtroller.borrowPaused(dtoken) != 2);
+        require(marketManager.isListed(dtoken));
+        require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
         require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
-        (bool borrowPossible, ) = address(lendtroller).call(
+        (bool borrowPossible, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "canBorrow(address,address,uint256)",
                 dtoken,
@@ -189,13 +189,13 @@ contract FuzzDToken is StatefulBaseMarket {
         is_supported_dtoken(dtoken);
         check_price_feed();
         address underlying = DToken(dtoken).underlying();
-        require(lendtroller.borrowPaused(dtoken) != 2);
+        require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
         require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
-        require(lendtroller.isListed(dtoken));
-        (bool borrowPossible, ) = address(lendtroller).call(
+        require(marketManager.isListed(dtoken));
+        (bool borrowPossible, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "canBorrow(address,address,uint256)",
                 dtoken,
@@ -245,8 +245,8 @@ contract FuzzDToken is StatefulBaseMarket {
         is_supported_dtoken(dtoken);
         address underlying = DToken(dtoken).underlying();
         require(mint_and_approve(underlying, dtoken, amount));
-        require(lendtroller.isListed(dtoken));
-        try lendtroller.canRepay(address(dtoken), address(this)) {} catch {
+        require(marketManager.isListed(dtoken));
+        try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;
         }
         uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
@@ -294,8 +294,8 @@ contract FuzzDToken is StatefulBaseMarket {
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         amount = clampBetween(amount, 0, accountDebt);
         require(mint_and_approve(underlying, dtoken, amount));
-        require(lendtroller.isListed(dtoken));
-        try lendtroller.canRepay(address(dtoken), address(this)) {} catch {
+        require(marketManager.isListed(dtoken));
+        try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;
         }
         uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
