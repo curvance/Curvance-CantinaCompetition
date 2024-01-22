@@ -129,13 +129,15 @@ contract FuzzDToken is StatefulBaseMarket {
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
         require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
-        (, uint256 shortfall) = lendtroller.hypotheticalLiquidityOf(
-            address(this),
-            dtoken,
-            amount,
-            0
+        (bool borrowPossible, ) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "canBorrow(address,address,uint256)",
+                dtoken,
+                address(this),
+                amount
+            )
         );
-        require(shortfall == 0);
+        require(borrowPossible);
         (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate > block.timestamp);
@@ -193,13 +195,15 @@ contract FuzzDToken is StatefulBaseMarket {
         amount = clampBetween(amount, 1, upperBound - 1);
         require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
         require(lendtroller.isListed(dtoken));
-        (, uint256 shortfall) = lendtroller.hypotheticalLiquidityOf(
-            address(this),
-            dtoken,
-            amount,
-            0
+        (bool borrowPossible, ) = address(lendtroller).call(
+            abi.encodeWithSignature(
+                "canBorrow(address,address,uint256)",
+                dtoken,
+                address(this),
+                amount
+            )
         );
-        require(shortfall == 0);
+        require(borrowPossible);
         (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate <= block.timestamp);
@@ -250,6 +254,54 @@ contract FuzzDToken is StatefulBaseMarket {
             address(this)
         );
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
+
+        try DToken(dtoken).repay(amount) {
+            assertEq(
+                DToken(dtoken).totalBorrows(),
+                preTotalBorrows - amount,
+                "DTOKEN - repay postTotalBorrows failed = preTotalBorrows - amount"
+            );
+            uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
+                address(this)
+            );
+            if (amount == 0) {
+                assertEq(
+                    postUnderlyingBalance,
+                    preUnderlyingBalance - accountDebt,
+                    "DTOKEN - repay with amount=0 should reduce underlying balance by accountDebt"
+                );
+            } else {
+                assertEq(
+                    postUnderlyingBalance,
+                    preUnderlyingBalance - amount,
+                    "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
+                );
+            }
+        } catch (bytes memory revertData) {
+            assertWithMsg(
+                false,
+                "DTOKEN - repay should succeed with correct preconditions"
+            );
+        }
+    }
+
+    function repay_within_account_debt_should_succeed(
+        address dtoken,
+        uint256 amount
+    ) public {
+        is_supported_dtoken(dtoken);
+        address underlying = DToken(dtoken).underlying();
+        uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
+        amount = clampBetween(amount, 0, accountDebt);
+        require(mint_and_approve(underlying, dtoken, amount));
+        require(lendtroller.isListed(dtoken));
+        try lendtroller.canRepay(address(dtoken), address(this)) {} catch {
+            return;
+        }
+        uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
+        uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
+            address(this)
+        );
 
         try DToken(dtoken).repay(amount) {
             assertEq(
