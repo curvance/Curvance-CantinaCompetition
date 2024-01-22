@@ -759,59 +759,62 @@ contract FuzzVECVE is StatefulBaseMarket {
                 defaultContinuous.aux
             )
         {
-            uint256 postUserPoints = veCVE.userPoints((address(this)));
-            uint256 postChainPoints = veCVE.chainPoints();
-            uint256 postChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(
-                currentEpoch
-            );
-            uint256 postUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
-                address(this),
-                currentEpoch
-            );
+            {
+                uint256 postUserPoints = veCVE.userPoints((address(this)));
+                uint256 postChainPoints = veCVE.chainPoints();
+                uint256 postChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(
+                    currentEpoch
+                );
+                uint256 postUserUnlocksByEpoch = veCVE.userUnlocksByEpoch(
+                    address(this),
+                    currentEpoch
+                );
+
+                if (veCVE.isShutdown() == 2) {
+                    assertGt(
+                        preUserPoints,
+                        postUserPoints,
+                        "VE_CVE - processExpiredLock() - userPoints should have decreased"
+                    );
+
+                    assertGt(
+                        preChainPoints,
+                        postChainPoints,
+                        "VE_CVE - processExpiredLock() - chainPoints should have decreased"
+                    );
+
+                    require(unlockTime != veCVE.CONTINUOUS_LOCK_VALUE());
+                    assertEq(
+                        preChainUnlocksByEpoch - amount,
+                        postChainUnlocksByEpoch,
+                        "VE_CVE - processExpiredLock() - postChainUnlocksByEpoch should be decreased by amount"
+                    );
+
+                    assertEq(
+                        preUserUnlocksByEpoch - amount,
+                        postUserUnlocksByEpoch,
+                        "VE_CVE - processExpiredLock() - userUnlocksByEpoch should be decreased by amount"
+                    );
+                }
+            }
+
             uint256 postLockVECVEBalance = veCVE.balanceOf(address(this));
             uint256 postLockCVEBalance = cve.balanceOf(address(this));
 
-            if (veCVE.isShutdown() == 2) {
+            if (relock == false) {
+                numLocks--;
                 assertGt(
-                    preUserPoints,
-                    postUserPoints,
-                    "VE_CVE - processExpiredLock() - userPoints should have decreased"
-                );
-
-                assertGt(
-                    preChainPoints,
-                    postChainPoints,
-                    "VE_CVE - processExpiredLock() - chainPoints should have decreased"
-                );
-
-                require(unlockTime != veCVE.CONTINUOUS_LOCK_VALUE());
-                assertEq(
-                    preChainUnlocksByEpoch - amount,
-                    postChainUnlocksByEpoch,
-                    "VE_CVE - processExpiredLock() - postChainUnlocksByEpoch should be decreased by amount"
+                    postLockCVEBalance,
+                    preLockCVEBalance,
+                    "VE_CVE - processExpiredLock() - cve balance should be increased"
                 );
 
                 assertEq(
-                    preUserUnlocksByEpoch - amount,
-                    postUserUnlocksByEpoch,
-                    "VE_CVE - processExpiredLock() - userUnlocksByEpoch should be decreased by amount"
+                    preLockVECVEBalance - amount,
+                    postLockVECVEBalance,
+                    "VE_CVE - processExpiredLock() - vcve balance should be decreased"
                 );
             }
-
-            // if (relock == false) {
-            //     numLocks--;
-            //     assertGt(
-            //         postLockCVEBalance,
-            //         preLockCVEBalance,
-            //         "VE_CVE - processExpiredLock() - cve balance should be increased"
-            //     );
-
-            //     assertEq(
-            //         preLockVECVEBalance - amount,
-            //         postLockVECVEBalance,
-            //         "VE_CVE - processExpiredLock() - vcve balance should be decreased"
-            //     );
-            // }
         } catch {}
     }
 
