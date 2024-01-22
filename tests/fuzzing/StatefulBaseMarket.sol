@@ -58,7 +58,11 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     AuraCToken public auraCToken;
     AuraCToken public cBALRETH;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 4277fa3d (fix pricerouter/marketmanager variables in statefulbasemarket)
     DToken public dUSDC;
     DToken public dDAI;
 
@@ -588,10 +592,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             block.timestamp,
             block.timestamp
         );
-        priceRouter.addMTokenSupport(address(cDAI));
-        priceRouter.addMTokenSupport(address(cUSDC));
-        priceRouter.addMTokenSupport(address(dDAI));
-        priceRouter.addMTokenSupport(address(dUSDC));
+        oracleRouter.addMTokenSupport(address(cDAI));
+        oracleRouter.addMTokenSupport(address(cUSDC));
+        oracleRouter.addMTokenSupport(address(dDAI));
+        oracleRouter.addMTokenSupport(address(dUSDC));
         feedsSetup = true;
         lastRoundUpdate = block.timestamp;
     }
@@ -603,7 +607,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             lastRoundUpdate = block.timestamp;
         }
         if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
-            // TODO: Change this to a loop to loop over lendtroller.assetsOf()
+            // TODO: Change this to a loop to loop over marketManager.assetsOf()
             // Save a mapping of assets -> chainlink oracle
             // call updateRoundData on each oracle
             chainlinkUsdcUsd.updateRoundData(
