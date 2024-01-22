@@ -73,10 +73,11 @@ contract TestStatefulDeployments is StatefulBaseMarket {
         );
     }
 
-    function Lendtroller_is_deployed() public {
+    /// @custom:property curv-16 The Market Manager’s gauge pool is set up correctly.
+    function MarketManager_is_deployed() public {
         assertWithMsg(
-            address(lendtroller.gaugePool()) == address(gaugePool),
-            "LENDTROLLER DEPLOY FAILED: lendtroller.gaugePool() == gaugePool failed"
+            address(marketManager.gaugePool()) == address(gaugePool),
+            "MarketManager DEPLOY FAILED: marketManager.gaugePool() == gaugePool failed"
         );
     }
 }
