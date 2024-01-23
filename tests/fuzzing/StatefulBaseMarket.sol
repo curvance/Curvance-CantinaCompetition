@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { PropertiesAsserts } from "tests/fuzzing/PropertiesHelper.sol";
 import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
@@ -426,71 +427,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
-    }
-
-    function mint_and_approve(
-        address underlyingAddress,
-        address mtoken,
-        uint256 amount
-    ) internal returns (bool) {
-        // mint ME enough tokens to cover deposit
-        try MockToken(underlyingAddress).mint(amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 underlyingSupply = MockToken(underlyingAddress)
-                .totalSupply();
-            uint256 mtokenSupply = MockToken(underlyingAddress).totalSupply();
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            unchecked {
-                if (
-                    doesOverflow(
-                        underlyingSupply + amount,
-                        underlyingSupply
-                    ) || doesOverflow(mtokenSupply + amount, mtokenSupply)
-                ) {
-                    assertWithMsg(
-                        errorSelector == token_total_supply_overflow,
-                        "MToken underlying - mint underlying amount should succeed"
-                    );
-                    return false;
-                } else {
-                    assertWithMsg(
-                        false,
-                        "MToken underlying - mint underlying amount should succeed"
-                    );
-                }
-            }
-        }
-        // approve sufficient underlying tokens prior to calling deposit
-        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch (
-            bytes memory revertData
-        ) {
-            uint256 currentAllowance = MockToken(underlyingAddress).allowance(
-                msg.sender,
-                mtoken
-            );
-
-            uint256 errorSelector = extractErrorSelector(revertData);
-            unchecked {
-                if (
-                    doesOverflow(currentAllowance + amount, currentAllowance)
-                ) {
-                    assertEq(
-                        errorSelector,
-                        token_allowance_overflow,
-                        "MTOKEN underlying - revert expected when underflow"
-                    );
-                    return false;
-                } else {
-                    assertWithMsg(
-                        false,
-                        "MTOKEN underlying - approve underlying amount should succeed"
-                    );
-                }
-            }
-        }
-        return true;
     }
 
     MockDataFeed public mockUsdcFeed;

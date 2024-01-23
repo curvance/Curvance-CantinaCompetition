@@ -70,7 +70,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - createLock VE_CVE token minted"
             );
             numLocks++;
-        } catch (bytes memory reason) {
+        } catch {
             assertWithMsg(
                 false,
                 "VE_CVE - createLock call failed unexpectedly"
@@ -165,13 +165,11 @@ contract FuzzVECVE is StatefulBaseMarket {
     {
         bool continuous = true;
         require(numLocks >= 2);
-        uint256 lockIndex = 0;
 
         uint256 preCombineUserPoints = veCVE.userPoints(address(this));
-        (
-            uint256 newLockAmount,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
+        (, uint256 numberOfExistingContinuousLocks) = get_all_user_lock_info(
+            address(this)
+        );
         require(numberOfExistingContinuousLocks == numLocks);
 
         try
@@ -183,8 +181,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             )
         {
             // userLocks.amount must sum to the individual amounts for each lock
-            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
-                .userLocks(address(this), 0);
+            (, uint40 combinedUnlockTime) = veCVE.userLocks(address(this), 0);
 
             uint256 postCombineUserPoints = veCVE.userPoints(address(this));
             // If the existing locks that the user had were all continuous
@@ -336,8 +333,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         {
             numLocks = 1;
             // userLocks.amount must sum to the individual amounts for each lock
-            (uint216 combinedAmount, uint40 combinedUnlockTime) = veCVE
-                .userLocks(address(this), 0);
+            (uint216 combinedAmount, ) = veCVE.userLocks(address(this), 0);
 
             // vecve-15
             assertEq(
@@ -919,10 +915,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         {
             uint256 postUserPoints = veCVE.userPoints((address(this)));
             uint256 postChainPoints = veCVE.chainPoints();
-            (uint256 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                lockIndex
-            );
+            (uint256 amount, ) = veCVE.userLocks(address(this), lockIndex);
             uint256 postChainUnlocksByEpoch = veCVE.chainUnlocksByEpoch(
                 newEpoch
             );
@@ -990,7 +983,6 @@ contract FuzzVECVE is StatefulBaseMarket {
                 "VE_CVE - shutdown() should also set cveLocker"
             );
         } catch (bytes memory reason) {
-            uint256 errorSelector = extractErrorSelector(reason);
             // VECVE-28
             assertWithMsg(
                 false,
@@ -1030,10 +1022,9 @@ contract FuzzVECVE is StatefulBaseMarket {
     /// @custom:property s-vecve-2 User unlocks by epoch should be greater than 0 for all non-continuous locks.
     /// @custom:property s-vecve-3 User unlocks by epoch should be 0 for all continuous locks.
     function user_unlock_for_epoch_for_values_are_correct() public {
-        (
-            uint256 lockAmountSum,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
+        (, uint256 numberOfExistingContinuousLocks) = get_all_user_lock_info(
+            address(this)
+        );
         require(numberOfExistingContinuousLocks == numLocks);
         for (uint i = 0; i < uniqueEpochs.length; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
@@ -1057,11 +1048,6 @@ contract FuzzVECVE is StatefulBaseMarket {
     /// @custom:property s-vecve-4 Chain unlocks by epoch should be greater than 0 for all non-continuous locks.
     /// @custom:property s-vecve-5 Chain unlocks by epoch should be 0 for all continuous locks.
     function chain_unlock_for_epoch_for_values_are_correct() public {
-        (
-            uint256 lockAmountSum,
-            uint256 numberOfExistingContinuousLocks
-        ) = get_all_user_lock_info(address(this));
-
         for (uint i = 0; i < uniqueEpochs.length; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             uint256 epoch = veCVE.currentEpoch(unlockTime);
@@ -1131,10 +1117,7 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function save_epoch_unlock_values() private {
         for (uint i = 0; i < uniqueEpochs.length; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
+            (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             uint256 epoch = veCVE.currentEpoch(unlockTime);
             if (!has_epoch_been_added(epoch)) {
                 uniqueEpochs.push(epoch);
@@ -1157,17 +1140,13 @@ contract FuzzVECVE is StatefulBaseMarket {
         address addr
     )
         private
-        view
         returns (
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks
         )
     {
         for (uint i = 0; i < numLocks; i++) {
-            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(
-                address(this),
-                i
-            );
+            (uint216 amount, uint40 unlockTime) = veCVE.userLocks(addr, i);
             newLockAmount += amount;
 
             if (unlockTime == veCVE.CONTINUOUS_LOCK_VALUE()) {
@@ -1193,6 +1172,7 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     function get_continuous_lock()
         private
+        view
         returns (uint256 index, bool exists)
     {
         for (uint i = 0; i < numLocks; i++) {
@@ -1204,7 +1184,11 @@ contract FuzzVECVE is StatefulBaseMarket {
         return (0, false);
     }
 
-    function get_expired_lock() private returns (uint256 index, bool exists) {
+    function get_expired_lock()
+        private
+        view
+        returns (uint256 index, bool exists)
+    {
         for (uint i = 0; i < numLocks; i++) {
             (, uint40 unlockTime) = veCVE.userLocks(address(this), i);
             if (unlockTime < block.timestamp) {
