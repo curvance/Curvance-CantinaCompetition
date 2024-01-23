@@ -506,23 +506,30 @@ contract DynamicInterestRateModel {
         uint256 decay = (currentMultiplier * config.decayRate) / WAD;
         uint256 newMultiplier;
 
-        if (util < config.increaseThreshold) {
+        if (util <= config.increaseThreshold) {
             newMultiplier = currentMultiplier - decay;
 
             // Check if decay rate sends new rate below 1.
             return newMultiplier < WAD ? WAD : newMultiplier;
         }
 
-        newMultiplier =
-            ((currentMultiplier *
+        uint256 curveResultWithMultiplication = ((currentMultiplier *
                 (config.adjustmentVelocity *
                     _getPositiveCurveResult(
                         util,
                         config.increaseThreshold,
                         config.increaseThresholdMax
                     ))) /
-                WAD_SQUARED) -
-            decay;
+                WAD_SQUARED);
+
+        // Theoretically if util is slightly above increaseThreshold and decay
+        // is large, curve result could be less than decay rate, 
+        // so we check whether we can instantly return WAD.
+        if (curveResultWithMultiplication < decay) {
+            return WAD;
+        }
+
+        newMultiplier = curveResultWithMultiplication - decay;
 
         // Update and return with adjustment and decay rate applied.
         // Its theorectically possible for the multiplier to be below 1

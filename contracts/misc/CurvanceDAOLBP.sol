@@ -231,14 +231,14 @@ contract CurvanceDAOLBP {
     function priceAt(
         uint256 amount
     ) public view returns (uint256 price) {
+        // Adjust decimals between paymentTokenDecimals,
+        // and default 18 decimals of softCap(). 
+        amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
+
         uint256 _softCap = softCap();
         if (amount < _softCap) {
             return softPriceInpaymentToken;
         }
-
-        // Adjust decimals between paymentTokenDecimals,
-        // and default 18 decimals of softCap(). 
-        amount = _adjustDecimals(amount, paymentTokenDecimals, 18);
 
         // Equivalent to (amount * WAD) / cveAmountForSale rounded up.
         return FixedPointMathLib.divWadUp(amount, cveAmountForSale);
