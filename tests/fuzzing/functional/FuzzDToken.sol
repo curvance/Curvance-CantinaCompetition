@@ -13,8 +13,7 @@ contract FuzzDToken is StatefulBaseMarket {
     /// @custom:precondition amount bound between [1, uint256.max]
     function mint_should_actually_succeed(
         address dtoken,
-        uint256 amount,
-        bool lower
+        uint256 amount
     ) public {
         is_supported_dtoken(dtoken);
         require(gaugePool.startTime() < block.timestamp);
@@ -279,7 +278,7 @@ contract FuzzDToken is StatefulBaseMarket {
                     "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
                 );
             }
-        } catch (bytes memory revertData) {
+        } catch {
             assertWithMsg(
                 false,
                 "DTOKEN - repay should succeed with correct preconditions"
@@ -327,7 +326,7 @@ contract FuzzDToken is StatefulBaseMarket {
                     "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
                 );
             }
-        } catch (bytes memory revertData) {
+        } catch {
             assertWithMsg(
                 false,
                 "DTOKEN - repay should succeed with correct preconditions"

@@ -58,8 +58,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(
             mint_and_approve(IMToken(mtoken).underlying(), mtoken, amount)
         );
-        address underlyingAddress = MockCToken(mtoken).underlying();
-        IERC20 underlying = IERC20(underlyingAddress);
 
         try marketManager.listToken(mtoken) {
             assertWithMsg(
@@ -75,13 +73,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
     /// @custom:precondition mtoken must already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
-        uint256 amount = 42069;
         // require the token is not already listed into the marketManager
         require(marketManager.isListed(mtoken));
 
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        address underlyingAddress = MockCToken(mtoken).underlying();
-        IERC20 underlying = IERC20(underlyingAddress);
 
         try marketManager.listToken(mtoken) {
             assertWithMsg(
@@ -141,7 +136,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
-            uint256 totalSupplyMToken = MockCToken(mtoken).totalSupply();
             bool convertToSharesOverflow;
 
             try MockCToken(mtoken).convertToShares(amount) {} catch (
@@ -284,7 +278,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         uint256[] memory caps = new uint256[](1);
         caps[0] = cap;
 
-        (bool success, bytes memory revertData) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "setCTokenCollateralCaps(address[],uint256[])",
                 tokens,
@@ -524,9 +518,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             type(uint256).max
         );
 
-        uint256 oldCollateralForToken = marketManager.collateralPosted(mtoken);
-
-        (bool success, bytes memory revertData) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "postCollateral(address,address,uint256)",
                 address(this),
@@ -554,8 +546,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
-        bool closePositionIfPossible,
-        bool lower
+        bool closePositionIfPossible
     ) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(postedCollateral[mtoken]);
@@ -612,7 +603,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 );
             }
         } else {
-            (bool success, bytes memory rd) = address(marketManager).call(
+            (bool success, ) = address(marketManager).call(
                 abi.encodeWithSignature(
                     "removeCollateral(address,uint256,bool)",
                     mtoken,
@@ -847,10 +838,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
         IMToken[] memory preAssetsOf = marketManager.assetsOf(address(this));
 
-        (bool success, bytes memory rd) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature("closePosition(address)", mtoken)
         );
-        if (!success) {} else {
+        if (!success) {
+            assertWithMsg(
+                false,
+                "MARKET MANAGER - closePosition should succeed if collateral is 0"
+            );
+        } else {
             check_close_position_post_conditions(mtoken, preAssetsOf.length);
         }
     }
