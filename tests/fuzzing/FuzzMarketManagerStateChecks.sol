@@ -220,9 +220,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             amount
         );
         require(liquidityDeficit == 0);
-        try marketManager.canRedeem(mtoken, account, amount) {} catch (
-            bytes memory revertData
-        ) {
+        try marketManager.canRedeem(mtoken, account, amount) {} catch {
             assertWithMsg(
                 false,
                 "LENDTROLLER - canRedeem() expected to return with no error when no position exists"
@@ -262,11 +260,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition timestamp has passed hold period
     /// @custom:precondition user has position
-    function canTransfer_should_succed(
-        address mtoken,
-        address account,
-        uint256 amount
-    ) public {
+    function canTransfer_should_succed(address mtoken, uint256 amount) public {
         require(marketManager.transferPaused() != 2);
         require(marketManager.redeemPaused() != 2);
         require(marketManager.isListed(mtoken));
@@ -302,7 +296,6 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     function canTransfer_should_fail_when_transfer_is_paused(
         address mtoken,
-        address account,
         uint256 amount
     ) public {
         require(marketManager.transferPaused() == 2);
@@ -327,7 +320,6 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is not listed in MarketManager
     function canTransfer_should_fail_when_mtoken_not_listed(
         address mtoken,
-        address account,
         uint256 amount
     ) public {
         require(marketManager.transferPaused() != 2);
@@ -352,7 +344,6 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     function canTransfer_should_fail_when_redeem_is_paused(
         address mtoken,
-        address account,
         uint256 amount
     ) public {
         require(marketManager.transferPaused() != 2);
@@ -375,11 +366,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition borrowPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
-    function canBorrow_should_succeed(
-        address mtoken,
-        address account,
-        uint256 amount
-    ) public {
+    function canBorrow_should_succeed(address mtoken, uint256 amount) public {
         require(marketManager.borrowPaused(mtoken) != 2);
         require(marketManager.isListed(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
@@ -427,7 +414,6 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition liquidityDeficit == 0
     function canBorrow_should_fail_when_token_is_unlisted(
         address mtoken,
-        address account,
         uint256 amount
     ) public {
         require(marketManager.borrowPaused(mtoken) != 2);
@@ -690,7 +676,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         address account,
         uint256 amount,
         bool liquidateExact
-    ) public {
+    ) public view {
         try
             marketManager.canLiquidate(
                 dToken,

@@ -465,6 +465,16 @@ abstract contract PropertiesAsserts {
 
         return errorSelector;
     }
+
+    function doesOverflow(
+        uint256 term,
+        uint256 bound
+    ) internal pure returns (bool) {
+        if (term < bound) {
+            return true;
+        }
+        return false;
+    }
 }
 
 /// @notice Efficient library for creating string representations of integers.

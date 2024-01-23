@@ -45,9 +45,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
         // require the token is not already listed into the marketManager
         require(!marketManager.isListed(mtoken));
 
-        require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        address underlyingAddress = MockCToken(mtoken).underlying();
-        IERC20 underlying = IERC20(underlyingAddress);
+        require(
+            mtoken == address(cDAI) ||
+                mtoken == address(cUSDC) ||
+                mtoken == address(dDAI) ||
+                mtoken == address(dDAI)
+        );
+        require(
+            mint_and_approve(IMToken(mtoken).underlying(), mtoken, amount)
+        );
 
         try marketManager.listToken(mtoken) {
             assertWithMsg(
@@ -63,13 +69,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
     /// @custom:precondition mtoken must already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
-        uint256 amount = 42069;
         // require the token is not already listed into the marketManager
         require(marketManager.isListed(mtoken));
 
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        address underlyingAddress = MockCToken(mtoken).underlying();
-        IERC20 underlying = IERC20(underlyingAddress);
 
         try marketManager.listToken(mtoken) {
             assertWithMsg(
@@ -121,11 +124,63 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 false,
                 "LENDTROLLER - approve underlying amount should succeed before deposit"
             );
+
+            // LEND-4
+            assertLt(
+                preCTokenBalanceThis,
+                postCTokenBalanceThis,
+                "MARKET MANAGER - pre and post ctoken balance should increase"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+            bool convertToSharesOverflow;
+
+            try MockCToken(mtoken).convertToShares(amount) {} catch (
+                bytes memory convertSharesData
+            ) {
+                uint256 convertSharesError = extractErrorSelector(
+                    convertSharesData
+                );
+                // CTokenBase._convertToShares will revert when `mulDivDown` overflows with `revert(0,0)
+                if (convertSharesError == 0) {
+                    convertToSharesOverflow = true;
+                }
+            }
+
+            bool assetCalc = doesOverflow(
+                preTotalAssets + amount,
+                preTotalAssets
+            ) ||
+                doesOverflow(
+                    preCTokenBalanceThis + amount,
+                    preCTokenBalanceThis
+                );
+            // LEND-31
+            bool isPriceNegative;
+            if (mtoken == address(cDAI)) {
+                isPriceNegative = chainlinkDaiUsd.latestAnswer() < 0;
+            } else {
+                isPriceNegative = chainlinkUsdcUsd.latestAnswer() < 0;
+            }
+            // LEND-29, LEND-30
+            if (convertToSharesOverflow || assetCalc) {
+                assertEq(
+                    errorSelector,
+                    0,
+                    "MARKET MANAGER - expected mtoken.deposit() to revert with overflow"
+                );
+            } else {
+                // LEND-3
+                assertWithMsg(
+                    false,
+                    "MARKET MANAGER - expected mtoken.deposit() to be successful"
+                );
+            }
         }
 
     function check_price_divergence(
         address mtoken
-    ) private returns (bool divergenceTooLarge, bool priceError) {
+    ) private view returns (bool divergenceTooLarge, bool priceError) {
         (uint256 lowerPrice, uint lowError) = OracleRouter(oracleRouter)
             .getPrice(mtoken, true, true);
         (uint256 higherPrice, uint highError) = OracleRouter(oracleRouter)
@@ -235,7 +290,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         uint256[] memory caps = new uint256[](1);
         caps[0] = cap;
 
-        (bool success, bytes memory revertData) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "setCTokenCollateralCaps(address[],uint256[])",
                 tokens,
@@ -473,9 +528,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             type(uint256).max
         );
 
-        uint256 oldCollateralForToken = marketManager.collateralPosted(mtoken);
-
-        (bool success, bytes memory revertData) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "postCollateral(address,address,uint256)",
                 address(this),
@@ -503,8 +556,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     function remove_collateral_should_succeed(
         address mtoken,
         uint256 tokens,
-        bool closePositionIfPossible,
-        bool lower
+        bool closePositionIfPossible
     ) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(postedCollateral[mtoken]);
@@ -561,7 +613,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 );
             }
         } else {
-            (bool success, bytes memory rd) = address(marketManager).call(
+            (bool success, ) = address(marketManager).call(
                 abi.encodeWithSignature(
                     "removeCollateral(address,uint256,bool)",
                     mtoken,
@@ -708,9 +760,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 balance,
                 amount
             )
-<<<<<<< HEAD
-        {} catch {}
-=======
         {} catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
@@ -719,7 +768,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 "MARKET MANAGER - reduceCollateralIfNecessary expected to revert"
             );
         }
->>>>>>> a57b44bf (Fixed lendtroller -> market manager)
     }
 
     /// @custom:property lend-21 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is greater than 0.
@@ -798,10 +846,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
         IMToken[] memory preAssetsOf = marketManager.assetsOf(address(this));
 
-        (bool success, bytes memory rd) = address(marketManager).call(
+        (bool success, ) = address(marketManager).call(
             abi.encodeWithSignature("closePosition(address)", mtoken)
         );
-        if (!success) {} else {
+        if (!success) {
+            assertWithMsg(
+                false,
+                "MARKET MANAGER - closePosition should succeed if collateral is 0"
+            );
+        } else {
             check_close_position_post_conditions(mtoken, preAssetsOf.length);
         }
     }
