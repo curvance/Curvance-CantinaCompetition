@@ -152,13 +152,23 @@ contract MarketManager is LiquidityManager, ERC165 {
     }
 
     /// @notice Returns if an account has an active position in `mToken`.
-    /// @param mToken market token address.
-    /// @param account account address.
+    /// @param mToken The address of the market token.
+    /// @param account The address of the account to check a position of.
     function hasPosition(
         address mToken,
         address account
     ) external view returns (bool) {
         return tokenData[mToken].accountData[account].activePosition == 2;
+    }
+
+    /// @notice Returns if an account has an active position in `mToken`.
+    /// @param mToken The address of the market token.
+    /// @param account The address of the account to check collateral posted of.
+    function collateralPostedFor(
+        address mToken,
+        address account
+    ) external view returns (uint256) {
+        return tokenData[mToken].accountData[account].collateralPosted;
     }
 
     /// ACCOUNT LIQUIDITY FUNCTIONS ///
