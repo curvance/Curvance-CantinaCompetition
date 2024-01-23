@@ -9,10 +9,16 @@ import { WAD } from "contracts/libraries/Constants.sol";
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 
 contract FuzzMarketManager is StatefulBaseMarket {
+    // were collateral values for a specific mtoken updated
     mapping(address => bool) setCollateralValues;
+    // were the collateral caps for a specific mtoken updated
     mapping(address => bool) collateralCapsUpdated;
+    // has collateral been posted for a specific mtoken
     mapping(address => bool) postedCollateral;
+    // has the collateral ratio for a specific token been set to zero
     mapping(address => bool) isCollateralRatioZero;
+    // the maximum collateral cap for a specific mtoken
+    mapping(address => uint256) maxCollateralCap;
 
     constructor() {
         SafeTransferLib.safeApprove(
@@ -269,19 +275,20 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    // Test Property: Ensure account collateral has increased by # of tokens
-    // Test Property: Ensure usre has a valid position after posting
-    // Test Property: Ensure collateralPosted (for mtoken) has increased by # of tokens
-    function post_collateral_should_succeed(
-        address mtoken,
-        uint256 tokens
-    ) public {
-        // require gauge pool has been started
-        require(gaugePool.startTime() < block.timestamp);
-        try
-            lendtroller.postCollateral(address(this), mtoken, tokens)
-        {} catch {}
-    }
+    /// @custom:property lend-6 – Calling setCTokenCollateralCaps should increase the globally set the collateral caps to the cap provided
+    /// @custom:property lend-7 Setting collateral caps for a token given permissions and collateral values being set should succeed.
+    /// @custom:precondition address(this) has dao permissions
+    /// @custom:precondition mtoken is a C token
+    /// @custom:precondition collateral values for mtoken must be set
+    /// @custom:precondition cap is bound between [0, uint256.max]
+    function setCToken_should_succeed(address mtoken, uint256 cap) public {
+        require(IMToken(mtoken).isCToken());
+        require(centralRegistry.hasDaoPermissions(address(this)));
+        require(setCollateralValues[mtoken]);
+        require(!isCollateralRatioZero[mtoken]);
+        if (cap > maxCollateralCap[mtoken]) {
+            maxCollateralCap[mtoken] = cap;
+        }
 
         check_price_feed();
 
@@ -892,13 +899,9 @@ contract FuzzMarketManager is StatefulBaseMarket {
     function cToken_balance_gte_collateral_posted(address ctoken) public {
         uint256 cTokenBalance = MockCToken(ctoken).balanceOf(address(this));
 
-        uint256 collateralPostedForAddress = marketManager.collateralPosted(
-            address(this)
-        );
-
         assertGte(
             cTokenBalance,
-            collateralPostedForAddress,
+            maxCollateralCap[ctoken],
             "MARKET MANAGER - cTokenBalance must exceed collateral posted"
         );
     }

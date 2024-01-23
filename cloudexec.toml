@@ -1,6 +1,6 @@
 
 # Set the directory to upload to the droplet .
-# Release Echidna Link: https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip
+# Release Echidna Link: # https://github.com/crytic/echidna/actions/runs/7571678101/artifacts/1178391144
 [input]
 directory = "."
 timeout = "96h"
