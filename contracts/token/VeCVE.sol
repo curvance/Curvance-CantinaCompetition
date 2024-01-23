@@ -130,6 +130,13 @@ contract VeCVE is ERC20, ReentrancyGuard {
         return userLocks[user];
     }
 
+    function getUnlockTime(
+        address _addr,
+        uint _index
+    ) public view returns (uint40) {
+        return userLocks[_addr][_index].unlockTime;
+    }
+
     /// @notice Rescue any token sent by mistake.
     /// @param token token to rescue.
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all.
@@ -434,6 +441,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
+        if (isShutdown == 2) {
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
+        }
+
         // Claim any pending locker rewards.
         _claimRewards(msg.sender, rewardsData, params, aux);
 
@@ -1276,12 +1287,5 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
-    }
-
-    function getUnlockTime(
-        address _addr,
-        uint _index
-    ) public view returns (uint40) {
-        return userLocks[_addr][_index].unlockTime;
     }
 }
