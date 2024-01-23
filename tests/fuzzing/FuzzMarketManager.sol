@@ -53,19 +53,16 @@ contract FuzzMarketManager is StatefulBaseMarket {
         try marketManager.listToken(mtoken) {
             assertWithMsg(
                 marketManager.isListed(mtoken),
-                "LENDTROLLER - marketManager.listToken() should succeed"
+                "MARKET MANAGER - marketManager.listToken() should succeed"
             );
         } catch {
-            assertWithMsg(false, "LENDTROLLER - failed to list token");
+            assertWithMsg(false, "MARKET MANAGER - failed to list token");
         }
     }
 
-<<<<<<< HEAD:tests/fuzzing/FuzzLendtroller.sol
-=======
     /// @custom:property lend-2 A token already added to the MarketManager cannot be added again
     /// @custom:precondition mtoken must already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
->>>>>>> 1d03f17b (Update lendtroller -> marketManager and priceRouter ->  oracleRouter inside fuzz suite):tests/fuzzing/FuzzMarketManager.sol
     function list_token_should_fail_if_already_listed(address mtoken) public {
         uint256 amount = 42069;
         // require the token is not already listed into the marketManager
@@ -78,9 +75,16 @@ contract FuzzMarketManager is StatefulBaseMarket {
         try marketManager.listToken(mtoken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - listToken for duplicate token should not be possible"
+                "MARKET MANAGER - listToken for duplicate token should not be possible"
             );
-        } catch {}
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == marketmanager_tokenAlreadyListedSelectorHash,
+                "MARKET MANAGER - listToken() expected TokenAlreadyListed selector hash on failure"
+            );
+        }
     }
 
     /// @custom:property lend-3 – A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.
@@ -132,7 +136,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             assertLt(
                 preCTokenBalanceThis,
                 postCTokenBalanceThis,
-                "LENDTROLLER - pre and post ctoken balance should increase"
+                "MARKET MANAGER - pre and post ctoken balance should increase"
             );
         } catch (bytes memory revertData) {
             emit LogAddress("msg.sender", msg.sender);
@@ -170,13 +174,13 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 assertEq(
                     errorSelector,
                     0,
-                    "LENDTROLLER - expected mtoken.deposit() to revert with overflow"
+                    "MARKET MANAGER - expected mtoken.deposit() to revert with overflow"
                 );
             } else {
                 // LEND-3
                 assertWithMsg(
                     false,
-                    "LENDTROLLER - expected mtoken.deposit() to be successful"
+                    "MARKET MANAGER - expected mtoken.deposit() to be successful"
                 );
             }
         }
@@ -260,15 +264,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
                 if (divergenceTooLarge || priceError) {
                     assertWithMsg(
-                        errorSelector == lendtroller_priceErrorSelectorHash,
-                        "LENDTROLLER - expected updateCollateralToken to fail if price diverge too much"
+                        errorSelector == marketmanager_priceErrorSelectorHash,
+                        "MARKET MANAGER - expected updateCollateralToken to fail if price diverge too much"
                     );
                 }
 
                 // LEND-5
                 assertWithMsg(
                     false,
-                    "LENDTROLLER - updateCollateralToken should succeed"
+                    "MARKET MANAGER - updateCollateralToken should succeed"
                 );
             }
         }
@@ -306,13 +310,13 @@ contract FuzzMarketManager is StatefulBaseMarket {
             assertEq(
                 marketManager.collateralCaps(mtoken),
                 cap,
-                "LENDTROLLER - collateral caps for token should be >=0"
+                "MARKET MANAGER - collateral caps for token should be >=0"
             );
         } else {
             // LEND-7
             assertWithMsg(
                 false,
-                "LENDTROLLER - expected mtoken.deposit() to be successful"
+                "MARKET MANAGER - expected setCTokenCollateralCaps to succeed"
             );
         }
     }
@@ -357,7 +361,32 @@ contract FuzzMarketManager is StatefulBaseMarket {
         {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - updateCollateralToken should succeed"
+                "MARKET MANAGER - updateCollateralToken should not have succeeded with out of date price feeds"
+            );
+        } catch {}
+    }
+
+    /// @custom:property lend-9 After collateral is posted, the user’s collateral posted position for the respective asset should increase.
+    /// @custom:property lend-10 After collateral is posted, calling hasPosition on the user’s mtoken should return true.
+    /// @custom:property lend-11 After collateral is posted, the global collateral for the mtoken should increase by the amount posted.
+    /// @custom:property lend-12 When price feed is up to date, address(this) has mtoken, tokens are bound correctly, and caller is correct, the  postCollateral call should succeed.
+    /// @custom:precondition price feed is up to date
+    /// @custom:precondition address(this) must have a balance of mtoken
+    /// @custom:precondition `tokens` to be posted is bound between [1, mtoken balance], inclusive
+    /// @custom:precondition msg.sender for postCollateral = address(this)
+    function post_collateral_should_succeed(
+        address mtoken,
+        uint256 tokens,
+        bool lower
+    ) public {
+        require(collateralCapsUpdated[mtoken]);
+        check_price_feed();
+
+        if (IMToken(mtoken).balanceOf(address(this)) == 0) {
+            c_token_deposit(
+                mtoken,
+                tokens * IMToken(mtoken).decimals(),
+                lower
             );
         }
 
@@ -430,7 +459,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 // LEND-12
                 assertWithMsg(
                     false,
-                    "LENDTROLLER - expected postCollateral to pass with @precondition"
+                    "MARKET MANAGER - expected postCollateral to pass with @precondition"
                 );
             }
             // ensure account collateral has increased by # of tokens
@@ -444,12 +473,12 @@ contract FuzzMarketManager is StatefulBaseMarket {
             assertEq(
                 (newCollateralForUser) * mtokenExchange,
                 (oldCollateralForUser + tokens) * mtokenExchange,
-                "LENDTROLLER - new collateral must collateral+tokens"
+                "MARKET MANAGER - new collateral must collateral+tokens"
             );
             // LEND-10
             assertWithMsg(
                 marketManager.hasPosition(mtoken, address(this)),
-                "LENDTROLLER - addr(this) must have position after posting"
+                "MARKET MANAGER - addr(this) must have position after posting"
             );
             // ensure collateralPosted increases by tokens
             uint256 newCollateralForToken = marketManager.collateralPosted(
@@ -459,7 +488,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             assertEq(
                 newCollateralForToken,
                 oldCollateralForToken + tokens,
-                "LENDTROLLER - global collateral posted should increase"
+                "MARKET MANAGER - global collateral posted should increase"
             );
         }
         tokens = clampBetween(tokens, min, max);
@@ -525,15 +554,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
         // ensure that a user has a position after posting
         assertWithMsg(
-            lendtroller.hasPosition(mtoken, address(this)),
-            "LENDTROLLER - addr(this) must have position after posting"
-        );
-        // ensure collateralPosted increases by tokens
-        uint256 newCollateralPosted = lendtroller.collateralPosted(mtoken);
-        assertEq(
-            newCollateralPosted,
-            oldCollateralPosted + tokens,
-            "LENDTROLLER - global collateral posted should increase"
+            !success,
+            "MARKET MANAGER - postCollateral() with too many tokens should fail"
         );
     }
 
@@ -602,8 +624,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 // LEND-16
                 assertWithMsg(
                     errorSelector ==
-                        lendtroller_insufficientCollateralSelectorHash,
-                    "LENDTROLLER - removeCollateral expected to revert with insufficientCollateral"
+                        marketmanager_insufficientCollateralSelectorHash,
+                    "MARKET MANAGER - removeCollateral expected to revert with insufficientCollateral"
                 );
             }
         } else {
@@ -618,17 +640,16 @@ contract FuzzMarketManager is StatefulBaseMarket {
             // LEND-17
             assertWithMsg(
                 success,
-                "LENDTROLLER - expected removeCollateral expected to be successful with no shortfall"
+                "MARKET MANAGER - expected removeCollateral expected to be successful with no shortfall"
             );
             // Collateral posted for the mtoken should decrease
-            uint256 newCollateralPostedForToken = marketManager.collateralPosted(
-                mtoken
-            );
+            uint256 newCollateralPostedForToken = marketManager
+                .collateralPosted(mtoken);
             // LEND-14
             assertEq(
                 newCollateralPostedForToken,
                 oldCollateralPostedForToken - tokens,
-                "LENDTROLLER - global collateral posted should decrease"
+                "MARKET MANAGER - global collateral posted should decrease"
             );
 
             // Collateral posted for the user should decrease
@@ -640,12 +661,12 @@ contract FuzzMarketManager is StatefulBaseMarket {
             assertEq(
                 newCollateralForUser,
                 oldCollateralForUser - tokens,
-                "LENDTROLLER - user collateral posted should decrease"
+                "MARKET MANAGER - user collateral posted should decrease"
             );
             if (newCollateralForUser == 0 && closePositionIfPossible) {
                 assertWithMsg(
                     !marketManager.hasPosition(mtoken, address(this)),
-                    "LENDTROLLER - closePositionIfPossible flag set should remove a user's position"
+                    "MARKET MANAGER - closePositionIfPossible flag set should remove a user's position"
                 );
             }
         }
@@ -672,7 +693,23 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 tokens,
                 closePositionIfPossible
             )
-        {} catch {}
+        );
+
+        if (success) {
+            // LEND-18
+            assertWithMsg(
+                false,
+                "MARKET MANAGER - removeCollateral should fail with non existent position"
+            );
+        } else {
+            // expectation is that this should fail
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertWithMsg(
+                errorSelector == marketmanager_invariantErrorSelectorHash,
+                "MARKET MANAGER - expected removeCollateral to revert with InvariantError"
+            );
+        }
     }
 
     /// @custom:property lend-19 Removing more tokens than a user has for collateral should revert with insufficient collateral hash.
@@ -712,7 +749,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         if (success) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - removeCollateral should fail insufficient collateral"
+                "MARKET MANAGER - removeCollateral should fail insufficient collateral"
             );
         } else {
             // expectation is that this should fail
@@ -720,8 +757,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
             assertWithMsg(
                 errorSelector ==
-                    lendtroller_insufficientCollateralSelectorHash,
-                "LENDTROLLER - expected removeCollateral to revert with InsufficientCollateral when attempting to remove too much"
+                    marketmanager_insufficientCollateralSelectorHash,
+                "MARKET MANAGER - expected removeCollateral to revert with InsufficientCollateral when attempting to remove too much"
             );
         }
     }
@@ -762,8 +799,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
         try lendtroller.canMint(mToken) {} catch {
             assertWithMsg(
-                false,
-                "LENDTROLLER - canMint() should have not reverted"
+                errorSelector == marketmanager_unauthorizedSelectorHash,
+                "MARKET MANAGER - reduceCollateralIfNecessary expected to revert"
             );
         }
     }
@@ -802,12 +839,22 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
         uint256 errorSelector = extractErrorSelector(revertData);
 
-        try lendtroller.canMint(mToken) {
-            assertWithMsg(
-                false,
-                "LENDTROLLER - canMint() should have reverted when token is not listed but did not"
-            );
-        } catch {}
+        if (!success) {
+            if (shortfall > 0) {
+                assertWithMsg(
+                    errorSelector ==
+                        marketmanager_insufficientCollateralSelectorHash,
+                    "MARKET MANAGER - closePosition should revert with InsufficientCollateral if shortfall exists"
+                );
+            } else {
+                assertWithMsg(
+                    false,
+                    "MARKET MANAGER - closePosition expected to be successful with correct preconditions"
+                );
+            }
+        } else {
+            check_close_position_post_conditions(mtoken, preAssetsOf.length);
+        }
     }
 
     function canMint_should_revert_when_mint_is_paused(address mToken) public {
@@ -874,16 +921,16 @@ contract FuzzMarketManager is StatefulBaseMarket {
     ) private {
         assertWithMsg(
             !marketManager.hasPosition(mtoken, address(this)),
-            "LENDTROLLER - closePosition should remove position in mtoken if successful"
+            "MARKET MANAGER - closePosition should remove position in mtoken if successful"
         );
         assertWithMsg(
             marketManager.collateralPostedFor(mtoken, address(this)) == 0,
-            "LENDTROLLER - closePosition should reduce collateralPosted for user to 0"
+            "MARKET MANAGER - closePosition should reduce collateralPosted for user to 0"
         );
         IMToken[] memory postAssetsOf = marketManager.assetsOf(address(this));
         assertWithMsg(
             preAssetsOfLength - 1 == postAssetsOf.length,
-            "LENDTROLLER - closePosition expected to remove asset from assetOf"
+            "MARKET MANAGER - closePosition expected to remove asset from assetOf"
         );
     }
 
@@ -908,7 +955,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         assertGte(
             cTokenBalance,
             collateralPostedForAddress,
-            "LENDTROLLER - cTokenBalance must exceed collateral posted"
+            "MARKET MANAGER - cTokenBalance must exceed collateral posted"
         );
     }
 
@@ -922,7 +969,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         assertLte(
             collateralPosted,
             collateralCaps,
-            "LENDTROLLER - collateralPosted must be <= collateralCaps"
+            "MARKET MANAGER - collateralPosted must be <= collateralCaps"
         );
     }
 
@@ -983,7 +1030,9 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
         safeBounds.liqIncSoft = clampBetween(
             liqIncSoft,
-            marketManager.MIN_LIQUIDATION_INCENTIVE() / 1e14 + safeBounds.liqFee,
+            marketManager.MIN_LIQUIDATION_INCENTIVE() /
+                1e14 +
+                safeBounds.liqFee,
             marketManager.MAX_LIQUIDATION_INCENTIVE() / 1e14 - 1
         );
 
