@@ -58,11 +58,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     AuraCToken public auraCToken;
     AuraCToken public cBALRETH;
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 4277fa3d (fix pricerouter/marketmanager variables in statefulbasemarket)
     DToken public dUSDC;
     DToken public dDAI;
 
