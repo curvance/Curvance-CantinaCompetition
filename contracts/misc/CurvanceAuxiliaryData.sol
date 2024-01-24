@@ -128,6 +128,30 @@ contract CurvanceAuxiliaryData {
         return IMToken(token).debtBalanceCached(account);
     }
 
+    /// @notice Calculates `token` utilization rate.
+    /// @return The utilization rate, in `WAD`.
+    function getUtilizationRate(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).utilizationRate();
+    }
+
+    /// @notice Returns `token` borrow interest rate per year.
+    /// @return The borrow interest rate per year, in `WAD`.
+    function borrowRatePerYear(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).getBorrowRatePerYear();
+    }
+
+    /// @notice Returns `token` supply interest rate per year.
+    /// @return The supply interest rate per year, in `WAD`.
+    function supplyRatePerYear(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).getSupplyRatePerYear();
+    }
+
     function getBaseRewards(address token) external view returns (uint256) {
 
     }
@@ -291,7 +315,7 @@ contract CurvanceAuxiliaryData {
     function getUserLockLength(
         address account
     ) public view returns (uint256) {
-        (uint256[] memory lockAmounts,) = getUserLocks(account);
+        (uint256[] memory lockAmounts, ) = getUserLocks(account);
         return lockAmounts.length;
     }
 
