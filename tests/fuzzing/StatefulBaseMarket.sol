@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { PropertiesAsserts } from "tests/fuzzing/PropertiesHelper.sol";
-import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
+import { PropertiesAsserts } from "tests/fuzzing/helpers/PropertiesHelper.sol";
+import { ErrorConstants } from "tests/fuzzing/helpers/ErrorConstants.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
