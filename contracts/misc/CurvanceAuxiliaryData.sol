@@ -138,18 +138,18 @@ contract CurvanceAuxiliaryData {
 
     /// @notice Returns `token` borrow interest rate per year.
     /// @return The borrow interest rate per year, in `WAD`.
-    function borrowRatePerYear(
+    function getBorrowRatePerYear(
         address token
     ) external view returns (uint256) {
-        return IMToken(token).getBorrowRatePerYear();
+        return IMToken(token).borrowRatePerYear();
     }
 
     /// @notice Returns `token` supply interest rate per year.
     /// @return The supply interest rate per year, in `WAD`.
-    function supplyRatePerYear(
+    function getSupplyRatePerYear(
         address token
     ) external view returns (uint256) {
-        return IMToken(token).getSupplyRatePerYear();
+        return IMToken(token).supplyRatePerYear();
     }
 
     function getBaseRewards(address token) external view returns (uint256) {
