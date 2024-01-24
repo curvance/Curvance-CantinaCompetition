@@ -115,26 +115,23 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Used for fuzzing tests, shorthand for checking lock indices.
-    function lockIndexExists(
-        address user, 
-        uint256 lockIndex
-    ) external view returns (bool) {
-        return lockIndex >= userLocks[user].length;
-    }
-
     /// @notice Used for frontend, needed due to array of structs.
     function queryUserLocks(
         address user
-    ) external view returns (Lock[] memory) {
-        return userLocks[user];
-    }
+    ) external view returns (uint256[] memory, uint256[] memory) {
+        uint256 numLocks = userLocks[user].length;
+        Lock[] memory locks = userLocks[user];
+        Lock memory lock;
+        uint256[] memory lockAmounts = new uint256[](numLocks);
+        uint256[] memory lockTimestamps = new uint256[](numLocks);
 
-    function getUnlockTime(
-        address _addr,
-        uint _index
-    ) public view returns (uint40) {
-        return userLocks[_addr][_index].unlockTime;
+        for (uint256 i; i < numLocks; ++i) {
+            lock = locks[i];
+            lockAmounts[i] = lock.amount;
+            lockTimestamps[i] = lock.unlockTime;
+        }
+
+        return (lockAmounts, lockTimestamps);
     }
 
     /// @notice Rescue any token sent by mistake.
@@ -606,7 +603,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
-        
+
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.

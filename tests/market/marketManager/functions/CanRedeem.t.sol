@@ -37,7 +37,7 @@ contract CanRedeemTest is TestBaseMarketManager {
         bool hasPosition;
         (hasPosition,,)= marketManager.tokenDataOf(user1, address(dUSDC));
 
-        assertFalse(hasPosition));
+        assertFalse(hasPosition);
         marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
