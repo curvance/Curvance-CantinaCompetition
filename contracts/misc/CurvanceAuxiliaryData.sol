@@ -50,6 +50,8 @@ contract CurvanceAuxiliaryData {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// CHAIN-WIDE FUNCTIONS ///
+
     /// @notice Returns the current TVL inside Curvance.
     /// @return result The current TVL inside Curvance, in `WAD`.
     function getTotalTVL() external view returns (uint256 result) {
@@ -94,6 +96,24 @@ contract CurvanceAuxiliaryData {
         }
     }
 
+    function getMarketManagers() external view returns (address[] memory) {
+        return centralRegistry.marketManagers();
+    }
+
+    /// EXTERNAL TOKEN-SPECIFIC FUNCTIONS ///
+
+    /// @notice Returns if an account has an active position in `token`, 
+    ///         and any user balances or collateral posted in `token`.
+    /// @param account The address of the account to check token data of.
+    /// @param token The address of the market token.
+    function getAccountTokenData(
+        address account, 
+        address token
+    ) external view returns (bool, uint256, uint256) {
+        IMarketManager marketManager = IMarketManager(IMToken(token).marketManager());
+        return marketManager.tokenDataOf(account, token);
+    }
+
     function getBaseRewards(address token) external view returns (uint256) {
 
     }
@@ -101,6 +121,8 @@ contract CurvanceAuxiliaryData {
     function getCVERewards(address token) external view returns (uint256) {
 
     }
+
+    /// ORACLE ROUTER FUNCTIONS ///
 
     function getPrices(
         address[] calldata assets,
@@ -115,6 +137,8 @@ contract CurvanceAuxiliaryData {
     }
 
     /// PUBLIC FUNCTIONS ///
+
+    /// MARKET-SPECIFIC FUNCTIONS ///
 
     /// @notice Returns the current TVL inside a Curvance market.
     /// @param market The market to query TVL for.
@@ -174,40 +198,12 @@ contract CurvanceAuxiliaryData {
         }
     }
 
-    /// @notice Returns the current TVL inside an MToken token.
-    /// @param token The token to query TVL for.
-    /// @return result The current TVL inside `token`, in `WAD`.
-    function getTokenTVL(
-        address token, 
-        bool getLower
-    ) public view returns (uint256 result) {
-        // Get current shares total supply then query price and return.
-        result = _getTokenPrice(token, getLower) * IMToken(token).totalSupply();
-    }
-
-    /// @notice Returns the outstanding underlying tokens borrowed from a DToken market.
-    /// @param token The token to query outstanding borrows for.
-    /// @return result The outstanding underlying tokens, in `WAD`.
-    function getTokenBorrows(address token) public view returns (uint256 result) {
-        IMToken mToken = IMToken(token);
-        // Get outstanding borrows then query price and return.
-        result = _getTokenPrice(mToken.underlying(), false) * mToken.totalBorrows();
-    }
-
-    /// @notice Returns all listed market assets inside `market`.
-    /// @return The listed market assets.
-    function getMarketAssets(
-        address market
-    ) public view returns (address[] memory) {
-        return IMarketManager(market).tokensListed();
-    }
-
     /// @notice Returns listed collateral assets inside `market`.
     /// @return The listed collateral assets.
     function getMarketCollateralAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = IMarketManager(market).tokensListed();
+        address[] memory assets = getMarketAssets(market);
         uint256 numAssets = assets.length;
 
         address asset;
@@ -237,7 +233,7 @@ contract CurvanceAuxiliaryData {
     function getMarketDebtAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = IMarketManager(market).tokensListed();
+        address[] memory assets = getMarketAssets(market);
         uint256 numAssets = assets.length;
 
         address asset;
@@ -260,6 +256,36 @@ contract CurvanceAuxiliaryData {
         }
 
         return debtAssets;
+    }
+
+    /// @notice Returns all listed market assets inside `market`.
+    /// @return The listed market assets.
+    function getMarketAssets(
+        address market
+    ) public view returns (address[] memory) {
+        return IMarketManager(market).tokensListed();
+    }
+
+    /// PUBLIC TOKEN-SPECIFIC FUNCTIONS ///
+
+    /// @notice Returns the current TVL inside an MToken token.
+    /// @param token The token to query TVL for.
+    /// @return result The current TVL inside `token`, in `WAD`.
+    function getTokenTVL(
+        address token, 
+        bool getLower
+    ) public view returns (uint256 result) {
+        // Get current shares total supply then query price and return.
+        result = _getTokenPrice(token, getLower) * IMToken(token).totalSupply();
+    }
+
+    /// @notice Returns the outstanding underlying tokens borrowed from a DToken market.
+    /// @param token The token to query outstanding borrows for.
+    /// @return result The outstanding underlying tokens, in `WAD`.
+    function getTokenBorrows(address token) public view returns (uint256 result) {
+        IMToken mToken = IMToken(token);
+        // Get outstanding borrows then query price and return.
+        result = _getTokenPrice(mToken.underlying(), false) * mToken.totalBorrows();
     }
 
     /// INTERNAL FUNCTIONS ///

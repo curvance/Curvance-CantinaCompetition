@@ -136,6 +136,14 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Returns whether `mToken` is listed in the lending market.
+    /// @param mToken market token address.
+    function isListed(address mToken) external view returns (bool) {
+        return (tokenData[mToken].isListed);
+    }
+
+    /// ACCOUNT SPECIFIC FUNCTIONS ///
+
     /// @notice Returns the assets an account has entered.
     /// @param account The address of the account to pull assets for.
     /// @return A dynamic list with the assets the account has entered.
@@ -145,33 +153,22 @@ contract MarketManager is LiquidityManager, ERC165 {
         return accountAssets[account].assets;
     }
 
-    /// @notice Returns whether `mToken` is listed in the lending market.
-    /// @param mToken market token address.
-    function isListed(address mToken) external view returns (bool) {
-        return (tokenData[mToken].isListed);
-    }
-
     /// @notice Returns if an account has an active position in `mToken`.
-    /// @param mToken The address of the market token.
     /// @param account The address of the account to check a position of.
-    function hasPosition(
-        address mToken,
-        address account
-    ) external view returns (bool) {
-        return tokenData[mToken].accountData[account].activePosition == 2;
-    }
-
-    /// @notice Returns if an account has an active position in `mToken`.
     /// @param mToken The address of the market token.
-    /// @param account The address of the account to check collateral posted of.
-    function collateralPostedFor(
-        address mToken,
-        address account
-    ) external view returns (uint256) {
-        return tokenData[mToken].accountData[account].collateralPosted;
+    function tokenDataOf(
+        address account,
+        address mToken
+    ) external view returns (
+        bool hasPosition, 
+        uint256 balanceOf, 
+        uint256 collateralPostedOf
+    ) {
+        AccountMetadata memory accountData = tokenData[mToken].accountData[account];
+        hasPosition = accountData.activePosition == 2;
+        balanceOf = IMToken(mToken).balanceOf(account);
+        collateralPostedOf = accountData.collateralPosted;
     }
-
-    /// ACCOUNT LIQUIDITY FUNCTIONS ///
 
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity.
