@@ -815,10 +815,6 @@ contract FuzzVECVE is StatefulBaseMarket {
                         numberOfExistingLocks
                     );
                 }
-                emit LogUint256(
-                    "processExpiredLock---------query user locks:",
-                    get_locks_length()
-                );
             }
         } catch {
             assertWithMsg(
@@ -835,11 +831,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(
             address(this)
         );
-        emit LogUint256(
-            "processExpiredLock_should_succeed_if_unlocktime_expired - vecve",
-            numberOfExistingLocks
-        );
-        emit LogUint256("cve balance of vecve", cve.balanceOf(address(veCVE)));
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
         (uint256 amount, uint256 unlockTime) = get_user_locks_info(
@@ -885,11 +876,6 @@ contract FuzzVECVE is StatefulBaseMarket {
                         preLockVECVEBalance,
                         amount,
                         numberOfExistingLocks
-                    );
-
-                    emit LogUint256(
-                        "processExpiredLock---------query user locks:",
-                        get_locks_length()
                     );
                 }
             }
@@ -1038,15 +1024,6 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function earlyExpireLock_should_succeed(uint256 seed) public {
-        uint256 lockIndex = get_existing_lock(seed);
-        require(lockIndex != NO_LOCKS);
-
-        try
-            veCVE.earlyExpireLock(lockIndex, defaultRewardData, bytes(""), 0)
-        {} catch {}
-    }
-
     // Stateful
     /// @custom:property s-vecve-1 Balance of veCVE must equal to the sum of all non-continuous lock amounts.
     function balance_must_equal_lock_amount_for_non_continuous() public {
@@ -1132,6 +1109,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
+    /// @custom:property s-vecve-7 The contract should only have a zero balance when there are no user locks
     function no_user_locks_should_have_zero_cve_balance() public {
         address[4] memory senders = [
             address(0x10000),
@@ -1145,7 +1123,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         assertEq(
             cve.balanceOf(address(veCVE)),
             0,
-            "VE_CVE - FATAL ERROR BREAK"
+            "VE_CVE - CVE Balance of VECVE should be zero when there are no user locks"
         );
     }
 
@@ -1223,18 +1201,6 @@ contract FuzzVECVE is StatefulBaseMarket {
             postUserUnlocksByEpoch,
             "VE_CVE - processExpiredLock() - userUnlocksByEpoch should be decreased by amount"
         );
-    }
-
-    function breakbreakbreak() public {
-        processExpiredLock_should_succeed_if_unlocktime_expired_and_not_shutdown(
-            true
-        );
-        shutdown_success_if_elevated_permission();
-        combineAllLocks_should_succeed_to_non_continuous_terminal();
-        emit LogUint256("cve balance:", cve.balanceOf(address(veCVE)));
-        processExpiredLock_should_succeed_if_shutdown(23);
-        emit LogUint256("cve balance:", cve.balanceOf(address(veCVE)));
-        assert(cve.balanceOf(address(veCVE)) != 0);
     }
 
     function assert_continuous_locks_has_no_user_or_chain_unlocks(

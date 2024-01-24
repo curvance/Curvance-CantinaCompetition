@@ -111,6 +111,8 @@ Tips and tricks:
     - The sum of all userPoints should be equal to chainPoints
     - The sum of all chainUnlocksByEpoch maps should be equal to the sum of all userUnlocksByEpoch maps.
 - `createLockfor` and `increaseAmountAndExtendLockFor`
+- `earlyExpire`
+- additional tests on callers 
 
 ## Lendtroller 
 
