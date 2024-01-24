@@ -63,6 +63,13 @@ interface IMToken {
         uint256 shares
     ) external;
 
+    /// @notice Withdraws all reserves from the gauge and transfers to
+    ///         Curvance DAO.
+    /// @dev If daoAddress is going to be moved all reserves should be
+    ///      withdrawn first, updates interest before executing the reserve
+    ///      withdrawal.
+    function processWithdrawReserves() external;
+
     /// @notice Get a snapshot of the account's balances, 
     ///         and the cached exchange rate.
     function getSnapshot(
