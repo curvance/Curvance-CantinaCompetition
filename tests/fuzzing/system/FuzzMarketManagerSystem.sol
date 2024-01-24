@@ -2,7 +2,7 @@ pragma solidity 0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 
-contract FuzzLendtrollerSystem is StatefulBaseMarket {
+contract FuzzMarketManagerSystem is StatefulBaseMarket {
     // Stateful Functions
 
     // if closing position with a dtoken, ensure position cannot be created
@@ -15,7 +15,7 @@ contract FuzzLendtrollerSystem is StatefulBaseMarket {
     function cToken_balance_gte_collateral_posted(address ctoken) public {
         uint256 cTokenBalance = MockToken(ctoken).balanceOf(address(this));
 
-        uint256 collateralPostedForAddress = lendtroller.collateralPosted(
+        uint256 collateralPostedForAddress = marketManager.collateralPosted(
             address(this)
         );
 
@@ -28,9 +28,9 @@ contract FuzzLendtrollerSystem is StatefulBaseMarket {
 
     /// @custom:property s-lend-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
     function collateralPosted_lte_collateralCaps(address token) public {
-        uint256 collateralPosted = lendtroller.collateralPosted(token);
+        uint256 collateralPosted = marketManager.collateralPosted(token);
 
-        uint256 collateralCaps = lendtroller.collateralCaps(token);
+        uint256 collateralCaps = marketManager.collateralCaps(token);
 
         if (maxCollateralCap[token] == 0) {
             assertEq(
@@ -47,9 +47,9 @@ contract FuzzLendtrollerSystem is StatefulBaseMarket {
         }
     }
 
-    // @custom:property s-lend-3 totalSupply should never be zero for any mtoken once added to Lendtroller
+    // @custom:property s-lend-3 totalSupply should never be zero for any mtoken once added to marketManager
     function totalSupply_of_listed_token_is_never_zero(address mtoken) public {
-        require(lendtroller.isListed(mtoken));
+        require(marketManager.isListed(mtoken));
         assertNeq(
             MockToken(mtoken).totalSupply(),
             0,

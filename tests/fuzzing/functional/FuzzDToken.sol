@@ -173,9 +173,9 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property dtok- borrow should succeed with correct preconditions
-    /// @custom:property dtok- totalBorrows if interest has not accrued should increase by amount after borrow is called
-    /// @custom:property dtok- underlying balance if interest has not accrued should increase by amount for msg.sender
+    /// @custom:property dtok-8 borrow should succeed with correct preconditions
+    /// @custom:property dtok-9 totalBorrows if interest has not accrued should increase by amount after borrow is called
+    /// @custom:property dtok-10 underlying balance if interest has not accrued should increase by amount for msg.sender
     /// @custom:precondition token to borrow is either dUSDC or dDAI
     /// @custom:precondition amount is bound between [1, marketUnderlyingHeld() - totalReserves]
     /// @custom:precondition borrow is not paused
@@ -240,6 +240,8 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property dtok-10 the repay function should succeed with correct preconditions
+    /// @custom:property dtok-11 attempting to repay with too much should cause the contract to error
     function repay_should_succeed(address dtoken, uint256 amount) public {
         is_supported_dtoken(dtoken);
         address underlying = DToken(dtoken).underlying();
@@ -284,6 +286,7 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
+    /// @custom:property
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
@@ -331,58 +334,4 @@ contract FuzzDToken is StatefulBaseMarket {
             );
         }
     }
-<<<<<<< HEAD:tests/fuzzing/FuzzDToken.sol
-
-    /// @custom:property s-dtok-1 marketUnderlyingHeld() must always be equal to the underlying token balance of the dtoken contract
-    /// @custom:precondition dtoken is one of the supported assets
-    function marketUnderlyingHeld_equivalent_to_balanceOf_underlying(
-        address dtoken
-    ) public {
-        is_supported_dtoken(dtoken);
-
-        uint256 marketUnderlyingHeld = DToken(dtoken).marketUnderlyingHeld();
-
-        address underlying = DToken(dtoken).underlying();
-        uint256 underlyingBalance = IERC20(underlying).balanceOf(
-            address(dtoken)
-        );
-
-        assertEq(
-            marketUnderlyingHeld,
-            underlyingBalance,
-            "DToken - marketUnderlyingHeld should return dtoken.balanceOf(dtoken)"
-        );
-    }
-
-    /// @custom:property s-dtok-2 decimals for dtoken must always be equal to the underlying's number of decimals
-    /// @custom:precondition dtoken is one of the supported assets
-    function decimals_for_dtoken_equivalent_to_underlying(
-        address dtoken
-    ) public {
-        is_supported_dtoken(dtoken);
-        address underlying = DToken(dtoken).underlying();
-
-        assertEq(
-            DToken(dtoken).decimals(),
-            IERC20(underlying).decimals(),
-            "DToken - decimals for dtoken must be equivalent to underlying decimals"
-        );
-    }
-
-    // @custom:property s-dtok-3 isCToken() should return false for dtoken
-    // @custom:precondition dtoken is either dUSDC or dDAI
-    function isCToken_returns_false(address dtoken) public {
-        is_supported_dtoken(dtoken);
-        assertWithMsg(
-            !DToken(dtoken).isCToken(),
-            "DTOKEN - isCToken() should return false"
-        );
-    }
-
-    // Helper Function
-    function is_supported_dtoken(address dtoken) private view {
-        require(dtoken == address(dUSDC) || dtoken == address(dDAI));
-    }
-=======
->>>>>>> f04cff94 (Added functional and system folders to cleanup):tests/fuzzing/functional/FuzzDToken.sol
 }

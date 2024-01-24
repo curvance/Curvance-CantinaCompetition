@@ -1,7 +1,6 @@
 testMode: assertion # run to detect assertions 
-testLimit: 30000000 # note: significantly larger test limit for server runs 
+testLimit: 10000000 # note: significantly larger test limit for server runs 
 coverage: true # turns coverage saving on 
-corpusDir: "output/echidna-vecve-corpus" # save in ./output/echidna-corpus 
+corpusDir: "output/market-manager-rebase-0123" # save in ./output/echidna-corpus 
 cryticArgs: ["--ignore-compile"] # do not recompile when running 
-workers: 14 # increased number of workers 
-format: text
+workers: 10 # increased number of workers 
