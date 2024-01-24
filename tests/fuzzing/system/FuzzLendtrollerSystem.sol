@@ -15,26 +15,36 @@ contract FuzzLendtrollerSystem is StatefulBaseMarket {
     function cToken_balance_gte_collateral_posted(address ctoken) public {
         uint256 cTokenBalance = MockToken(ctoken).balanceOf(address(this));
 
-        assertLt(
+        uint256 collateralPostedForAddress = lendtroller.collateralPosted(
+            address(this)
+        );
+
+        assertGte(
             cTokenBalance,
-            maxCollateralCap[ctoken],
+            collateralPostedForAddress,
             "MARKET MANAGER - cTokenBalance must exceed collateral posted"
         );
     }
 
     /// @custom:property s-lend-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
-    // market collateral posted should always be less than the max(collateralCaps for a token) -≥
-    // ECHIDNA TODO: keep track of max collateral cap for a specific token
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = lendtroller.collateralPosted(token);
 
         uint256 collateralCaps = lendtroller.collateralCaps(token);
 
-        assertLte(
-            collateralPosted,
-            collateralCaps,
-            "LENDTROLLER - collateralPosted must be <= collateralCaps"
-        );
+        if (maxCollateralCap[token] == 0) {
+            assertEq(
+                collateralPosted,
+                maxCollateralCap[token],
+                "MARKET MANAGER - collateralPosted must be equal to 0 when max collateral is posted"
+            );
+        } else {
+            assertLt(
+                collateralPosted,
+                maxCollateralCap[token],
+                "MARKET MANAGER - collateralPosted must be strictly less than the max collateral posted"
+            );
+        }
     }
 
     // @custom:property s-lend-3 totalSupply should never be zero for any mtoken once added to Lendtroller
