@@ -114,6 +114,16 @@ contract CurvanceAuxiliaryData {
         return marketManager.tokenDataOf(account, token);
     }
 
+    /// @notice Return the debt balance of `account` based on stored data.
+    /// @param account The address whose debt balance should be calculated.
+    /// @return `account`'s cached balance index for `token`.
+    function getAccountDebtData(
+        address account,
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).debtBalanceCached(account);
+    }
+
     function getBaseRewards(address token) external view returns (uint256) {
 
     }
