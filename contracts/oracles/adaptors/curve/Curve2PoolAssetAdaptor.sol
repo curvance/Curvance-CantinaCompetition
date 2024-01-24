@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import { CurveBaseAdaptor } from "contracts/oracles/adaptors/curve/CurveBaseAdaptor.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -19,8 +20,8 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         address baseToken;
         int128 quoteTokenIndex;
         int128 baseTokenIndex;
-        uint256 quoteTokenDecimals;
-        uint256 baseTokenDecimals;
+        uint8 quoteTokenDecimals;
+        uint8 baseTokenDecimals;
         /// @notice Upper bound allowed for an LP token's virtual price.
         uint256 upperBound;
         /// @notice Lower bound allowed for an LP token's virtual price.
@@ -49,15 +50,15 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
 
     /// ERRORS ///
 
-    error Curve2AssetAdaptor__Reentrant();
-    error Curve2AssetAdaptor__BoundsExceeded();
-    error Curve2AssetAdaptor__UnsupportedPool();
-    error Curve2AssetAdaptor__AssetIsAlreadyAdded();
-    error Curve2AssetAdaptor__AssetIsNotSupported();
-    error Curve2AssetAdaptor__BaseAssetIsNotSupported();
-    error Curve2AssetAdaptor__InvalidBounds();
-    error Curve2AssetAdaptor__InvalidAsset();
-    error Curve2AssetAdaptor__InvalidAssetIndex();
+    error Curve2PoolAssetAdaptor__Reentrant();
+    error Curve2PoolAssetAdaptor__BoundsExceeded();
+    error Curve2PoolAssetAdaptor__UnsupportedPool();
+    error Curve2PoolAssetAdaptor__AssetIsAlreadyAdded();
+    error Curve2PoolAssetAdaptor__AssetIsNotSupported();
+    error Curve2PoolAssetAdaptor__BaseAssetIsNotSupported();
+    error Curve2PoolAssetAdaptor__InvalidBounds();
+    error Curve2PoolAssetAdaptor__InvalidAsset();
+    error Curve2PoolAssetAdaptor__InvalidAssetIndex();
 
     /// CONSTRUCTOR ///
 
@@ -95,15 +96,17 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
     ) external view override returns (PriceReturnData memory pData) {
         pData.inUSD = inUSD;
 
-        if (isLocked(asset, 2)) {
-            revert Curve2AssetAdaptor__Reentrant();
-        }
-
         AdaptorData memory data = adaptorData[asset];
         ICurvePool pool = ICurvePool(data.pool);
 
+        if (isLocked(data.pool, 2)) {
+            revert Curve2PoolAssetAdaptor__Reentrant();
+        }
+
         // Get underlying token prices.
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
         (uint256 basePrice, uint256 errorCode) = oracleRouter.getPrice(
             data.baseToken,
             inUSD,
@@ -129,12 +132,14 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
             sample /
             (10 ** data.baseTokenDecimals); // in base token decimals
 
+        _enforceBounds(price, data.lowerBound, data.upperBound);
+
+        price = (price * basePrice) / WAD;
+
         if (_checkOracleOverflow(price)) {
             pData.hadError = true;
             return pData;
         }
-
-        price = (price * basePrice) / WAD;
 
         pData.price = uint240(price);
     }
@@ -146,42 +151,46 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         _checkElevatedPermissions();
 
         if (isSupportedAsset[asset]) {
-            revert Curve2AssetAdaptor__AssetIsAlreadyAdded();
+            revert Curve2PoolAssetAdaptor__AssetIsAlreadyAdded();
         }
 
         // Make sure that the asset being added has the proper input
         // via this sanity check.
-        if (isLocked(asset, 2)) {
-            revert Curve2AssetAdaptor__UnsupportedPool();
+        if (isLocked(data.pool, 2)) {
+            revert Curve2PoolAssetAdaptor__UnsupportedPool();
         }
 
         if (asset == data.baseToken) {
-            revert Curve2AssetAdaptor__InvalidAsset();
+            revert Curve2PoolAssetAdaptor__InvalidAsset();
         }
 
         address oracleRouter = centralRegistry.oracleRouter();
 
         if (!IOracleRouter(oracleRouter).isSupportedAsset(data.baseToken)) {
-            revert Curve2AssetAdaptor__BaseAssetIsNotSupported();
+            revert Curve2PoolAssetAdaptor__BaseAssetIsNotSupported();
         }
 
         // Validate that the upper bound is greater than the lower bound.
         if (data.lowerBound >= data.upperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         ICurvePool pool = ICurvePool(data.pool);
         if (pool.coins(uint256(uint128(data.quoteTokenIndex))) != asset) {
-            revert Curve2AssetAdaptor__InvalidAssetIndex();
+            revert Curve2PoolAssetAdaptor__InvalidAssetIndex();
         }
         if (
             pool.coins(uint256(uint128(data.baseTokenIndex))) != data.baseToken
         ) {
-            revert Curve2AssetAdaptor__InvalidAssetIndex();
+            revert Curve2PoolAssetAdaptor__InvalidAssetIndex();
         }
 
         data.quoteTokenDecimals = ERC20(asset).decimals();
-        data.baseTokenDecimals = ERC20(data.baseToken).decimals();
+        if (CommonLib.isETH(data.baseToken)) {
+            data.baseTokenDecimals = 18;
+        } else {
+            data.baseTokenDecimals = ERC20(data.baseToken).decimals();
+        }
 
         // Convert the parameters from `basis points` to `WAD` form,
         // while inefficient consistently entering parameters in
@@ -192,7 +201,7 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
 
         // Validate that the range between bounds is not too large.
         if (_MAX_BOUND_RANGE + data.lowerBound < data.upperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         adaptorData[asset] = data;
@@ -208,7 +217,7 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         _checkElevatedPermissions();
 
         if (!isSupportedAsset[asset]) {
-            revert Curve2AssetAdaptor__AssetIsNotSupported();
+            revert Curve2PoolAssetAdaptor__AssetIsNotSupported();
         }
 
         // Notify the adaptor to stop supporting the asset.
@@ -242,32 +251,28 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
 
         // Validate that the upper bound is greater than the lower bound.
         if (newLowerBound >= newUpperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         // Validate that the range between bounds is not too large.
         if (_MAX_BOUND_RANGE + newLowerBound < newUpperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         // Validate that the new bounds are higher than the old ones,
         // since virtual prices only rise overtime,
         // so they should never be decreased here.
         if (newLowerBound <= oldLowerBound || newUpperBound <= oldUpperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         if (oldLowerBound + _MAX_BOUND_INCREASE < newLowerBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
         if (oldUpperBound + _MAX_BOUND_INCREASE < newUpperBound) {
-            revert Curve2AssetAdaptor__InvalidBounds();
+            revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
-
-        uint256 testVirtualPrice = ICurvePool(data.pool).get_virtual_price();
-        // Validate the virtualPrice is within the desired bounds.
-        _enforceBounds(testVirtualPrice, newLowerBound, newUpperBound);
 
         data.lowerBound = newLowerBound;
         data.upperBound = newUpperBound;
@@ -278,9 +283,9 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         uint256 price,
         uint256 lowerBound,
         uint256 upperBound
-    ) internal view {
+    ) internal pure {
         if (price < lowerBound || price > upperBound) {
-            revert Curve2AssetAdaptor__BoundsExceeded();
+            revert Curve2PoolAssetAdaptor__BoundsExceeded();
         }
     }
 
