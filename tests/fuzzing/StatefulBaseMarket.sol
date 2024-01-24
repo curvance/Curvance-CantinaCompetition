@@ -87,6 +87,12 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     uint256 public marketInterestFactor = 1; // 10%
 
     Zapper public zapper;
+<<<<<<< HEAD
+=======
+    mapping(address => uint256) postedCollateralAt;
+    // the maximum collateral cap for a specific mtoken
+    mapping(address => uint256) maxCollateralCap;
+>>>>>>> b663daca (Cherry-picked f04cff94 for function, helper, and system folders)
 
     constructor() {
         // _fork(18031848);

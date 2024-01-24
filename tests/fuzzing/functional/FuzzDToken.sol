@@ -331,6 +331,7 @@ contract FuzzDToken is StatefulBaseMarket {
             );
         }
     }
+<<<<<<< HEAD:tests/fuzzing/FuzzDToken.sol
 
     /// @custom:property s-dtok-1 marketUnderlyingHeld() must always be equal to the underlying token balance of the dtoken contract
     /// @custom:precondition dtoken is one of the supported assets
@@ -382,4 +383,6 @@ contract FuzzDToken is StatefulBaseMarket {
     function is_supported_dtoken(address dtoken) private view {
         require(dtoken == address(dUSDC) || dtoken == address(dDAI));
     }
+=======
+>>>>>>> f04cff94 (Added functional and system folders to cleanup):tests/fuzzing/functional/FuzzDToken.sol
 }

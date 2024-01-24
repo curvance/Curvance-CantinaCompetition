@@ -4,7 +4,7 @@
 [input]
 directory = "."
 timeout = "96h"
-jobName = "echidna market manager 10000000"
+jobName = "echidna market-manager-rebase-0123 10000000"
 
 [commands]
 setup = '''

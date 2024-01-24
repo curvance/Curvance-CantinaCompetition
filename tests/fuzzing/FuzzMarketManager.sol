@@ -17,8 +17,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
     mapping(address => bool) postedCollateral;
     // has the collateral ratio for a specific token been set to zero
     mapping(address => bool) isCollateralRatioZero;
-    // the maximum collateral cap for a specific mtoken
-    mapping(address => uint256) maxCollateralCap;
 
     constructor() {
         SafeTransferLib.safeApprove(
@@ -41,6 +39,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             address(cDAI),
             type(uint256).max
         );
+        list_token_should_succeed(address(cUSDC));
     }
 
     /// @custom:property lend-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
@@ -1029,6 +1028,24 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 "collateral ratio clamped to max collateralization ratio:",
                 safeBounds.collRatio
             );
+        }
+    }
+
+    function check_price_divergence(
+        address mtoken
+    ) private returns (bool divergenceTooLarge, bool priceError) {
+        (uint256 lowerPrice, uint lowError) = PriceRouter(priceRouter)
+            .getPrice(mtoken, true, true);
+        (uint256 higherPrice, uint highError) = PriceRouter(priceRouter)
+            .getPrice(mtoken, true, false);
+
+        priceError = lowError == 2 || highError == 2;
+
+        if (
+            higherPrice - lowerPrice >
+            PriceRouter(priceRouter).badSourceDivergenceFlag()
+        ) {
+            divergenceTooLarge = true;
         }
     }
 }
