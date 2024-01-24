@@ -14,7 +14,7 @@ import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
-
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 /// @notice An auxiliary contract for querying nuanced data 
 ///         inside the Curvance ecosystem.
@@ -99,6 +99,10 @@ contract CurvanceAuxiliaryData {
     function getMarketManagers() external view returns (address[] memory) {
         return centralRegistry.marketManagers();
     }
+
+    /// EXTERNAL ACCOUNT-SPECIFIC FUNCTIONS ///
+
+    
 
     /// EXTERNAL TOKEN-SPECIFIC FUNCTIONS ///
 
@@ -274,6 +278,28 @@ contract CurvanceAuxiliaryData {
         address market
     ) public view returns (address[] memory) {
         return IMarketManager(market).tokensListed();
+    }
+
+    /// PUBLIC ACCOUNT-SPECIFIC FUNCTIONS ///
+
+    function getUserLocks(
+        address account
+    ) public view returns (uint256[] memory, uint256[] memory) {
+        return IVeCVE(centralRegistry.veCVE()).queryUserLocks(account);
+    }
+
+    function getUserLockLength(
+        address account
+    ) public view returns (uint256) {
+        (uint256[] memory lockAmounts,) = getUserLocks(account);
+        return lockAmounts.length;
+    }
+
+    function getUserLockIndexExists(
+        address account,
+        uint256 lockIndex
+    ) public view returns (bool) {
+        return lockIndex >= getUserLockLength(account);
     }
 
     /// PUBLIC TOKEN-SPECIFIC FUNCTIONS ///

@@ -134,6 +134,14 @@ contract VeCVE is ERC20, ReentrancyGuard {
         return (lockAmounts, lockTimestamps);
     }
 
+    /// @notice Used for fuzzing.
+    function getUnlockTime(
+        address user,
+        uint256 lockIndex
+    ) public view returns (uint40) {
+        return userLocks[user][lockIndex].unlockTime;
+    }
+
     /// @notice Rescue any token sent by mistake.
     /// @param token token to rescue.
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all.
