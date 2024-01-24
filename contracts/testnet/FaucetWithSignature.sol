@@ -8,7 +8,7 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-contract Faucet is Ownable {
+contract FaucetWithSignature is Ownable {
     using ECDSA for bytes32;
 
     address private signer;
