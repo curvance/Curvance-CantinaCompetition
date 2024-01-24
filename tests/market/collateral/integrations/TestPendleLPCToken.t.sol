@@ -22,14 +22,6 @@ contract TestPendleLPCToken is TestBaseMarket {
 
     PendleLPCToken cSTETH;
 
-    /*
-    LP token address	0xf5f5B97624542D72A9E06f04804Bf81baA15e2B4
-    Deposit contract address	0xF403C135812408BFbE8713b5A23a04b3D48AAE31
-    Rewards contract address	0xb05262D4aaAA38D0Af4AaB244D446ebDb5afd4A7
-    Convex pool id	188
-    Convex pool url	https://www.convexfinance.com/stake/ethereum/188
-    */
-
     receive() external payable {}
 
     fallback() external payable {}

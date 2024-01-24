@@ -249,17 +249,4 @@ contract PendleLPCToken is CTokenCompounding {
         }
         // else yield is zero
     }
-
-    /// INTERNAL FUNCTIONS ///
-
-    /// @notice Gets the balance of assets inside Aura reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return IERC20(asset()).balanceOf(address(this));
-    }
 }

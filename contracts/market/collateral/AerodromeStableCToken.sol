@@ -50,9 +50,7 @@ contract AerodromeStableCToken is CTokenCompounding {
     /// ERRORS ///
 
     error AerodromeStableCToken__ChainIsNotSupported();
-    error AerodromeStableCToken__StakingTokenIsNotAsset(
-        address stakingToken
-    );
+    error AerodromeStableCToken__StakingTokenIsNotAsset(address stakingToken);
     error AerodromeStableCToken__AssetIsNotStable();
     error AerodromeStableCToken__SlippageError();
     error AerodromeStableCToken__InvalidSwapper(address invalidSwapper);
@@ -129,9 +127,8 @@ contract AerodromeStableCToken is CTokenCompounding {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -252,16 +249,4 @@ contract AerodromeStableCToken is CTokenCompounding {
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);
     }
-
-    /// @notice Gets the balance of assets inside aerodrome gauge pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.gauge.balanceOf(address(this));
-    }
-
 }

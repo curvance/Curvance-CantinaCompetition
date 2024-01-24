@@ -192,7 +192,7 @@ abstract contract CTokenCompounding is CTokenBase {
     }
 
     /// @notice Admin function to set a new compounding vesting period
-    /// @dev Requires dao authority, 
+    /// @dev Requires dao authority,
     ///      and vesting period cannot be longer than a week
     /// @param newVestingPeriod New vesting period in seconds
     function setVestingPeriod(uint256 newVestingPeriod) external {
@@ -633,8 +633,4 @@ abstract contract CTokenCompounding is CTokenBase {
             delete pendingVestUpdate.updateNeeded;
         }
     }
-
-    /// INTERNAL POSITION LOGIC TO OVERRIDE
-
-    function _getRealPositionBalance() internal view virtual returns (uint256);
 }

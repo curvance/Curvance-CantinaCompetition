@@ -266,17 +266,6 @@ contract Convex3PoolCToken is CTokenCompounding {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
     }
 
-    /// @notice Gets the balance of assets inside Convex reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.rewarder.balanceOf(address(this));
-    }
-
     /// @notice Adds underlying tokens to the vaults Curve 3Pool LP
     function _addLiquidityToCurve(uint256 minLPAmount) internal {
         address underlyingToken;
