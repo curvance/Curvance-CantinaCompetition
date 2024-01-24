@@ -80,9 +80,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     GaugePool public gaugePool;
 
     address public harvester;
-    uint256 public voteBoostMultiplier = 11000; // 110%
-    uint256 public lockBoostMultiplier = 10000; // 110%
-    uint256 public marketInterestFactor = 1000; // 10%
+    uint256 public voteBoostMultiplier = 10001; // 110%
+    uint256 public lockBoostMultiplier = 10001; // 110%
+    uint256 public marketInterestFactor = 1; // 10%
 
     Zapper public zapper;
 

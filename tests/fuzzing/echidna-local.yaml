@@ -7,4 +7,3 @@ codeSize: 0xfffffffffff # increase the code size
 testLimit: 400000 # this is the # of iterations Echidna will attempt before it shuts down
 workers: 5 # increases the # of workers/threads to run 
 format: text
-filterFunctions: ["FuzzingSuite.processExpiredLock_should_succeed_if_shutdown(uint256)", "FuzzingSuite.processExpiredLock_should_succeed_if_unlocktime_expired(bool)"]
