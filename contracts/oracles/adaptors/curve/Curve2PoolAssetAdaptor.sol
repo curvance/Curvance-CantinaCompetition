@@ -103,6 +103,10 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAssetAdaptor__Reentrant();
         }
 
+        // Make sure virtualPrice is reasonable.
+        uint256 virtualPrice = pool.get_virtual_price();
+        _enforceBounds(virtualPrice, data.lowerBound, data.upperBound);
+
         // Get underlying token prices.
         IOracleRouter oracleRouter = IOracleRouter(
             centralRegistry.oracleRouter()
@@ -131,8 +135,6 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         uint256 price = (out * WAD * (10 ** data.quoteTokenDecimals)) /
             sample /
             (10 ** data.baseTokenDecimals); // in base token decimals
-
-        _enforceBounds(price, data.lowerBound, data.upperBound);
 
         price = (price * basePrice) / WAD;
 
@@ -203,6 +205,12 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         if (_MAX_BOUND_RANGE + data.lowerBound < data.upperBound) {
             revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
+
+        // Validate we can pull a virtual price.
+        uint256 testVirtualPrice = pool.get_virtual_price();
+
+        // Validate the virtualPrice is within the desired bounds.
+        _enforceBounds(testVirtualPrice, data.lowerBound, data.upperBound);
 
         adaptorData[asset] = data;
 
