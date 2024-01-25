@@ -98,19 +98,20 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     ) external view override returns (PriceReturnData memory pData) {
         pData.inUSD = inUSD;
 
-        if (isLocked(asset, 2)) {
-            revert Curve2PoolLPAdaptor__Reentrant();
-        }
-
         AdaptorData memory data = adaptorData[asset];
         ICurvePool pool = ICurvePool(data.pool);
+        if (isLocked(data.pool, 2)) {
+            revert Curve2PoolLPAdaptor__Reentrant();
+        }
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
         _enforceBounds(virtualPrice, data.lowerBound, data.upperBound);
 
         // Get underlying token prices.
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
         uint256 price0;
         uint256 price1;
         uint256 errorCode;
