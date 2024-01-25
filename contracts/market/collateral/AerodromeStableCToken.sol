@@ -163,7 +163,7 @@ contract AerodromeStableCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }

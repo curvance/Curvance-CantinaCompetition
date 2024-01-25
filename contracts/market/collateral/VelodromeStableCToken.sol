@@ -164,7 +164,7 @@ contract VelodromeStableCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }

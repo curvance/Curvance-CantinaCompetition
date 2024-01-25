@@ -222,7 +222,7 @@ contract Convex3PoolCToken is CTokenCompounding {
                             swapDataArray[i].target
                         );
                     }
-                    SwapperLib.swap(swapDataArray[i]);
+                    SwapperLib.swap(centralRegistry, swapDataArray[i]);
                 }
             }
 

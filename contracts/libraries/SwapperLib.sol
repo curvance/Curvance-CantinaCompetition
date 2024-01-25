@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IExternalCallDataChecker } from "contracts/interfaces/IExternalCallDataChecker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
 
@@ -32,7 +34,21 @@ library SwapperLib {
     /// @notice Swap input token into a desired token.
     /// @param swapData The swap data.
     /// @return Swapped amount of token.
-    function swap(Swap memory swapData) internal returns (uint256) {
+    function swap(
+        ICentralRegistry centralRegistry,
+        Swap memory swapData
+    ) internal returns (uint256) {
+        address callDataChecker = centralRegistry.externalCallDataChecker(
+            swapData.target
+        );
+        if (callDataChecker != address(0)) {
+            IExternalCallDataChecker(callDataChecker).checkRecipient(
+                swapData.target,
+                swapData.call,
+                address(this)
+            );
+        }
+
         _approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,

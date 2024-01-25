@@ -240,7 +240,7 @@ contract AuraCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }

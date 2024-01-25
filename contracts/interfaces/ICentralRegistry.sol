@@ -178,4 +178,8 @@ interface ICentralRegistry {
 
     /// @notice Returns whether the inputted address is an Approved Endpoint.
     function isEndpoint(address _address) external view returns (bool);
+
+    function externalCallDataChecker(
+        address _target
+    ) external view returns (address);
 }

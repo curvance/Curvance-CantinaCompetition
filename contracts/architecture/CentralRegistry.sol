@@ -158,6 +158,7 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public isHarvester;
     mapping(address => bool) public isMarketManager;
     mapping(address => bool) public isEndpoint;
+    mapping(address => address) public externalCallDataChecker;
 
     /// EVENTS ///
 
@@ -657,6 +658,15 @@ contract CentralRegistry is ERC165 {
     }
 
     /// CONTRACT MAPPING LOGIC
+
+    function setExternalCallDataChecker(
+        address target,
+        address callDataChecker
+    ) external {
+        _checkElevatedPermissions();
+
+        externalCallDataChecker[target] = callDataChecker;
+    }
 
     function addZapper(address newZapper) external {
         _checkElevatedPermissions();
