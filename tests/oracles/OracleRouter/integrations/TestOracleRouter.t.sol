@@ -33,17 +33,26 @@ contract TestOracleRouter is TestBaseOracleRouter {
         _deployDynamicInterestRateModel();
 
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            CHAINLINK_PRICE_FEED_ETH
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
+        chainlinkAdaptor.addAsset(
+            _ETH_ADDRESS,
+            CHAINLINK_PRICE_FEED_ETH,
+            0,
+            true
+        );
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
         chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
 

@@ -38,12 +38,12 @@ contract TestZapperCurve is TestBaseMarket {
 
         vm.startPrank(user);
         address[] memory tokens = new address[](2);
-        tokens[0] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+        tokens[0] = _ETH_ADDRESS;
         tokens[1] = _STETH_ADDRESS;
         zapper.curveIn{ value: ethAmount }(
             address(0),
             Zapper.ZapperData(
-                0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+                _ETH_ADDRESS,
                 ethAmount,
                 _CURVE_STETH_LP,
                 1,
@@ -67,7 +67,7 @@ contract TestZapperCurve is TestBaseMarket {
 
         vm.startPrank(user);
         address[] memory tokens = new address[](2);
-        tokens[0] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+        tokens[0] = _ETH_ADDRESS;
         tokens[1] = _STETH_ADDRESS;
         IERC20(_CURVE_STETH_LP).approve(address(zapper), withdrawAmount);
         zapper.curveOut(
@@ -75,7 +75,7 @@ contract TestZapperCurve is TestBaseMarket {
             Zapper.ZapperData(
                 _CURVE_STETH_LP,
                 withdrawAmount,
-                0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
+                _ETH_ADDRESS,
                 0,
                 false
             ),

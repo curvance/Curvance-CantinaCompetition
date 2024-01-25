@@ -49,8 +49,13 @@ contract TestPendlePTTokenAdaptor is TestBaseOracleRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
+        chainlinkAdaptor.addAsset(_ETH_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
         chainlinkAdaptor.addAsset(_STETH, _CHAINLINK_ETH_USD, 0, true);
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
 
         PendlePrincipalTokenAdaptor.AdaptorData memory adapterData;
