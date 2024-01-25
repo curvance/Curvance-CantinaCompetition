@@ -1077,7 +1077,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
     }
 
-    /// @custom:property s-vecve-7 The contract should only have a zero balance when there are no user locks
+    /// @custom:property s-vecve-7 The contract should only have a zero cve balance when there are no user locks
     function no_user_locks_should_have_zero_cve_balance() public {
         address[4] memory senders = [
             address(0x10000),
@@ -1093,10 +1093,6 @@ contract FuzzVECVE is StatefulBaseMarket {
             0,
             "VE_CVE - CVE Balance of VECVE should be zero when there are no user locks"
         );
-    }
-
-    function cve_balance_only_zero_when_no_user_locks() public {
-        if (cve.balanceOf(address(veCVE)) == 0) {} else {}
     }
 
     // Helper Functions
