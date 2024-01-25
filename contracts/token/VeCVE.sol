@@ -571,8 +571,19 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         if (relock) {
             // Token points will be caught up by _claimRewards call so we can
-            // treat this as a fresh lock and increment rewards again.
-            _lock(msg.sender, amount, continuousLock);
+            // treat this as a fresh lock and increment points again.
+            if (continuousLock) {
+                // If the relocked lock is continuous update `unlockTime`
+                // to continuous lock value and increase points.
+                lock.unlockTime = CONTINUOUS_LOCK_VALUE;
+                _incrementPoints(msg.sender, _getCLPoints(amount));
+            } else {
+                // If the relocked lock is a standard lock `unlockTime`
+                // to a fresh lock timestamp and increase points unlock schedule.
+                lock.unlockTime = freshLockTimestamp();
+                _incrementPoints(msg.sender, amount);
+                _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
+            }
         } else {
             _burn(msg.sender, amount);
             _removeLock(locks, lockIndex);

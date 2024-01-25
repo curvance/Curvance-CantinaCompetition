@@ -51,11 +51,11 @@ contract OracleRouter {
     /// STORAGE ///
 
     /// @notice The maximum allowed divergence between prices
-    ///         before CAUTION is flipped, in `DENOMINATOR`.
-    uint256 public cautionDivergenceFlag = 10500; // 5%
+    ///         before CAUTION is flipped, in `DENOMINATOR`. 5%.
+    uint256 public cautionDivergenceFlag = 10500;
     /// @notice The maximum allowed divergence between prices
-    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`.
-    uint256 public badSourceDivergenceFlag = 11000; // 10%
+    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`. 10%.
+    uint256 public badSourceDivergenceFlag = 11000;
     /// @notice The maximum delay accepted between answers from chainlink.
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
 
@@ -91,8 +91,10 @@ contract OracleRouter {
         }
 
         centralRegistry = centralRegistry_;
-        // Save the USD-ETH price feed because it is a widely used pricing path.
-        CHAINLINK_ETH_USD = ethUsdFeed; // 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on mainnet
+        // Save the USD-ETH price feed because it is a widely used pricing
+        // path. 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on Ethereum
+        // mainnet.
+        CHAINLINK_ETH_USD = ethUsdFeed;
         CHAINLINK_DECIMALS = 10 ** IChainlink(CHAINLINK_ETH_USD).decimals();
     }
 

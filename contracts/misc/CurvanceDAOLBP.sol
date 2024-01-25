@@ -222,7 +222,8 @@ contract CurvanceDAOLBP {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @notice Returns the current soft cap limit, in `paymentToken`.
+    /// @notice Returns the current soft cap limit, in `paymentToken`, 
+    ///         denominated in 18 decimals.
     function softCap() public view returns (uint256) {
         return (softPriceInpaymentToken * cveAmountForSale) / WAD;
     }
