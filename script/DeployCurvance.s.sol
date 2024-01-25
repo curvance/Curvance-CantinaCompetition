@@ -145,10 +145,7 @@ contract DeployCurvance is
 
         _deployPositionFolding(centralRegistry, marketManager);
 
-        deployOracleRouter(
-            centralRegistry,
-            _readConfigAddress(".oracleRouter.chainlinkEthUsd")
-        );
+        deployOracleRouter(centralRegistry);
         CentralRegistryDeployer.setOracleRouter(oracleRouter);
 
         // transfer dao, timelock, emergency council
