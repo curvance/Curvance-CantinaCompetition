@@ -4,3 +4,4 @@ coverage: true # turns coverage saving on
 corpusDir: "output/market-manager-rebase-0123" # save in ./output/echidna-corpus 
 cryticArgs: ["--ignore-compile"] # do not recompile when running 
 workers: 10 # increased number of workers 
+format: text
