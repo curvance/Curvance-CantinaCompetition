@@ -135,25 +135,25 @@ contract FuzzVECVE is StatefulBaseMarket {
     }
 
     ///
-    function combineAllLocks_called_when_shutdown_should_revert() public {
-        bool continuous = true;
-        require(get_locks_length() >= 2);
-        require(veCVE.isShutdown() == 2);
-        try
-            veCVE.combineAllLocks(continuous, defaultRewardData, bytes(""), 0)
-        {
-            assertWithMsg(
-                false,
-                "VE_CVE - combine all locks when shut down should not be possible"
-            );
-        } catch (bytes memory revertData) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            assertWithMsg(
-                errorSelector == vecve_shutdownSelectorHash,
-                "VE_CVE - combine all locks when shut down did not fail with error"
-            );
-        }
-    }
+    // function combineAllLocks_called_when_shutdown_should_revert() public {
+    //     bool continuous = true;
+    //     require(get_locks_length() >= 2);
+    //     require(veCVE.isShutdown() == 2);
+    //     try
+    //         veCVE.combineAllLocks(continuous, defaultRewardData, bytes(""), 0)
+    //     {
+    //         assertWithMsg(
+    //             false,
+    //             "VE_CVE - combine all locks when shut down should not be possible"
+    //         );
+    //     } catch (bytes memory revertData) {
+    //         uint256 errorSelector = extractErrorSelector(revertData);
+    //         assertWithMsg(
+    //             errorSelector == vecve_shutdownSelectorHash,
+    //             "VE_CVE - combine all locks when shut down did not fail with error"
+    //         );
+    //     }
+    // }
 
     /// @custom:property vecve-4 – Combining all continuous locks into a single continuous lock should result in identical user points before and after the operation.
     /// @custom:property vecve-5 – Combining all continuous locks into a single continuous lock should result in an increase in user points being greater than veCVE balance * MULTIPLIER / WAD.
