@@ -99,9 +99,44 @@ contract TestCurvanceDAOLBP is TestBaseMarket {
         // before softcap
         uint256 commitAmount = lbp.softCap();
         _prepareCommit(address(this), commitAmount);
+
         lbp.commit(commitAmount);
         assertEq(lbp.saleCommitted(), commitAmount);
         assertEq(lbp.userCommitted(address(this)), commitAmount);
+        assertEq(
+            lbp.currentPrice(),
+            lbp.softPriceInpaymentToken()
+        );
+    }
+
+    function testCommitForRevertWhenlbpNotStarted() public {
+        _prepareCommit(address(this), 1e18);
+
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__NotStarted.selector);
+        lbp.commitFor(1e18, address(1));
+    }
+
+    function testCommitForRevertWhenlbpClosed() public {
+        testStartSuccess();
+
+        _prepareCommit(address(this), 1e18);
+
+        skip(lbp.SALE_PERIOD() + 1);
+
+        vm.expectRevert(CurvanceDAOLBP.CurvanceDAOLBP__Closed.selector);
+        lbp.commitFor(1e18, address(1));
+    }
+
+    function testCommitForSuccess() public {
+        testStartSuccess();
+
+        // before softcap
+        uint256 commitAmount = lbp.softCap();
+        _prepareCommit(address(this), commitAmount);
+
+        lbp.commitFor(commitAmount, address(1));
+        assertEq(lbp.saleCommitted(), commitAmount);
+        assertEq(lbp.userCommitted(address(1)), commitAmount);
         assertEq(
             lbp.currentPrice(),
             lbp.softPriceInpaymentToken()

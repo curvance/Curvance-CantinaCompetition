@@ -115,6 +115,38 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocks(
+        address user
+    ) external view returns (uint256[] memory, uint256[] memory) {
+        uint256 numLocks = userLocks[user].length;
+        Lock[] memory locks = userLocks[user];
+        Lock memory lock;
+        uint256[] memory lockAmounts = new uint256[](numLocks);
+        uint256[] memory lockTimestamps = new uint256[](numLocks);
+
+        for (uint256 i; i < numLocks; ++i) {
+            lock = locks[i];
+            lockAmounts[i] = lock.amount;
+            lockTimestamps[i] = lock.unlockTime;
+        }
+
+        return (lockAmounts, lockTimestamps);
+    }
+
+    /// @notice Used for fuzzing.
+    function getUnlockTime(
+        address user,
+        uint256 lockIndex
+    ) public view returns (uint40) {
+        return userLocks[user][lockIndex].unlockTime;
+    }
+
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocksLength(address user) external view returns (uint) {
+        return userLocks[user].length;
+    }
+
     /// @notice Rescue any token sent by mistake.
     /// @param token token to rescue.
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all.
@@ -419,6 +451,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
+        if (isShutdown == 2) {
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
+        }
+
         // Claim any pending locker rewards.
         _claimRewards(msg.sender, rewardsData, params, aux);
 
@@ -540,8 +576,20 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         if (relock) {
             // Token points will be caught up by _claimRewards call so we can
-            // treat this as a fresh lock and increment rewards again.
-            _lock(msg.sender, amount, continuousLock);
+            // treat this as a fresh lock and increment points.
+            if (continuousLock) {
+                // If the relocked lock is continuous update `unlockTime`
+                // to continuous lock value and increase points.
+                locks[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
+                _incrementPoints(msg.sender, _getCLPoints(amount));
+            } else {
+                // If the relocked lock is a standard lock `unlockTime`
+                // to a fresh lock timestamp and increase points
+                // and set unlock schedule.
+                locks[lockIndex].unlockTime = freshLockTimestamp();
+                _incrementPoints(msg.sender, amount);
+                _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
+            }
         } else {
             _burn(msg.sender, amount);
             _removeLock(locks, lockIndex);
@@ -577,6 +625,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external payable nonReentrant returns (uint64 sequence) {
+        if (isShutdown == 2) {
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
+        }
+
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -1261,17 +1313,5 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
-    }
-
-    function getUnlockTime(
-        address _addr,
-        uint _index
-    ) public view returns (uint40) {
-        return userLocks[_addr][_index].unlockTime;
-    }
-
-    /// @notice Used for frontend, needed due to array of structs.
-    function queryUserLocksLength(address user) external view returns (uint) {
-        return userLocks[user].length;
     }
 }

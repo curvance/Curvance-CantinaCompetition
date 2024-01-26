@@ -114,6 +114,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
         }
 
         // Compute the merkle leaf and verify the merkle proof.
+        // We add padding so we do not run into leaf collision issues.
         if (
             !verify(
                 proof,
