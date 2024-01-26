@@ -13,6 +13,7 @@ library CurveLib {
         uint256 amount,
         uint256 minimum
     );
+    error CurveLib__InvalidPoolInvariantError();
 
     /// FUNCTIONS ///
 
@@ -28,6 +29,7 @@ library CurveLib {
         uint256 lpMinOutAmount
     ) internal returns (uint256 lpOutAmount) {
         uint256 value;
+        bool containsEth;
 
         uint256 numTokens = tokens.length;
 
@@ -38,7 +40,14 @@ library CurveLib {
             SwapperLib._approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
 
             if (CommonLib.isETH(tokens[i])) {
+                // If eth is somehow contained in a pool twice, 
+                // something is wrong and we need to halt execution.
+                if (containsEth) {
+                    revert CurveLib__InvalidPoolInvariantError();
+                }
+
                 value = balances[i];
+                containsEth = true;
             }
 
             unchecked {

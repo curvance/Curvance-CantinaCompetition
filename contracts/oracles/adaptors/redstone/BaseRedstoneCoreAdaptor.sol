@@ -19,8 +19,12 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool isConfigured;
         /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @notice max the max valid price of the asset.
+        /// @notice The max valid price of the asset.
         uint256 max;
+        /// @notice The number of decimals in the redstone price feed.
+        /// @dev We save this as a uint256 so we do not need to convert from
+        ///      uint8 -> uint256 at runtime.
+        uint256 decimals;
     }
 
     /// STORAGE ///
@@ -73,33 +77,47 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Redstone Core Price Feed as an asset.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the token to add pricing for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
+    /// @param decimals The number of decimals the redstone core feed
+    ///                 prices in.
     function addAsset(
         address asset, 
-        bool inUSD
+        bool inUSD,
+        uint8 decimals
     ) external {
         _checkElevatedPermissions();
 
         bytes32 symbolHash;
         if (inUSD) {
-            // Redstone Core does not append anything at the end of USD denominated feeds,
-            // so we use toBytes32 here.
+            // Redstone Core does not append anything at the end of USD
+            // denominated feeds, so we use toBytes32 here.
             symbolHash = Bytes32Helper._toBytes32(asset);
         } else {
-            // Redstone Core appends "/ETH" at the end of ETH denominated feeds,
-            // so we use toBytes32WithETH here.
+            // Redstone Core appends "/ETH" at the end of ETH denominated
+            // feeds, so we use toBytes32WithETH here.
             symbolHash = Bytes32Helper._toBytes32WithETH(asset);
         }
 
-        AdaptorData storage adaptorData;
+        AdaptorData storage data;
 
         if (inUSD) {
-            adaptorData = adaptorDataUSD[asset];
+            data = adaptorDataUSD[asset];
         } else {
-            adaptorData = adaptorDataNonUSD[asset];
+            data = adaptorDataNonUSD[asset];
+        }
+
+        // If decimals == 0 we want default 8 decimals that
+        // redstone typically returns in.
+        if (decimals == 0) {
+            data.decimals = 8;
+        } else {
+            // Otherwise coerce uint8 to uint256 for cheaper
+            // runtime conversion.
+            data.decimals = uint256(decimals);
         }
 
         // Add a ~10% buffer to maximum price allowed from redstone can stop 
@@ -108,16 +126,18 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         // reports pricing in 8 decimal format, requiring multiplication by
         // 10e10 to standardize to 18 decimal format, which could overflow 
         // when trying to save the final value into an uint240.
-        adaptorData.max = (type(uint192).max * 9) / 10;
-        adaptorData.symbolHash = symbolHash;
-        adaptorData.isConfigured = true;
+        data.max = (type(uint192).max * 9) / 10;
+        data.symbolHash = symbolHash;
+        data.isConfigured = true;
         isSupportedAsset[asset] = true;
 
-        emit RedstoneCoreAssetAdded(asset, adaptorData);
+        emit RedstoneCoreAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -132,7 +152,8 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting the asset.
+        // Notify the oracle router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
         emit RedstoneCoreAssetRemoved(asset);
@@ -182,18 +203,25 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
 
-        // If we got a price of 0, bubble up an error immediately.
-        if (price == 0) {
-            pData.hadError = true;
-            return pData;
+        // Load decimals into cache to minimize MLOADs/SLOADs.
+        uint256 quoteDecimals = data.decimals;
+        if (quoteDecimals != 18) {
+            // Decimals are < 18 so we need to multiply up to coerce to
+            // 18 decimals.
+            if (quoteDecimals < 18) {
+                price = price * (10 ** (18 - quoteDecimals));
+            } else {
+                // Decimals are > 18 so we need to multiply down to coerce to
+                // 18 decimals.
+                price = price / (10 ** (quoteDecimals - 18));
+            }
         }
 
-        // Redstone Core always has decimals = 8 so we need to
-        // adjust back to decimals = 18.
-        uint256 newPrice = price * (10 ** 10);
-
-        pData.price = uint240(newPrice);
         pData.hadError = _verifyData(price, data.max);
+
+        if (!pData.hadError) {
+            pData.price = uint240(price);
+        }
     }
 
     /// @notice Validates the feed data based on various constraints.
@@ -211,9 +239,14 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             return true;
         }
 
-        // We typically check for feed data staleness through a heartbeat check, 
-        // but redstone naturally checks timestamp through its msg.data read, 
-        // so we do not need to check again here.
+        // If we got a price of 0, bubble up an error immediately.
+        if (value == 0) {
+            return true;
+        }
+
+        // We typically check for feed data staleness through a heartbeat
+        // check, but redstone naturally checks timestamp through its msg.data
+        // read, so we do not need to check again here.
 
         return false;
     }

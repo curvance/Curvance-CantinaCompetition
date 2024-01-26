@@ -85,8 +85,8 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         );
     }
 
-    // cover L680
-    function test_processExpiredLock_success_withDiscontinuousLock_withRelock(
+    // cover L575
+    function test_processExpiredLock_success_withDiscontinuousLock_withContinuousRelock(
         bool shouldLock,
         bool isFreshLock,
         bool isFreshLockContinuous
@@ -95,10 +95,34 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
 
-        // new mint
-        vm.expectEmit(true, true, true, true, address(veCVE));
-        emit Transfer(address(0), address(this), amount);
+        // Index 0, relock = true, continuous lock mode = true
+        veCVE.processExpiredLock(
+            0,
+            true,
+            true,
+            rewardsData,
+            "",
+            0
+        );
+        
+        // lockIndex 0 is updated to new timestamp
+        (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 0);
+        assertGt(unlockTime2, unlockTime);
+        assertEq(unlockTime2, veCVE.CONTINUOUS_LOCK_VALUE());
+        assertEq(amount2, amount);
+    }
 
+    // cover L580
+    function test_processExpiredLock_success_withDiscontinuousLock_withDiscontinuousRelock(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        (uint216 amount, uint40 unlockTime) =
+            veCVE.userLocks(address(this), 0);
+        vm.warp(unlockTime);
+
+        // Index 0, relock = true, continuous lock mode = false
         veCVE.processExpiredLock(
             0,
             true,
@@ -107,14 +131,15 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             "",
             0
         );
-
-        // new lock is created because of relock
-        (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 1);
+        
+        // lockIndex 0 is updated to new timestamp
+        (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 0);
         assertGt(unlockTime2, unlockTime);
+        assertEq(unlockTime2, veCVE.freshLockTimestamp());
         assertEq(amount2, amount);
     }
 
-    // cover L672
+    // cover L566
     function test_processExpiredLock_success_withDiscontinuousLock_withRelock_duringShutdown(
         bool shouldLock,
         bool isFreshLock,

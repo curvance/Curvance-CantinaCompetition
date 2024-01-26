@@ -93,7 +93,8 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Chainlink Price Feed as an asset.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the token to add pricing for
     /// @param aggregator Chainlink aggregator to use for pricing `asset`
     /// @param heartbeat Chainlink heartbeat to use when validating prices
@@ -132,49 +133,51 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;
         uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;
 
-        AdaptorData storage adaptorData;
+        AdaptorData storage data;
 
         if (inUSD) {
-            adaptorData = adaptorDataUSD[asset];
+            data = adaptorDataUSD[asset];
         } else {
-            adaptorData = adaptorDataNonUSD[asset];
+            data = adaptorDataNonUSD[asset];
         }
 
-        if (adaptorData.min == 0) {
-            adaptorData.min = bufferedMinPrice;
+        if (data.min == 0) {
+            data.min = bufferedMinPrice;
         } else {
-            if (adaptorData.min < bufferedMinPrice) {
+            if (data.min < bufferedMinPrice) {
                 revert ChainlinkAdaptor__InvalidMinPrice();
             }
-            adaptorData.min = bufferedMinPrice;
+            data.min = bufferedMinPrice;
         }
 
-        if (adaptorData.max == 0) {
-            adaptorData.max = bufferedMaxPrice;
+        if (data.max == 0) {
+            data.max = bufferedMaxPrice;
         } else {
-            if (adaptorData.max > bufferedMaxPrice) {
+            if (data.max > bufferedMaxPrice) {
                 revert ChainlinkAdaptor__InvalidMaxPrice();
             }
-            adaptorData.max = bufferedMaxPrice;
+            data.max = bufferedMaxPrice;
         }
 
         if (bufferedMinPrice >= bufferedMaxPrice) {
             revert ChainlinkAdaptor__InvalidMinMaxConfig();
         }
        
-        adaptorData.decimals = feedAggregator.decimals();
-        adaptorData.heartbeat = heartbeat != 0
+        data.decimals = feedAggregator.decimals();
+        data.heartbeat = heartbeat != 0
             ? heartbeat
             : DEFAULT_HEART_BEAT;
 
-        adaptorData.aggregator = IChainlink(aggregator);
-        adaptorData.isConfigured = true;
+        data.aggregator = IChainlink(aggregator);
+        data.isConfigured = true;
         isSupportedAsset[asset] = true;
-        emit ChainlinkAssetAdded(asset, adaptorData);
+        emit ChainlinkAssetAdded(asset, data);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -189,7 +192,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the price router that we are going to stop supporting the asset
+        // Notify the oracle router that we are going to stop supporting the asset
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit ChainlinkAssetRemoved(asset);
     }

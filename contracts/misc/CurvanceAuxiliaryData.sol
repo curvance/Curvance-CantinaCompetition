@@ -14,7 +14,7 @@ import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
-
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 /// @notice An auxiliary contract for querying nuanced data 
 ///         inside the Curvance ecosystem.
@@ -49,6 +49,8 @@ contract CurvanceAuxiliaryData {
     }
 
     /// EXTERNAL FUNCTIONS ///
+
+    /// CHAIN-WIDE FUNCTIONS ///
 
     /// @notice Returns the current TVL inside Curvance.
     /// @return result The current TVL inside Curvance, in `WAD`.
@@ -94,6 +96,62 @@ contract CurvanceAuxiliaryData {
         }
     }
 
+    function getMarketManagers() external view returns (address[] memory) {
+        return centralRegistry.marketManagers();
+    }
+
+    /// EXTERNAL ACCOUNT-SPECIFIC FUNCTIONS ///
+
+    
+
+    /// EXTERNAL TOKEN-SPECIFIC FUNCTIONS ///
+
+    /// @notice Returns if an account has an active position in `token`, 
+    ///         and any user balances or collateral posted in `token`.
+    /// @param account The address of the account to check token data of.
+    /// @param token The address of the market token.
+    function getAccountTokenData(
+        address account, 
+        address token
+    ) external view returns (bool, uint256, uint256) {
+        IMarketManager marketManager = IMarketManager(IMToken(token).marketManager());
+        return marketManager.tokenDataOf(account, token);
+    }
+
+    /// @notice Return the debt balance of `account` based on stored data.
+    /// @param account The address whose debt balance should be calculated.
+    /// @return `account`'s cached balance index for `token`.
+    function getAccountDebtData(
+        address account,
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).debtBalanceCached(account);
+    }
+
+    /// @notice Calculates `token` utilization rate.
+    /// @return The utilization rate, in `WAD`.
+    function getUtilizationRate(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).utilizationRate();
+    }
+
+    /// @notice Returns `token` borrow interest rate per year.
+    /// @return The borrow interest rate per year, in `WAD`.
+    function getBorrowRatePerYear(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).borrowRatePerYear();
+    }
+
+    /// @notice Returns `token` supply interest rate per year.
+    /// @return The supply interest rate per year, in `WAD`.
+    function getSupplyRatePerYear(
+        address token
+    ) external view returns (uint256) {
+        return IMToken(token).supplyRatePerYear();
+    }
+
     function getBaseRewards(address token) external view returns (uint256) {
 
     }
@@ -101,6 +159,8 @@ contract CurvanceAuxiliaryData {
     function getCVERewards(address token) external view returns (uint256) {
 
     }
+
+    /// ORACLE ROUTER FUNCTIONS ///
 
     function getPrices(
         address[] calldata assets,
@@ -115,6 +175,8 @@ contract CurvanceAuxiliaryData {
     }
 
     /// PUBLIC FUNCTIONS ///
+
+    /// MARKET-SPECIFIC FUNCTIONS ///
 
     /// @notice Returns the current TVL inside a Curvance market.
     /// @param market The market to query TVL for.
@@ -174,40 +236,12 @@ contract CurvanceAuxiliaryData {
         }
     }
 
-    /// @notice Returns the current TVL inside an MToken token.
-    /// @param token The token to query TVL for.
-    /// @return result The current TVL inside `token`, in `WAD`.
-    function getTokenTVL(
-        address token, 
-        bool getLower
-    ) public view returns (uint256 result) {
-        // Get current shares total supply then query price and return.
-        result = _getTokenPrice(token, getLower) * IMToken(token).totalSupply();
-    }
-
-    /// @notice Returns the outstanding underlying tokens borrowed from a DToken market.
-    /// @param token The token to query outstanding borrows for.
-    /// @return result The outstanding underlying tokens, in `WAD`.
-    function getTokenBorrows(address token) public view returns (uint256 result) {
-        IMToken mToken = IMToken(token);
-        // Get outstanding borrows then query price and return.
-        result = _getTokenPrice(mToken.underlying(), false) * mToken.totalBorrows();
-    }
-
-    /// @notice Returns all listed market assets inside `market`.
-    /// @return The listed market assets.
-    function getMarketAssets(
-        address market
-    ) public view returns (address[] memory) {
-        return IMarketManager(market).tokensListed();
-    }
-
     /// @notice Returns listed collateral assets inside `market`.
     /// @return The listed collateral assets.
     function getMarketCollateralAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = IMarketManager(market).tokensListed();
+        address[] memory assets = getMarketAssets(market);
         uint256 numAssets = assets.length;
 
         address asset;
@@ -237,7 +271,7 @@ contract CurvanceAuxiliaryData {
     function getMarketDebtAssets(
         address market
     ) public view returns (address[] memory) {
-        address[] memory assets = IMarketManager(market).tokensListed();
+        address[] memory assets = getMarketAssets(market);
         uint256 numAssets = assets.length;
 
         address asset;
@@ -260,6 +294,58 @@ contract CurvanceAuxiliaryData {
         }
 
         return debtAssets;
+    }
+
+    /// @notice Returns all listed market assets inside `market`.
+    /// @return The listed market assets.
+    function getMarketAssets(
+        address market
+    ) public view returns (address[] memory) {
+        return IMarketManager(market).tokensListed();
+    }
+
+    /// PUBLIC ACCOUNT-SPECIFIC FUNCTIONS ///
+
+    function getUserLocks(
+        address account
+    ) public view returns (uint256[] memory, uint256[] memory) {
+        return IVeCVE(centralRegistry.veCVE()).queryUserLocks(account);
+    }
+
+    function getUserLockLength(
+        address account
+    ) public view returns (uint256) {
+        (uint256[] memory lockAmounts, ) = getUserLocks(account);
+        return lockAmounts.length;
+    }
+
+    function getUserLockIndexExists(
+        address account,
+        uint256 lockIndex
+    ) public view returns (bool) {
+        return lockIndex >= getUserLockLength(account);
+    }
+
+    /// PUBLIC TOKEN-SPECIFIC FUNCTIONS ///
+
+    /// @notice Returns the current TVL inside an MToken token.
+    /// @param token The token to query TVL for.
+    /// @return result The current TVL inside `token`, in `WAD`.
+    function getTokenTVL(
+        address token, 
+        bool getLower
+    ) public view returns (uint256 result) {
+        // Get current shares total supply then query price and return.
+        result = _getTokenPrice(token, getLower) * IMToken(token).totalSupply();
+    }
+
+    /// @notice Returns the outstanding underlying tokens borrowed from a DToken market.
+    /// @param token The token to query outstanding borrows for.
+    /// @return result The outstanding underlying tokens, in `WAD`.
+    function getTokenBorrows(address token) public view returns (uint256 result) {
+        IMToken mToken = IMToken(token);
+        // Get outstanding borrows then query price and return.
+        result = _getTokenPrice(mToken.underlying(), false) * mToken.totalBorrows();
     }
 
     /// INTERNAL FUNCTIONS ///

@@ -4,9 +4,9 @@ pragma solidity ^0.8.17;
 import "forge-std/console.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
-import { Faucet } from "contracts/testnet/Faucet.sol";
+import { FaucetWithSignature } from "contracts/testnet/FaucetWithSignature.sol";
 
-contract DeployFaucet is DeployConfiguration {
+contract DeployFaucetWithSignature is DeployConfiguration {
     function run(string memory network) external {
         _setConfigurationPath(network);
         _setDeploymentPath(network);
@@ -20,10 +20,10 @@ contract DeployFaucet is DeployConfiguration {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        address faucet = address(new Faucet(deployer));
+        address faucetWithSignature = address(new FaucetWithSignature(deployer));
 
-        console.log("faucet deployed at: ", faucet);
-        _saveDeployedContracts("faucet", faucet);
+        console.log("FaucetWithSignature deployed at: ", faucetWithSignature);
+        _saveDeployedContracts("faucetWithSignature", faucetWithSignature);
 
         vm.stopBroadcast();
     }
