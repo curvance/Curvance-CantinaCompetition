@@ -24,7 +24,7 @@ contract UpdateDynamicInterestRateModelTest is
             1000,
             5000,
             12 hours,
-            (maxVertexAdjustmentVelocity - WAD) / 1e14 + 1,
+            (maxVertexAdjustmentVelocity) / 1e14 + 1,
             100000000,
             100,
             true
@@ -47,7 +47,7 @@ contract UpdateDynamicInterestRateModelTest is
             1000,
             5000,
             12 hours,
-            (minVertexAdjustmentVelocity - WAD) / 1e14 - 1,
+            (minVertexAdjustmentVelocity / 1e14) - 1,
             100000000,
             100,
             true
