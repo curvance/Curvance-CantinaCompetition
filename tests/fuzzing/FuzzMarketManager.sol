@@ -459,7 +459,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             );
             // market-10
             assertWithMsg(
-                marketManager.hasPosition(mtoken, address(this)),
+                _hasPosition(mtoken),
                 "marketManager - addr(this) must have position after posting"
             );
             // ensure collateralPosted increases by tokens
@@ -552,7 +552,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
         );
 
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         require(marketManager.redeemPaused() != 2);
 
         uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
@@ -624,7 +624,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             );
             if (newCollateralForUser == 0 && closePositionIfPossible) {
                 assertWithMsg(
-                    !marketManager.hasPosition(mtoken, address(this)),
+                    !_hasPosition(mtoken),
                     "marketManager - closePositionIfPossible flag set should remove a user's position"
                 );
             }
@@ -643,7 +643,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.isListed(mtoken));
         check_price_feed();
-        require(!marketManager.hasPosition(mtoken, address(this)));
+        require(!_hasPosition(mtoken));
 
         (bool success, bytes memory revertData) = address(marketManager).call(
             abi.encodeWithSignature(
@@ -684,7 +684,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.isListed(mtoken));
         check_price_feed();
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
 
         tokens = clampBetween(
@@ -753,7 +753,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     function closePosition_should_succeed(address mtoken) public {
         require(marketManager.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         check_price_feed();
         uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser > 0);
@@ -804,7 +804,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     ) public {
         require(marketManager.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         check_price_feed();
         uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser == 0);
@@ -832,7 +832,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         uint256 preAssetsOfLength
     ) private {
         assertWithMsg(
-            !marketManager.hasPosition(mtoken, address(this)),
+            !_hasPosition(mtoken),
             "marketManager - closePosition should remove position in mtoken if successful"
         );
         assertWithMsg(
@@ -968,5 +968,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
     function _collateralPostedFor(address mToken) private view returns (uint256) {
         ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
         return collateralPosted;
+    }
+
+    function _hasPosition(address mToken) private view returns (bool) {
+        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        return hasPosition;
     }
 }
