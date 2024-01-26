@@ -813,11 +813,10 @@ contract FuzzVECVE is StatefulBaseMarket {
         uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(caller);
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
-        (uint256 amount, uint256 unlockTime) = get_user_locks_info(
-            caller,
-            lockIndex
-        );
 
+        // Additional preconditions on the following values should also be added
+        /*
+        (uint256 amount, uint256 unlockTime) = get_user_locks_info(caller, lockIndex);
         uint256 preUserPoints = veCVE.userPoints(caller);
         uint256 preChainPoints = veCVE.chainPoints();
         uint256 currentEpoch = veCVE.currentEpoch(unlockTime);
@@ -830,6 +829,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         );
         uint256 preLockVECVEBalance = veCVE.balanceOf(caller);
         uint256 preLockCVEBalance = cve.balanceOf(caller);
+        */
 
         try
             veCVE.processExpiredLock(
@@ -982,7 +982,7 @@ contract FuzzVECVE is StatefulBaseMarket {
                 cveLocker.isShutdown() == 2,
                 "VE_CVE - shutdown() should also set cveLocker"
             );
-        } catch (bytes memory reason) {
+        } catch {
             // VECVE-28
             assertWithMsg(
                 false,
@@ -1200,7 +1200,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         }
     }
 
-    function has_epoch_been_added(uint _value) private returns (bool) {
+    function has_epoch_been_added(uint _value) private view returns (bool) {
         for (uint i = 0; i < uniqueEpochs.length; i++) {
             if (uniqueEpochs[i] == _value) return true;
         }
@@ -1211,6 +1211,7 @@ contract FuzzVECVE is StatefulBaseMarket {
         address addr
     )
         private
+        view
         returns (
             uint256 newLockAmount,
             uint256 numberOfExistingContinuousLocks

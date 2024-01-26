@@ -30,8 +30,6 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = marketManager.collateralPosted(token);
 
-        uint256 collateralCaps = marketManager.collateralCaps(token);
-
         if (maxCollateralCap[token] == 0) {
             assertEq(
                 collateralPosted,

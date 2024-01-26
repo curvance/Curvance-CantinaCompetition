@@ -973,7 +973,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
     function check_price_divergence(
         address mtoken
-    ) private returns (bool divergenceTooLarge, bool priceError) {
+    ) private view returns (bool divergenceTooLarge, bool priceError) {
         (uint256 lowerPrice, uint lowError) = OracleRouter(oracleRouter)
             .getPrice(mtoken, true, true);
         (uint256 higherPrice, uint highError) = OracleRouter(oracleRouter)

@@ -367,6 +367,7 @@ contract FuzzDToken is StatefulBaseMarket {
             uint maxValue = amount * collReqSoft;
             uint256 minValue = amount * collReqHard;
             amount = clampBetween(amount, minValue, maxValue);
+            require(collRatio > 0);
         }
         address underlying = DToken(dtoken).underlying();
 
@@ -376,6 +377,7 @@ contract FuzzDToken is StatefulBaseMarket {
         uint256 preAccountCollateral = IERC20(collateralToken).balanceOf(
             msg.sender
         );
+        /*
         (
             uint256 debtTokenRepaid,
             uint256 liquidatedCToken,
@@ -387,6 +389,7 @@ contract FuzzDToken is StatefulBaseMarket {
                 amount,
                 true
             );
+        */
 
         hevm.prank(msg.sender);
         DToken(dtoken).liquidate(account, IMToken(collateralToken));
