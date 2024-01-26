@@ -394,15 +394,9 @@ contract DynamicInterestRateModel {
                     getBaseInterestRate(vertexPoint));
         }
 
-        uint256 newMultiplier;
         uint256 vertexInterestRate = ratesConfig.vertexInterestRate;
-
-        if (belowVertex) {
-            newMultiplier = _updateForBelowVertex(config, util);
-            return (util * vertexInterestRate * newMultiplier) / WAD_SQUARED;
-        }
-
-        newMultiplier = _updateForAboveVertex(config, util);
+        uint256 newMultiplier = _updateForAboveVertex(config, util);
+        
         return (util * vertexInterestRate * newMultiplier) / WAD_SQUARED;
     }
 
