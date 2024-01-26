@@ -41,7 +41,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @notice Called during pricing operations.
     /// @param asset The bpt being priced.
     /// @param inUSD Indicates whether we want the price in USD or ETH.
-    /// @param getLower Since this adaptor calls back into the price router
+    /// @param getLower Since this adaptor calls back into the oracle router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets.
     function getPrice(
@@ -61,7 +61,9 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(
         address asset
     ) external virtual override {
@@ -90,14 +92,16 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function _removeAsset(address asset) internal {
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
         // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
-        // Notify the price router that we are going to stop supporting the asset.
+        // Notify the oracle router that we are going to stop supporting the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
@@ -105,7 +109,7 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @dev https://blog.alphaventuredao.io/fair-lp-token-pricing/
     /// @param asset The bpt being priced.
     /// @param inUSD Indicates whether we want the price in USD or ETH.
-    /// @param getLower Since this adaptor calls back into the price router
+    /// @param getLower Since this adaptor calls back into the oracle router
     ///                 it needs to know if it should be working with the
     ///                 upper or lower prices of assets.
     function _getPrice(

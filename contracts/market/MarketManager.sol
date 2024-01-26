@@ -136,6 +136,14 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Returns whether `mToken` is listed in the lending market.
+    /// @param mToken market token address.
+    function isListed(address mToken) external view returns (bool) {
+        return (tokenData[mToken].isListed);
+    }
+
+    /// ACCOUNT SPECIFIC FUNCTIONS ///
+
     /// @notice Returns the assets an account has entered.
     /// @param account The address of the account to pull assets for.
     /// @return A dynamic list with the assets the account has entered.
@@ -145,23 +153,22 @@ contract MarketManager is LiquidityManager, ERC165 {
         return accountAssets[account].assets;
     }
 
-    /// @notice Returns whether `mToken` is listed in the lending market.
-    /// @param mToken market token address.
-    function isListed(address mToken) external view returns (bool) {
-        return (tokenData[mToken].isListed);
-    }
-
     /// @notice Returns if an account has an active position in `mToken`.
-    /// @param mToken market token address.
-    /// @param account account address.
-    function hasPosition(
-        address mToken,
-        address account
-    ) external view returns (bool) {
-        return tokenData[mToken].accountData[account].activePosition == 2;
+    /// @param account The address of the account to check a position of.
+    /// @param mToken The address of the market token.
+    function tokenDataOf(
+        address account,
+        address mToken
+    ) external view returns (
+        bool hasPosition, 
+        uint256 balanceOf, 
+        uint256 collateralPostedOf
+    ) {
+        AccountMetadata memory accountData = tokenData[mToken].accountData[account];
+        hasPosition = accountData.activePosition == 2;
+        balanceOf = IMToken(mToken).balanceOf(account);
+        collateralPostedOf = accountData.collateralPosted;
     }
-
-    /// ACCOUNT LIQUIDITY FUNCTIONS ///
 
     /// @notice Determine `account`'s current status between collateral,
     ///         debt, and additional liquidity.
@@ -247,9 +254,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // If you are trying to post collateral for someone else,
         // make sure it is done via the mToken contract itself.
         if (msg.sender != account) {
-            if (msg.sender != mToken) {
-                _revert(_UNAUTHORIZED_SELECTOR);
-            }
+            _checkIsToken(mToken);
         }
 
         AccountMetadata storage accountData = tokenData[mToken].accountData[
@@ -324,10 +329,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         uint256 balance,
         uint256 amount
     ) external {
-        if (msg.sender != cToken) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
+        _checkIsToken(cToken);
         _reduceCollateralIfNecessary(account, cToken, balance, amount, false);
     }
 
@@ -430,11 +432,9 @@ contract MarketManager is LiquidityManager, ERC165 {
         uint256 amount,
         bool forceRedeemCollateral
     ) external {
-        if (msg.sender != mToken) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
+        _checkIsToken(mToken);
         _canRedeem(mToken, account, amount);
+
         _reduceCollateralIfNecessary(
             account,
             mToken,
@@ -456,10 +456,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         address account,
         uint256 amount
     ) external {
-        if (msg.sender != mToken) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
+        _checkIsToken(mToken);
         accountAssets[account].cooldownTimestamp = block.timestamp;
         canBorrow(mToken, account, amount);
     }
@@ -469,10 +466,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @param mToken   The address of the dToken that the account is borrowing.
     /// @param account The address of the account that has just borrowed.
     function notifyBorrow(address mToken, address account) external {
-        if (msg.sender != mToken) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
+        _checkIsToken(mToken);
         accountAssets[account].cooldownTimestamp = block.timestamp;
     }
 
@@ -539,9 +533,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         uint256 amount,
         bool liquidateExact
     ) external returns (uint256, uint256, uint256) {
-        if (msg.sender != dToken) {
-            _revert(_UNAUTHORIZED_SELECTOR);
-        }
+        _checkIsToken(dToken);
 
         (
             uint256 dTokenRepaid,
@@ -1048,10 +1040,8 @@ contract MarketManager is LiquidityManager, ERC165 {
 
         if (tokenData[mToken].accountData[account].activePosition < 2) {
             // only mTokens may call borrowAllowed if account not in market
-            if (msg.sender != mToken) {
-                _revert(_UNAUTHORIZED_SELECTOR);
-            }
-
+            _checkIsToken(mToken);
+            
             // The account is not in the market yet, so make them enter
             tokenData[mToken].accountData[account].activePosition = 2;
             accountAssets[account].assets.push(IMToken(mToken));
@@ -1358,7 +1348,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from basis points to `WAD`.
+        // Multiply by 1e14 to convert from basis points to `WAD`.
         return value * 100000000000000;
     }
 
@@ -1380,6 +1370,19 @@ contract MarketManager is LiquidityManager, ERC165 {
         } else {
             if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
                 _revert(_UNAUTHORIZED_SELECTOR);
+            }
+        }
+    }
+
+    /// @dev Checks whether the caller is the desired mToken contract.
+    function _checkIsToken(address mToken) internal view {
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Equal to if (msg.sender != mToken)
+            if iszero(eq(caller(), mToken)) {
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
+                // Return bytes 29-32 for the selector.
+                revert(0x1c, 0x04)
             }
         }
     }

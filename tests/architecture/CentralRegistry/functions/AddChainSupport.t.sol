@@ -104,12 +104,10 @@ contract AddChainSupportTest is TestBaseMarket {
 
         (
             uint256 isAuthorized,
-            uint256 chainId,
             uint256 messagingChainId,
             address cveAddress_
         ) = centralRegistry.omnichainOperators(user1, 42161);
         assertEq(isAuthorized, 2);
-        assertEq(chainId, 42161);
         assertEq(messagingChainId, 23);
         assertEq(cveAddress_, address(1));
 
