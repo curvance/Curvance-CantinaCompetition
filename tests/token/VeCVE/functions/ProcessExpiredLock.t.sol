@@ -107,10 +107,12 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             "",
             0
         );
+        uint40 newLockTimestamp = veCVE.freshLockTimestamp();
+        // lockIndex 0 is updated to new timestamp
+        (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 0);
 
-        // new lock is created because of relock
-        (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 1);
         assertGt(unlockTime2, unlockTime);
+        assertEq(unlockTime2, newLockTimestamp);
         assertEq(amount2, amount);
     }
 
