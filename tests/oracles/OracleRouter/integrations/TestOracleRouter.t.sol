@@ -82,7 +82,11 @@ contract TestOracleRouter is TestBaseOracleRouter {
         assertEq(errorCode, 0);
         assertGt(higherPrice, 0);
 
-        (lowerPrice, errorCode) = oracleRouter.getPrice(WETH_USDC, false, true);
+        (lowerPrice, errorCode) = oracleRouter.getPrice(
+            WETH_USDC,
+            false,
+            true
+        );
         assertEq(errorCode, 0);
         assertGt(lowerPrice, 0);
         assertEq(higherPrice, lowerPrice);
@@ -99,7 +103,7 @@ contract TestOracleRouter is TestBaseOracleRouter {
             ICentralRegistry(address(centralRegistry)),
             USDC,
             address(marketManager),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
         // support market
         deal(USDC, address(this), 200000e6);

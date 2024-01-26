@@ -44,7 +44,7 @@ contract DTokenSetInterestRateModelTest is TestBaseDToken {
     function test_dTokenSetDynamicInterestRateModel_success() public {
         assertEq(
             address(dUSDC.interestRateModel()),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
 
         dUSDC.setInterestRateModel(address(newDynamicInterestRateModel));

@@ -86,7 +86,7 @@ contract TestBaseMarket is TestBase {
     BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    DynamicInterestRateModel public InterestRateModel;
+    DynamicInterestRateModel public interestRateModel;
     MarketManager public marketManager;
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
@@ -291,7 +291,10 @@ contract TestBaseMarket is TestBase {
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _DAI_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
@@ -395,7 +398,7 @@ contract TestBaseMarket is TestBase {
     }
 
     function _deployDynamicInterestRateModel() internal {
-        InterestRateModel = new DynamicInterestRateModel(
+        interestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
             1000, // baseRatePerYear
             1000, // vertexRatePerYear
@@ -423,7 +426,7 @@ contract TestBaseMarket is TestBase {
                 ICentralRegistry(address(centralRegistry)),
                 token,
                 address(marketManager),
-                address(InterestRateModel)
+                address(interestRateModel)
             );
     }
 
