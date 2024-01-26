@@ -78,7 +78,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             block.timestamp >
                 postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
         );
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -106,7 +106,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     ) public {
         require(marketManager.redeemPaused() == 2);
         require(marketManager.isListed(mtoken));
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -141,7 +141,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     ) public {
         require(marketManager.redeemPaused() != 2);
         require(!marketManager.isListed(mtoken));
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -176,7 +176,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     ) public {
         require(marketManager.redeemPaused() != 2);
         require(marketManager.isListed(mtoken));
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -212,7 +212,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     ) public {
         require(marketManager.redeemPaused() != 2);
         require(marketManager.isListed(mtoken));
-        require(!marketManager.hasPosition(mtoken, address(this)));
+        require(!_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -268,7 +268,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             block.timestamp >
                 postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
         );
-        require(marketManager.hasPosition(mtoken, address(this)));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
@@ -704,5 +704,10 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
                 liquidateExact
             )
         {} catch {}
+    }
+
+    function _hasPosition(address mToken) private view returns (bool) {
+        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        return hasPosition;
     }
 }
