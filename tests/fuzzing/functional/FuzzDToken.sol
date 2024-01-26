@@ -1,8 +1,9 @@
 pragma solidity 0.8.17;
-import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
+import { StatefulBaseMarket } from "../StatefulBaseMarket.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { IMToken } from "contracts/market/LiquidityManager.sol";
 
 contract FuzzDToken is StatefulBaseMarket {
     /// @custom:property dtok-1 calling DToken.mint should succeed with correct preconditions
@@ -12,7 +13,8 @@ contract FuzzDToken is StatefulBaseMarket {
     /// @custom:precondition amount bound between [1, uint256.max]
     function mint_should_actually_succeed(
         address dtoken,
-        uint256 amount
+        uint256 amount,
+        bool lower
     ) public {
         is_supported_dtoken(dtoken);
         require(gaugePool.startTime() < block.timestamp);
@@ -173,9 +175,9 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property dtok-8 borrow should succeed with correct preconditions
-    /// @custom:property dtok-9 totalBorrows if interest has not accrued should increase by amount after borrow is called
-    /// @custom:property dtok-10 underlying balance if interest has not accrued should increase by amount for msg.sender
+    /// @custom:property dtok- borrow should succeed with correct preconditions
+    /// @custom:property dtok- totalBorrows if interest has accrued should increase by amount after borrow is called
+    /// @custom:property dtok- underlying balance if interest not accrued should increase by amount for msg.sender
     /// @custom:precondition token to borrow is either dUSDC or dDAI
     /// @custom:precondition amount is bound between [1, marketUnderlyingHeld() - totalReserves]
     /// @custom:precondition borrow is not paused
@@ -240,10 +242,10 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property dtok-10 the repay function should succeed with correct preconditions
-    /// @custom:property dtok-11 attempting to repay with too much should cause the contract to error
+    /// @custom:precondition the repay function  should succeed under correct preconditions
     function repay_should_succeed(address dtoken, uint256 amount) public {
         is_supported_dtoken(dtoken);
+        uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         address underlying = DToken(dtoken).underlying();
         require(mint_and_approve(underlying, dtoken, amount));
         require(marketManager.isListed(dtoken));
@@ -254,7 +256,6 @@ contract FuzzDToken is StatefulBaseMarket {
         uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
             address(this)
         );
-        uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
 
         try DToken(dtoken).repay(amount) {
             assertEq(
@@ -278,7 +279,7 @@ contract FuzzDToken is StatefulBaseMarket {
                     "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
                 );
             }
-        } catch {
+        } catch (bytes memory revertData) {
             assertWithMsg(
                 false,
                 "DTOKEN - repay should succeed with correct preconditions"
@@ -286,7 +287,6 @@ contract FuzzDToken is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
@@ -327,10 +327,51 @@ contract FuzzDToken is StatefulBaseMarket {
                     "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
                 );
             }
-        } catch {
+        } catch (bytes memory revertData) {
             assertWithMsg(
                 false,
                 "DTOKEN - repay should succeed with correct preconditions"
+            );
+        }
+    }
+
+    function liquidate(
+        uint256 amount,
+        address account,
+        address dtoken,
+        address collateralToken
+    ) public {
+        // TODO: rely on the helper contract instead
+        (
+            ,
+            uint256 collRatio,
+            uint256 collReqSoft,
+            uint256 collReqHard,
+            ,
+            ,
+            ,
+            ,
+
+        ) = marketManager.tokenData(dtoken);
+        is_supported_dtoken(dtoken);
+        require(marketManager.isListed(dtoken));
+        require(
+            DToken(dtoken).marketManager() ==
+                DToken(collateralToken).marketManager()
+        );
+        require(marketManager.collateralPosted(collateralToken) > 0);
+        require(marketManager.seizePaused() != 2);
+
+        uint maxValue = amount * collReqSoft;
+        uint256 minValue = amount * collReqHard;
+        amount = clampBetween(amount, minValue, maxValue);
+
+        try
+            DToken(dtoken).liquidate(account, IMToken(collateralToken))
+        {} catch {
+            assertWithMsg(
+                false,
+                "MARKET MANAGER - liquidation should succeed with correct preconditions"
             );
         }
     }
