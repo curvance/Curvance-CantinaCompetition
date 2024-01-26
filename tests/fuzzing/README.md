@@ -1,40 +1,99 @@
 # Invariants being Tested 
 
-# FuzzVECVE.sol
+## Stateful Deployment Tests 
 
-| Function Name                                                              | Test Case                                                                              | Test Purpose                                                                                                | Expected Behaviour                                                                                                |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `combineAllLocks_should_succeed_to_non_continuous_terminal`                | A mix of continuous and non-continuous locks                                           | Tests the scenario where a user combines all of their locks into a single non-continuous lock               | The combined lock amount matches the total original lock amounts, and user points are correctly adjusted          |
-| `processExpiredLock_should_succeed`                                        | Given an existing lock identified by `seed`, in an active contract that isn't shutdown | Tests the successful processing of an expired lock                                                          | The function call to `processExpiredLock` completes successfully                                                  |
-| `processExpiredLock_should_fail_if_lock_index_exceeds_length`              | Attempts to process a lock at an index that doesn't exist                              | Tests the failure when trying to process a lock with an index higher than the length of existing locks      | The function reverts with an appropriate error message                                                            |
-| `disableContinuousLock_should_succeed_if_lock_exists`                      | Given an existing lock identified by `number`                                          | Tests the successful disabling of a continuous lock                                                         | The function call to `disableContinuousLock` completes successfully                                               |
-| `shutdown_success_if_elevated_permission`                                  | The caller has elevated permissions and the contract isn't already shutdown            | Tests the successful shutdown of the contract when the caller has elevated permissions                      | The `isShutdown` function returns `2` for `veCVE` and `cveLocker`, indicating a successful shutdown               |
-| `earlyExpireLock_shoud_succeed`                                            | Given an existing lock identified by `seed`                                            | Tests the successful early expiration of a lock                                                             | The function call to `earlyExpireLock` completes successfully                                                     |
-| `balance_must_equal_lock_amount_for_non_continuous`                        | The contract has non-continuous locks                                                  | Tests that the balance of `veCVE` for `this` should equal the sum of non-continuous locks' amounts          | The balance of `veCVE` equals the sum of the amounts of non-continuous locks                                      |
-| `user_unlock_for_epoch_for_continuous_locks_should_be_zero`                | The contract has continuous locks                                                      | Tests that the user unlocks by epoch should be zero for each epoch of the locks                             | The user unlocks by epoch are zero for all the epochs corresponding to continuous locks                           |
-| `chain_unlock_for_epoch_for_continuous_locks_should_be_zero`               | The contract has continuous locks                                                      | Tests that the chain unlocks by epoch should be zero for each epoch of the locks                            | The chain unlocks by epoch are zero for all the epochs corresponding to continuous locks                          |
-| `create_lock_when_not_shutdown`                                            | Non-shutdown system and valid lock amount                                              | Tests the successful creation of a lock when the contract is not in shutdown                                | The contract should reflect the new lock amounts correctly                                                        |
-| `create_lock_with_less_than_wad_should_fail`                               | Contract not in shutdown and locked amount less than WAD                               | Tests that the creation of a lock with an amount less than WAD fails                                        | The function call to `createLock` should fail                                                                     |
-| `create_lock_with_zero_amount_should_fail`                                 | Contract not in shutdown and locked amount is zero                                     | Tests that the creation of a lock with zero amount fails                                                    | The function call to `createLock` should fail                                                                     |
-| `extendLock_should_succeed_if_not_shutdown`                                | Non-shutdown system and valid lock index                                               | Tests the successful extension of a lock's validity when contract is not in shutdown                        | Existing unlock time should be increased                                                                          |
-| `extend_lock_should_fail_if_already_continuous`                            | Lock is already in continuous state                                                    | Tests that contract correctly restricts extending a continuous lock                                         | The function call to `extendLock` should fail                                                                     |
-| `extend_lock_should_fail_if_shutdown`                                      | The contract is in shutdown                                                            | Tests that contract correctly restricts any lock extension during shutdown                                  | The function call to `extendLock` should fail                                                                     |
-| `increaseAmountAndExtendLock_should_succeed_if_continuous`                 | Non-shutdown system and valid lock index                                               | Tests the successful extension of a lock's validity and increase in lock amount when lock is continuous     | Existing unlock time should be increased                                                                          |
-| `increaseAmountAndExtendLock_should_succeed_if_non_continuous`             | Non-shutdown system and valid lock index                                               | Tests the successful extension of a lock's validity and increase in lock amount when lock is non-continuous | Existing unlock time should be increased                                                                          |
-| `combineAllLocks_for_all_continuous_to_continuous_terminal_should_succeed` | All existing locks are continuous                                                      | Tests the successful amalgamation of all locks into a single continuous lock                                | A single continuous lock should exist and user points should remain same                                          |
-| `combineAllLocks_non_continuous_to_continuous_terminals_should_succeed`    | Not all existing locks are continuous                                                  | Tests the successful transformation of non-continuous locks to continuous lock terminals                    | An increased value for post-combine user points, balance of veCVE equals the sum of user points and unlock values |
+| ID      | Property                                                                    | Result |
+| ------- | --------------------------------------------------------------------------- | ------ |
+| CURV-1  | The central registry has the daoAddress set to the deployer.                | Passed |
+| CURV-2  | The central registry has the timelock address set to the deployer.          | Passed |
+| CURV-3  | The central registry has the emergency council address set to the deployer. | Passed |
+| CURV-4  | The central registry’s genesis Epoch is equal to zero.                      | Passed |
+| CURV-5  | The central registry’s sequencer is set to address(0).                      | Passed |
+| CURV-6  | The central registry has granted the deployer permissions.                  | Passed |
+| CURV-7  | The central registry has granted the deployer elevated permissions.         | Passed |
+| CURV-8  | The central registry has the cve address setup correctly.                   | Passed |
+| CURV-9  | The central registry has the veCVE address setup correctly.                 | Passed |
+| CURV-10 | The central registry has the cveLocker setup correctly.                     | Passed |
+| CURV-11 | The central registry has the protocol messaging hub setup correctly.        | Passed |
+| CURV-12 | The CVE contract is mapped to the centralRegistry correctly.                | Passed |
+| CURV-13 | The CVE contract’s team address is set to the deployer.                     | Passed |
+| CURV-14 | The CVE’s dao treasury allocation is set to 10000 ether.                    | Passed |
+| CURV-15 | The CVE dao’s team allocation per month is greater than zero.               | Passed |
+| CURV-16 | The Lendtroller’s gauge pool is set up correctly.                           | Passed |
 
+## FuzzVECVE – Functional Invariants 
 
-# TestStatefulDeployments.sol
+| ID        | Property                                                                                                                                                                                                                       | Result |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| VECVE-1   | Creating a lock with a specified amount when the system is not in a shutdown state should succeed, with preLockCVEBalance matching postLockCVEBalance + amount and preLockVECVEBalance + amount matching postLockVECVEBalance. | Passed |
+| VECVE-2   | Creating a lock with an amount less than WAD should fail and revert with an error message indicating invalid lock amount.                                                                                                      | Passed |
+| VECVE-3   | Creating a lock with zero amount should fail and revert with an error message indicating an invalid lock amount.                                                                                                               | Passed |
+| VECVE-4   | Combining all continuous locks into a single continuous lock should result in identical user points before and after the operation.                                                                                            | FAILED |
+| VECVE-5   | Combining all continuous locks into a single continuous lock should result in an increase in user points being greater than veCVE balance * MULTIPLIER / WAD.                                                                  | Passed |
+| VECVE-6   | Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.                                                                                                            | Passed |
+| VECVE-7   | Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.                                                                                                            |        |
+| VECVE-8   | Combining all non-continuous locks into a single non-continuous lock should result in the combined lock amount matching the sum of original lock amounts.                                                                      | Passed |
+| VECVE-9   | Combining all continuous locks into a single continuous lock should result in resulting user points times the CL_POINT_MULTIPLIER being greater than or equal to the balance of veCVE.                                         | Passed |
+| VECVE-10  | Combining non-continuous locks into continuous lock terminals should result in increased post combine user points compared to the pre combine user points.                                                                     | FAILED |
+| VECVE-11  | Combining non-continuous locks into continuous lock terminals should result in the userUnlockByEpoch value decreasing for each respective epoch.                                                                               | Passed |
+| VECVE-12  | Combining non-continuous locks into continuous lock terminals should result in chainUnlockByEpoch decreasing for each respective epoch.                                                                                        | Passed |
+| VECVE-13  | Combining non-continuous locks to continuous locks should result in chainUnlockByEpochs being equal to 0.                                                                                                                      | Passed |
+| VECVE-14  | Combining non-continuous locks to continuous locks should result in the userUnlocksByEpoch being equal to 0.                                                                                                                   | Passed |
+| VECVE-15  | Combining any locks to a non continuous terminal should result in the amount for the combined terminal matching the sum of original lock amounts.                                                                              | Passed |
+| VECVE-16  | Combining some continuous locks to a non continuous terminal should result in user points decreasing.                                                                                                                          | Passed |
+| VECVE-17  | Combining no prior continuous locks to a non continuous terminal should result in no change in user points.                                                                                                                    | Passed |
+| VECVE-18  | Combining some prior continuous locks to a non continuous terminal should result in the veCVE balance of a user equaling the user points.                                                                                      | FAILED |
+| VECVE-19  | Processing an expired lock should fail when the lock index is incorrect or exceeds the length of created locks.                                                                                                                | Passed |
+| VECVE-20  | Disabling a continuous lock for a user’s continuous lock results in a decrease of user points.                                                                                                                                 | Passed |
+| VECVE-21  | Disable continuous lock for a user’s continuous lock results in a decrease of chain points.                                                                                                                                    | Passed |
+| VECVE-22  | Disable continuous lock for a user’s continuous lock results in an increase of amount to chainUnlocksByEpoch.                                                                                                                  | Passed |
+| VECVE-23  | Disable continuous lock should for a user’s continuous lock results in  preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch                                                                                         | Passed |
+| VECVE-24  | Trying to extend a lock that is already continuous should fail and revert with an error message indicating a lock type mismatch.                                                                                               | Passed |
+| VECVE-25  | Trying to extend a lock when the system is in shutdown should fail and revert with an error message indicating that the system is shut down.                                                                                   | Passed |
+| VECVE-26  | Shutting down the contract when the caller has elevated permissions should result in the veCVE.isShutdown = 2                                                                                                                  | Passed |
+| VECVE-27  | Shutting down the contract when the caller has elevated permissions should result in the cveLocker.isShutdown = 2                                                                                                              | Passed |
+| VECVE-28  | Shutting down the contract when the caller has elevated permissions, and the system is not already shut down should never revert unexpectedly.                                                                                 | Passed |
+| VECVE-29  | Calling extendLock with continuousLock set to 'true' should set the post extend lock time to CONTINUOUS_LOCK_VALUE.                                                                                                            | Passed |
+| VECVE-30  | Calling extendLock for noncontinuous extension in the same epoch should not change the unlock epoch.                                                                                                                           | Passed |
+| VECVE-31  | Calling extendLock for noncontinuous extension in a future epoch should increase the unlock time.                                                                                                                              | Passed |
+| VECVE-32  | Calling extendLock with correct preconditions should not revert.                                                                                                                                                               | Passed |
+| VECVE-33  | Increasing the amount and extending the lock should succeed if the lock is continuous.                                                                                                                                         | Passed |
+| VECVE-34  | Increasing the lock amount and extending a continuous lock's validity should succeed, with preLockCVEBalance matching postLockCVEBalance + amount                                                                              | Passed |
+| VECVE-35  | Increasing the lock amount and extending a continuous lock's validity should succeed, with preLockVECVEBalance + amount matching postLockVECVEBalance.                                                                         | Passed |
+| VECVE-36  | Increasing the amount and extending the lock should succeed if the lock is non-continuous.                                                                                                                                     | Passed |
+| VECVE-37  | Increasing the lock amount and extending a non-continuous lock's validity should succeed, with preLockCVEBalance matching postLockCVEBalance + amount                                                                          | Passed |
+| VECVE-38  | Increasing the lock amount and extending a non-continuous lock's validity should succeed, with preLockVECVEBalance + amount matching postLockVECVEBalance.                                                                     | Passed |
+| VECVE-39  | Processing an expired lock for an existing lock in a shutdown contract should complete successfully                                                                                                                            | Passed |
+| VE-CVE-40 | Processing a lock in a shutdown contract results in decreasing number of user locks                                                                                                                                            | Passed |
+| VECVE-41  | Processing a lock in a shutdown contract results in decreasing chain points                                                                                                                                                    | Passed |
+| VECVE-42  | Processing a non-continuous lock in a shutdown contract results in preChainUnlocksByEpoch - amount being equal to postChainUnlocksByEpoch                                                                                      | Passed |
+| VECVE-43  | Processing a non-continuous lock in a shutdown contract results in preUserUnlocksByEpoch - amount being equal to postUserUnlocksByEpoch                                                                                        | Passed |
+| VECVE-44  | Processing a lock in a shutdown contract results in increasing cve tokens                                                                                                                                                      | Passed |
+| VECVE-45  | Processing a lock in a shutdown contract results in decreasing vecve tokens                                                                                                                                                    | Passed |
+| VECVE-46  | Processing a lock in a shutdown contract results in decreasing number of user locks                                                                                                                                            | Passed |
+| VECVE-47  | Processing a lock should complete successfully if unlock time is expired.                                                                                                                                                      | Passed |
+| VECVE-48  | Processing a lock in a shutdown contract results in decreasing chain points                                                                                                                                                    | Passed |
+| VECVE-49  | Processing a non-continuous lock in a shutdown contract results in preChainUnlocksByEpoch - amount being equal to postChainUnlocksByEpoch                                                                                      | Passed |
+| VECVE-50  | Processing a non-continuous lock in a shutdown contract results in preUserUnlocksByEpoch - amount being equal to postUserUnlocksByEpoch                                                                                        | Passed |
+| VECVE-51  | Processing an expired lock without a relocking option results in increasing cve tokens                                                                                                                                         | Passed |
+| VECVE-52  | Processing an expired lock without a relocking option results in decreasing vecve tokens                                                                                                                                       | Passed |
+| VECVE-53  | Processing an expired lock without relocking should result in user points being equal.                                                                                                                                         | Passed |
+| VECVE-54  | Processing an expired lock without relocking should result in chain points being equal.                                                                                                                                        | Passed |
+| VECVE-55  | Processing expired locks with relock should not change the number of locks a user has.                                                                                                                                         | FAILED |
+| VECVE-56  | Combining locks should not be possible when the system is shut down.                                                                                                                                                           | FAILED |
 
+## FuzzVECVE – System Invariants 
 
-| Function Name                           | Test Case            | Test Purpose                                                                       | Expected Behaviour                                                        |
-| --------------------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `CentralRegistry_is_deployed_and_setup` | (No input variables) | Check whether Central Registry contract has been successfully deployed and setup   | Successful deployment and setup of Central Registry contract              |
-| `CentralRegistry_is_setup`              | (No input variables) | Verify if Central Registry contract has been correctly setup with dependencies     | Successful setup of Central Registry with correct dependencies            |
-| `CVE_is_deployed`                       | (No input variables) | Ensure the CVE contract has been successfully deployed and setup with dependencies | Successful deployment and setup of CVE contract with correct dependencies |
+| ID        | Property                                                                                        | Result |
+| --------- | ----------------------------------------------------------------------------------------------- | ------ |
+| S-VECVE-1 | Balance of veCVE must equal to the sum of all non-continuous lock amounts.                      | Passed |
+| S-VECVE-2 | User unlocks by epoch should be greater than 0 for all non-continuous locks.                    | Passed |
+| S-VECVE-3 | User unlocks by epoch should be 0 for all continuous locks.                                     | Passed |
+| S-VECVE-4 | Chain unlocks by epoch should be greater than 0 for all non-continuous locks.                   | Passed |
+| S-VECVE-5 | Chain unlocks by epoch should be 0 for all continuous locks.                                    | Passed |
+| S-VECVE-6 | The sum of all user unlock epochs for each epoch must be less than or equal to the user points. | Passed |
+| S-VECVE-7 | The contract should only have a zero cve balance when there are no user locks.                  | Passed |
 
-As per the original table, there are no concrete test cases defined, as these functions directly check the setup of different contracts. The expected behaviour is based on the necessary outcomes for a successful deployment and setup of the contracts.
 
 ## So you found a failure? 
 
@@ -48,9 +107,6 @@ Tips and tricks:
 ### VECVE 
 
 - Input ranges on creation of lock does not test full range of input – would benefit from additional coverage 
-- increaseAmountAndExtendLock is lacking coverage (or as of currently, fuzzer has not yet reached the state to call)
-- Postcondition checks on adding non-continuous locks (i.e: that the lock of the previous values decrease, and new lock values increase)
-- Postconditions on additional functions, such as disableContinuousLock, processExpiredLock, early expire 
 - Additional stateful functions can be added, including: 
   - Chainpoints 
     - equal to user's (CVE locked as non continuous) + (CVE locked * continuousLock point multiplier)
@@ -58,6 +114,14 @@ Tips and tricks:
     - The sum of all chainUnlocksByEpoch map values should always be <= chainPoints
     - The sum of all userPoints should be equal to chainPoints
     - The sum of all chainUnlocksByEpoch maps should be equal to the sum of all userUnlocksByEpoch maps.
+- `createLockfor` and `increaseAmountAndExtendLockFor`
+- `earlyExpire`
+- additional tests on callers 
+
+## Lendtroller 
+
+- current debt > max allowed debt after folding
+- partner gauges 
 
 
 --- 

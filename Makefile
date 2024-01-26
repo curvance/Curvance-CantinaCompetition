@@ -1,12 +1,12 @@
 echidna-local, el: 
 	rm -rf crytic-export
 	forge clean
-	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/echidna-local.yaml
+	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/config/echidna-local.yaml
 
 echidna-cloud, ec: 
 	rm -rf crytic-export
 	forge clean
-	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/echidna-cloud.yaml
+	echidna tests/fuzzing/FuzzingSuite.sol --contract FuzzingSuite --config tests/fuzzing/config/echidna-cloud.yaml
 
 medusa-local, ml: 
 	medusa fuzz --config medusa-local.json

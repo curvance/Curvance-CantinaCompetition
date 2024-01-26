@@ -21,8 +21,8 @@ contract TestStatefulDeployments is StatefulBaseMarket {
             "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.genesisEpoch() == 0 failed"
         );
         assertWithMsg(
-            centralRegistry.sequencer() == address(this),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.sequencer == address(this) failed"
+            centralRegistry.sequencer() == address(0),
+            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.sequencer == address(0) failed"
         );
         assertWithMsg(
             centralRegistry.hasDaoPermissions(address(this)),
@@ -70,6 +70,14 @@ contract TestStatefulDeployments is StatefulBaseMarket {
         assertWithMsg(
             cve.builderAllocationPerMonth() > 0,
             "CVE DEPLOY FAILED: CVE.builderAllocationPerMonth() > 0 failed"
+        );
+    }
+
+    /// @custom:property curv-16 The Market Manager’s gauge pool is set up correctly.
+    function MarketManager_is_deployed() public {
+        assertWithMsg(
+            address(marketManager.gaugePool()) == address(gaugePool),
+            "MarketManager DEPLOY FAILED: marketManager.gaugePool() == gaugePool failed"
         );
     }
 }

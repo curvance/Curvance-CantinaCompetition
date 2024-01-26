@@ -3,6 +3,7 @@
 [input]
 directory = "."
 timeout = "48h"
+jobName = "echidna vecve corpus 30000000, 14 workers"
 
 [commands]
 setup = '''
@@ -17,7 +18,7 @@ fi
 
 if ! command -v echidna >/dev/null 2>&1; then
   echo "Downloading echidna..."
-  curl -fsSL -o /tmp/echidna.zip https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip
+  curl -fsSL -o /tmp/echidna.zip https://github.com/crytic/echidna/releases/download/v2.2.2/echidna-2.2.2-x86_64-linux.tar.gz
   echo "Extracting echidna..."
   unzip /tmp/echidna.zip -d /tmp
   tar -xzf /tmp/echidna.tar.gz -C /tmp
@@ -49,4 +50,4 @@ forge --version
 
 # This command is run from the input directory
 # after the setup script completes.
-run = "source /.bashrc && forge --version && make echidna-cloud && make medusa-local"
+run = "source /.bashrc && forge --version && make ec"

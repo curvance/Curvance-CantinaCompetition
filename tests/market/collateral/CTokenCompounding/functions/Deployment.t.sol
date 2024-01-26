@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// // SPDX-License-Identifier: UNLICENSED
+// pragma solidity ^0.8.17;
 
 // import "forge-std/StdStorage.sol";
 // import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
-// import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
+// import { CTokenCompounding, CTokenBase } from "contracts/market/collateral/CTokenCompounding.sol";
 // import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 // import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
@@ -18,8 +18,8 @@ pragma solidity ^0.8.17;
 //         public
 //     {
 //         vm.expectRevert(
-//             CTokenCompounding
-//                 .CTokenCompounding__InvalidCentralRegistry
+//             CTokenBase
+//                 .CTokenBase__InvalidCentralRegistry
 //                 .selector
 //         );
 //         new CTokenCompounding(
@@ -34,12 +34,12 @@ pragma solidity ^0.8.17;
 //     {
 //         vm.expectRevert(
 //             CTokenCompounding
-//                 .CTokenCompounding__MarketManagerIsNotLendingMarket
+//                 .CTokenBase__InvalidMarketManager
 //                 .selector
 //         );
 //         new CTokenCompounding(
 //             ICentralRegistry(address(centralRegistry)),
-//             _BALANCER_WETH_RETH,
+//             IERC20(_BALANCER_WETH_RETH),
 //             address(1)
 //         );
 //     }
