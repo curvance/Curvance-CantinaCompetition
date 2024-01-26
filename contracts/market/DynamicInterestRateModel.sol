@@ -642,7 +642,7 @@ contract DynamicInterestRateModel {
         // Apply a positive multiplier to the current multiplier based on
         // `util` vs `increaseThreshold` and `increaseThresholdMax`.
         // Then apply decay effect.
-        newMultiplier = _applyPositiveCurveEffect(
+        newMultiplier = _getPositiveCFactorResult(
             currentMultiplier, // `multiplier`
             config.adjustmentVelocity, // `adjustmentVelocity`
             decay, // `decay`
@@ -709,7 +709,7 @@ contract DynamicInterestRateModel {
         // Apply a negative multiplier to the current multiplier based on
         // `util` vs `decreaseThreshold` and `decreaseThresholdMax`.
         // Then apply decay effect.
-        newMultiplier = _applyNegativeCurveEffect(
+        newMultiplier = _getNegativeCFactorResult(
             currentMultiplier, // `multiplier`
             config.adjustmentVelocity, // `adjustmentVelocity`
             decay, // `decay`
@@ -732,14 +732,21 @@ contract DynamicInterestRateModel {
     ///      current value is greater than or equal to `end`. The formula
     ///      used is (current - start) / (end - start), ensuring the result
     ///      is scaled properly.
+    /// @param multiplier The current vertex multiplier value, in `WAD`.
+    /// @param adjustmentVelocity The current adjustment velocity, the maximum
+    ///                           rate at with the vertex multiplier is
+    ///                           adjusted, as a % multiplier, in `WAD`.
+    ///                           Applied with extra 100% on top.
+    /// @param decay The current decay rate, calculated as a negative % value,
+    ///              in `WAD`.
     /// @param current The current value, representing a point on the curve.
     /// @param start The start value of the curve, marking the beginning of
     ///              the calculation range.
     /// @param end The end value of the curve, marking the end of the
     ///            calculation range.
-    /// @return The calculated positive curve value, a proportion between
-    ///         the start and end points.
-    function _applyPositiveCurveEffect(
+    /// @return The new multiplier with the calculated positive curve value
+    ///         (cFactor), and decay rate applied.
+    function _getPositiveCFactorResult(
         uint256 multiplier,
         uint256 adjustmentVelocity,
         uint256 decay,
@@ -772,14 +779,21 @@ contract DynamicInterestRateModel {
     ///      current value is less than or equal to `end`. The formula
     ///      used is (start - current) / (start - end), ensuring the result
     ///      is scaled properly.
+    /// @param multiplier The current vertex multiplier value, in `WAD`.
+    /// @param adjustmentVelocity The current adjustment velocity, the maximum
+    ///                           rate at with the vertex multiplier is
+    ///                           adjusted, as a % multiplier, in `WAD`.
+    ///                           Applied with extra 100% on top.
+    /// @param decay The current decay rate, calculated as a negative % value,
+    ///              in `WAD`.
     /// @param current The current value, representing a point on the curve.
     /// @param start The start value of the curve, marking the beginning of
     ///              the calculation range.
     /// @param end The end value of the curve, marking the end of the
     ///            calculation range.
-    /// @return The calculated negative curve value, a proportion between
-    ///         the start and end points.
-    function _applyNegativeCurveEffect(
+    /// @return The new multiplier with the calculated negative curve value
+    ///         (cFactor), and decay rate applied.
+    function _getNegativeCFactorResult(
         uint256 multiplier,
         uint256 adjustmentVelocity,
         uint256 decay,
