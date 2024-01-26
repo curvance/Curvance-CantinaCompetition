@@ -1308,4 +1308,16 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
     }
+
+    function getUnlockTime(
+        address _addr,
+        uint _index
+    ) public view returns (uint40) {
+        return userLocks[_addr][_index].unlockTime;
+    }
+
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocksLength(address user) external view returns (uint) {
+        return userLocks[user].length;
+    }
 }
