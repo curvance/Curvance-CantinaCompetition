@@ -136,10 +136,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// @notice Used for fuzzing.
     function getUnlockTime(
-        address user,
-        uint256 lockIndex
+        address _addr,
+        uint _index
     ) public view returns (uint40) {
-        return userLocks[user][lockIndex].unlockTime;
+        return userLocks[_addr][_index].unlockTime;
+    }
+
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocksLength(address user) external view returns (uint) {
+        return userLocks[user].length;
     }
 
     /// @notice Rescue any token sent by mistake.
@@ -571,7 +576,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
         if (relock) {
             // Token points will be caught up by _claimRewards call so we can
-            // treat this as a fresh lock and increment points again.
+            // treat this as a fresh lock and increment points.
             if (continuousLock) {
                 // If the relocked lock is continuous update `unlockTime`
                 // to continuous lock value and increase points.
@@ -579,7 +584,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 _incrementPoints(msg.sender, _getCLPoints(amount));
             } else {
                 // If the relocked lock is a standard lock `unlockTime`
-                // to a fresh lock timestamp and increase points unlock schedule.
+                // to a fresh lock timestamp and increase points
+                // and set unlock schedule.
                 lock.unlockTime = freshLockTimestamp();
                 _incrementPoints(msg.sender, amount);
                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
@@ -1307,17 +1313,5 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (isShutdown == 2) {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
-    }
-
-    function getUnlockTime(
-        address _addr,
-        uint _index
-    ) public view returns (uint40) {
-        return userLocks[_addr][_index].unlockTime;
-    }
-
-    /// @notice Used for frontend, needed due to array of structs.
-    function queryUserLocksLength(address user) external view returns (uint) {
-        return userLocks[user].length;
     }
 }
