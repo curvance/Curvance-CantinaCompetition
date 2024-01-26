@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import { IHevm } from "./helpers/Hevm.sol";
 import { PropertiesAsserts } from "tests/fuzzing/helpers/PropertiesHelper.sol";
 import { ErrorConstants } from "tests/fuzzing/helpers/ErrorConstants.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
@@ -37,6 +38,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
+    IHevm constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     address internal _WETH_ADDRESS;
     address internal _USDC_ADDRESS;
     address internal _RETH_ADDRESS;

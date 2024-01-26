@@ -11,7 +11,7 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
     // system invariant:
     // should not have an active position in a dtoken if one does not have debt
 
-    /// @custom:property s-lend-1 A user’s cToken balance must always be greater than the total collateral posted for a ctoken.
+    /// @custom:property s-market-1 A user’s cToken balance must always be greater than the total collateral posted for a ctoken.
     function cToken_balance_gte_collateral_posted(address ctoken) public {
         uint256 cTokenBalance = MockToken(ctoken).balanceOf(address(this));
 
@@ -26,7 +26,7 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
         );
     }
 
-    /// @custom:property s-lend-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
+    /// @custom:property s-market-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = marketManager.collateralPosted(token);
 
@@ -47,7 +47,7 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
         }
     }
 
-    // @custom:property s-lend-3 totalSupply should never be zero for any mtoken once added to marketManager
+    // @custom:property s-market-3 totalSupply should never be zero for any mtoken once added to marketManager
     function totalSupply_of_listed_token_is_never_zero(address mtoken) public {
         require(marketManager.isListed(mtoken));
         assertNeq(

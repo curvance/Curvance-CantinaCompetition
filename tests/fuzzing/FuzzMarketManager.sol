@@ -41,7 +41,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         list_token_should_succeed(address(cUSDC));
     }
 
-    /// @custom:property lend-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
+    /// @custom:property market-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
     /// @custom:precondition mtoken must not already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_succeed(address mtoken) public {
@@ -71,7 +71,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-2 A token already added to the marketManager cannot be added again
+    /// @custom:property market-2 A token already added to the marketManager cannot be added again
     /// @custom:precondition mtoken must already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     function list_token_should_fail_if_already_listed(address mtoken) public {
@@ -98,11 +98,11 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-3 – A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.
-    /// @custom:property lend-4 – When depositing assets into the mtoken, the wrapped token balance for the user should increase.
-    /// @custom:property lend-29 If convertToShares overflows, deposit should revert
-    /// @custom:property lend-30 If totalAssets+amount overflows, deposit should revert
-    /// @custom:property lend-31 If oracle returns price <0, deposit should revert
+    /// @custom:property market-3 – A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.
+    /// @custom:property market-4 – When depositing assets into the mtoken, the wrapped token balance for the user should increase.
+    /// @custom:property market-29 If convertToShares overflows, deposit should revert
+    /// @custom:property market-30 If totalAssets+amount overflows, deposit should revert
+    /// @custom:property market-31 If oracle returns price <0, deposit should revert
     /// @custom:precondition GaugePool must have been started before block.timestamp
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
     /// @custom:precondition mtoken must be listed in marketManager
@@ -133,7 +133,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 address(this)
             );
 
-            // LEND-4
+            // market-4
             assertLt(
                 preCTokenBalanceThis,
                 postCTokenBalanceThis,
@@ -164,14 +164,14 @@ contract FuzzMarketManager is StatefulBaseMarket {
                     preCTokenBalanceThis + amount,
                     preCTokenBalanceThis
                 );
-            // LEND-31
+            // market-31
             bool isPriceNegative;
             if (mtoken == address(cDAI)) {
                 isPriceNegative = chainlinkDaiUsd.latestAnswer() < 0;
             } else {
                 isPriceNegative = chainlinkUsdcUsd.latestAnswer() < 0;
             }
-            // LEND-29, LEND-30
+            // market-29, market-30
             if (convertToSharesOverflow || assetCalc) {
                 assertEq(
                     errorSelector,
@@ -179,7 +179,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                     "marketManager - expected mtoken.deposit() to revert with overflow"
                 );
             } else {
-                // LEND-3
+                // market-3
                 assertWithMsg(
                     false,
                     "marketManager - expected mtoken.deposit() to be successful"
@@ -188,7 +188,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-5 – Calling updateCollateralToken with variables in correct bounds should succeed.
+    /// @custom:property market-5 – Calling updateCollateralToken with variables in correct bounds should succeed.
     /// @custom:precondition price feed must be recent
     /// @custom:precondition price feed must be setup
     /// @custom:precondition address(this) must have dao permissions
@@ -253,7 +253,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                     );
                 }
 
-                // LEND-5
+                // market-5
                 assertWithMsg(
                     false,
                     "marketManager - updateCollateralToken should succeed"
@@ -262,8 +262,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-6 – Calling setCTokenCollateralCaps should increase the globally set the collateral caps to the cap provided
-    /// @custom:property lend-7 Setting collateral caps for a token given permissions and collateral values being set should succeed.
+    /// @custom:property market-6 – Calling setCTokenCollateralCaps should increase the globally set the collateral caps to the cap provided
+    /// @custom:property market-7 Setting collateral caps for a token given permissions and collateral values being set should succeed.
     /// @custom:precondition address(this) has dao permissions
     /// @custom:precondition mtoken is a C token
     /// @custom:precondition collateral values for mtoken must be set
@@ -293,14 +293,14 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
 
         if (success) {
-            // LEND-6
+            // market-6
             assertEq(
                 marketManager.collateralCaps(mtoken),
                 cap,
                 "marketManager - collateral caps for token should be >=0"
             );
         } else {
-            // LEND-7
+            // market-7
             assertWithMsg(
                 false,
                 "marketManager - expected setCTokenCollateralCaps to succeed"
@@ -310,7 +310,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         collateralCapsUpdated[mtoken] = true;
     }
 
-    /// @custom:property lend-8 – updateCollateralToken should revert if the price feed is out of date
+    /// @custom:property market-8 – updateCollateralToken should revert if the price feed is out of date
     /// @custom:precondition price feed is out of date
     /// @custom:precondition cap is bound between [1, uint256.max], inclusive
     /// @custom:precondition mtoken must be listed in marketManager
@@ -384,10 +384,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         } catch {}
     }
 
-    /// @custom:property lend-9 After collateral is posted, the user’s collateral posted position for the respective asset should increase.
-    /// @custom:property lend-10 After collateral is posted, calling hasPosition on the user’s mtoken should return true.
-    /// @custom:property lend-11 After collateral is posted, the global collateral for the mtoken should increase by the amount posted.
-    /// @custom:property lend-12 When price feed is up to date, address(this) has mtoken, tokens are bound correctly, and caller is correct, the  postCollateral call should succeed.
+    /// @custom:property market-9 After collateral is posted, the user’s collateral posted position for the respective asset should increase.
+    /// @custom:property market-10 After collateral is posted, calling hasPosition on the user’s mtoken should return true.
+    /// @custom:property market-11 After collateral is posted, the global collateral for the mtoken should increase by the amount posted.
+    /// @custom:property market-12 When price feed is up to date, address(this) has mtoken, tokens are bound correctly, and caller is correct, the  postCollateral call should succeed.
     /// @custom:precondition price feed is up to date
     /// @custom:precondition address(this) must have a balance of mtoken
     /// @custom:precondition `tokens` to be posted is bound between [1, mtoken balance], inclusive
@@ -450,7 +450,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             if (!success) {
                 uint256 errorSelector = extractErrorSelector(revertData);
                 emit LogUint256("error selector: ", errorSelector);
-                // LEND-12
+                // market-12
                 assertWithMsg(
                     false,
                     "marketManager - expected postCollateral to pass with @precondition"
@@ -463,13 +463,13 @@ contract FuzzMarketManager is StatefulBaseMarket {
             );
 
             uint256 mtokenExchange = MockCToken(mtoken).exchangeRateSafe();
-            // LEND-9
+            // market-9
             assertEq(
                 (newCollateralForUser) * mtokenExchange,
                 (oldCollateralForUser + tokens) * mtokenExchange,
                 "marketManager - new collateral must collateral+tokens"
             );
-            // LEND-10
+            // market-10
             assertWithMsg(
                 marketManager.hasPosition(mtoken, address(this)),
                 "marketManager - addr(this) must have position after posting"
@@ -478,7 +478,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             uint256 newCollateralForToken = marketManager.collateralPosted(
                 mtoken
             );
-            // LEND-11
+            // market-11
             assertEq(
                 newCollateralForToken,
                 oldCollateralForToken + tokens,
@@ -489,7 +489,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         postedCollateralAt[mtoken] = block.timestamp;
     }
 
-    /// @custom:property lend-13 – Trying to post too much collateral should revert.
+    /// @custom:property market-13 – Trying to post too much collateral should revert.
     /// @custom:precondition collateral caps for the token are >0
     /// @custom:precondition price feed must be out of date
     /// @custom:precondition user must have mtoken balance
@@ -541,10 +541,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
     }
 
-    /// @custom:property lend-14 Removing collateral from the system should decrease the global posted collateral by the removed amount.
-    /// @custom:property lend-15 Removing collateral from the system should reduce the user posted collateral by the removed amount.
-    /// @custom:property lend-16 If the user has a liquidity shortfall, the user should not be permitted to remove collateral (function should fai with insufficient collateral selector hash).
-    /// @custom:property lend-17 If the user does not have a liquidity shortfall and meets expected preconditions, the removeCollateral should be successful.
+    /// @custom:property market-14 Removing collateral from the system should decrease the global posted collateral by the removed amount.
+    /// @custom:property market-15 Removing collateral from the system should reduce the user posted collateral by the removed amount.
+    /// @custom:property market-16 If the user has a liquidity shortfall, the user should not be permitted to remove collateral (function should fai with insufficient collateral selector hash).
+    /// @custom:property market-17 If the user does not have a liquidity shortfall and meets expected preconditions, the removeCollateral should be successful.
     /// @custom:precondition price feed must be recent
     /// @custom:precondition mtoken is one of: cDAI, cUSDC
     /// @custom:precondition mtoken must be listed in the marketManager
@@ -604,7 +604,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             if (!success) {
                 uint256 errorSelector = extractErrorSelector(revertData);
 
-                // LEND-16
+                // market-16
                 assertWithMsg(
                     errorSelector ==
                         marketManager_insufficientCollateralSelectorHash,
@@ -620,7 +620,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                     closePositionIfPossible
                 )
             );
-            // LEND-17
+            // market-17
             assertWithMsg(
                 success,
                 "marketManager - expected removeCollateral expected to be successful with no shortfall"
@@ -628,7 +628,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             // Collateral posted for the mtoken should decrease
             uint256 newCollateralPostedForToken = marketManager
                 .collateralPosted(mtoken);
-            // LEND-14
+            // market-14
             assertEq(
                 newCollateralPostedForToken,
                 oldCollateralPostedForToken - tokens,
@@ -640,7 +640,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 mtoken,
                 address(this)
             );
-            // LEND-15
+            // market-15
             assertEq(
                 newCollateralForUser,
                 oldCollateralForUser - tokens,
@@ -655,7 +655,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-18 Removing collateral for a nonexistent position should revert with invariant error hash.
+    /// @custom:property market-18 Removing collateral for a nonexistent position should revert with invariant error hash.
     /// @custom:precondition mtoken is either of: cDAI or cUSDC
     /// @custom:precondition token must be listed in marketManager
     /// @custom:precondition price feed must be up to date
@@ -679,7 +679,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
 
         if (success) {
-            // LEND-18
+            // market-18
             assertWithMsg(
                 false,
                 "marketManager - removeCollateral should fail with non existent position"
@@ -695,7 +695,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-19 Removing more tokens than a user has for collateral should revert with insufficient collateral hash.
+    /// @custom:property market-19 Removing more tokens than a user has for collateral should revert with insufficient collateral hash.
     /// @custom:precondition mtoken is either of: cDAI or cUSDC
     /// @custom:precondition token must be listed in marketManager
     /// @custom:precondition price feed must be up to date
@@ -746,7 +746,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-20 Calling reduceCollateralIfNecessary should fail when not called within the context of the mtoken.
+    /// @custom:property market-20 Calling reduceCollateralIfNecessary should fail when not called within the context of the mtoken.
     /// @custom:precondition msg.sender != mtoken
     function reduceCollateralIfNecessary_should_fail_with_wrong_caller(
         address mtoken,
@@ -770,10 +770,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-21 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is greater than 0.
-    /// @custom:property lend-22 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is greater than 0.
-    /// @custom:property lend-23 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is greater than 0.
-    /// @custom:property lend-24 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is greater than 0.
+    /// @custom:property market-21 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is greater than 0.
+    /// @custom:property market-22 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is greater than 0.
+    /// @custom:property market-23 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is greater than 0.
+    /// @custom:property market-24 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is greater than 0.
     /// @custom:precondition token must be cDAI or cUSDC
     /// @custom:precondition token must have an existing position
     /// @custom:precondition collateralPostedForUser for respective token > 0
@@ -822,10 +822,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property lend-25 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is equal to 0.
-    /// @custom:property lend-26 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is equal to 0.
-    /// @custom:property lend-27 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is equal to 0.
-    /// @custom:property lend-28 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is equal to 0.
+    /// @custom:property market-25 Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is equal to 0.
+    /// @custom:property market-26 Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is equal to 0.
+    /// @custom:property market-27 Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is equal to 0.
+    /// @custom:property market-28 Calling closePosition with correct preconditions should succeed,where collateral posted for the user is equal to 0.
     /// @custom:precondition token must be cDAI or cUSDC
     /// @custom:precondition token must have an existing position
     /// @custom:precondition collateralPostedForUser for respective token = 0

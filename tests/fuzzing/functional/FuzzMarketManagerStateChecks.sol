@@ -3,7 +3,7 @@ import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { IMToken } from "contracts/market/LiquidityManager.sol";
 
 contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
-    /// @custom:property sc-lend-1 canMint should not revert when mint is not paused and token is listed
+    /// @custom:property sc-market-1 canMint should not revert when mint is not paused and token is listed
     /// @custom:precondition mintPaused !=2
     /// @custom:precondition mtoken is listed in MarketManager
     function canMint_should_not_revert_when_mint_not_paused_and_is_listed(
@@ -23,7 +23,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-2 canMint should revert when token is not listed
+    /// @custom:property sc-market-2 canMint should revert when token is not listed
     /// @custom:precondition mintPaused !=2
     /// @custom:precondition mtoken is not listed in MarketManager
     function canMint_should_revert_when_token_is_not_listed(
@@ -43,7 +43,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         } catch {}
     }
 
-    /// @custom:property sc-lend-3 canMint should revert when mintPaused = 2
+    /// @custom:property sc-market-3 canMint should revert when mintPaused = 2
     /// @custom:precondition mintPaused = 2
     /// @custom:precondition mtoken is listed in MarketManager
     function canMint_should_revert_when_mint_is_paused(address mtoken) public {
@@ -61,7 +61,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         } catch {}
     }
 
-    /// @custom:property sc-lend-4 canRedeem should be successful when @precondition are met
+    /// @custom:property sc-market-4 canRedeem should be successful when @precondition are met
     /// @custom:precondition redeemPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition current timestamp > cooldownTimestamp + MIN_HOLD_PERIOD
@@ -94,7 +94,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-5 canRedeem should revert when redeemPaused = 2
+    /// @custom:property sc-market-5 canRedeem should revert when redeemPaused = 2
     /// @custom:precondition redeemPaused = 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition address(this) has a position for mtoken
@@ -129,7 +129,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-6 canRedeem should revert when token is not listed
+    /// @custom:property sc-market-6 canRedeem should revert when token is not listed
     /// @custom:precondition redeemPaused != 2
     /// @custom:precondition mtoken is not listed in MarketManager
     /// @custom:precondition address(this) has a position for mtoken
@@ -164,7 +164,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-7 canRedeem should revert when liquidity deficit > 0
+    /// @custom:property sc-market-7 canRedeem should revert when liquidity deficit > 0
     /// @custom:precondition redeemPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition address(this) has a position for mtoken
@@ -200,7 +200,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-8 canRedeem should just return when user has no position for token
+    /// @custom:property sc-market-8 canRedeem should just return when user has no position for token
     /// @custom:precondition redeemPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition address(this) has no position for mtoken
@@ -228,7 +228,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-9 canRedeemWithCollateralRemoval can only be called by mtoken
+    /// @custom:property sc-market-9 canRedeemWithCollateralRemoval can only be called by mtoken
     /// @custom:precondition address(this) != mtoken
     function canRedeemWithCollateralRemoval_should_fail(
         address account,
@@ -254,7 +254,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         } catch {}
     }
 
-    /// @custom:property sc-lend-10 canTransfer should succeed under correct preconditions
+    /// @custom:property sc-market-10 canTransfer should succeed under correct preconditions
     /// @custom:precondition transferPaused != 2
     /// @custom:precondition redeemPaused =2
     /// @custom:precondition mtoken is listed in MarketManager
@@ -290,7 +290,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-11 canTransfer should fail with PAUSED when transferPaused = 2
+    /// @custom:property sc-market-11 canTransfer should fail with PAUSED when transferPaused = 2
     /// @custom:precondition transferPaused = 2
     /// @custom:precondition redeemPaused !=2
     /// @custom:precondition mtoken is listed in MarketManager
@@ -314,7 +314,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-12 canTransfer should fail with NOT LISTED when mtoken is not added to system
+    /// @custom:property sc-market-12 canTransfer should fail with NOT LISTED when mtoken is not added to system
     /// @custom:precondition transferPaused != 2
     /// @custom:precondition redeemPaused != 2
     /// @custom:precondition mtoken is not listed in MarketManager
@@ -338,7 +338,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-13 canTransfer should fail with PAUSED when redeemPaused = 2
+    /// @custom:property sc-market-13 canTransfer should fail with PAUSED when redeemPaused = 2
     /// @custom:precondition transferPaused != 2
     /// @custom:precondition redeemPaused =2
     /// @custom:precondition mtoken is listed in MarketManager
@@ -362,7 +362,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-14 canBorrow should succeed when borrow is not paused and mtoken is listed
+    /// @custom:property sc-market-14 canBorrow should succeed when borrow is not paused and mtoken is listed
     /// @custom:precondition borrowPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
@@ -379,7 +379,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canBorrow(mtoken, address(this), amount) {} catch {}
     }
 
-    /// @custom:property sc-lend-15 canBorrow should fail with PAUSED when borrow is paused
+    /// @custom:property sc-market-15 canBorrow should fail with PAUSED when borrow is paused
     /// @custom:precondition borrowPaused = 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
@@ -408,7 +408,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-16 canBorrow should fail with token is not listed
+    /// @custom:property sc-market-16 canBorrow should fail with token is not listed
     /// @custom:precondition borrowPaused != 2
     /// @custom:precondition mtoken is not listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
@@ -430,7 +430,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-17 canBorrow should fail with liquidityDeficity >0
+    /// @custom:property sc-market-17 canBorrow should fail with liquidityDeficity >0
     /// @custom:precondition borrowPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit > 0
@@ -460,7 +460,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-18 canBorrowWithNotify should fail when called directly
+    /// @custom:property sc-market-18 canBorrowWithNotify should fail when called directly
     /// @custom:precondition mtoken != address(this)
     /// @custom:precondition mtoken is listed in MarketManager
     function canBorrowWithNotify_should_fail_when_called_directly(
@@ -484,7 +484,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-19 canRepay should succeed under correct @precondition
+    /// @custom:property sc-market-19 canRepay should succeed under correct @precondition
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has passed cooldown timestamp
     function canRepay_should_succeed(address mtoken, address account) public {
@@ -501,7 +501,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-20 canRepay should fail when token is not listed
+    /// @custom:property sc-market-20 canRepay should fail when token is not listed
     /// @custom:precondition mtoken is not listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has passed cooldown timestamp
     function canRepay_should_fail_when_not_listed(
@@ -524,7 +524,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-21 canRepay should fail when MIN_HOLD_PERIOD has not passed
+    /// @custom:property sc-market-21 canRepay should fail when MIN_HOLD_PERIOD has not passed
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp
     function canRepay_should_fail_min_hold_has_not_passed(
@@ -547,7 +547,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-22 The canSeize function should succeed when seize is not paused, collateral and debt token are listed, and both tokens have the same marketManager.
+    /// @custom:property sc-market-22 The canSeize function should succeed when seize is not paused, collateral and debt token are listed, and both tokens have the same marketManager.
     /// @custom:precondition seize is not paused
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp
@@ -572,7 +572,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-23 The canSeize function should revert when seize is paused
+    /// @custom:property sc-market-23 The canSeize function should revert when seize is paused
     /// @custom:precondition seize is paused
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp
@@ -604,7 +604,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-24 The canSeize function should revert when collateral or debt token are not listed
+    /// @custom:property sc-market-24 The canSeize function should revert when collateral or debt token are not listed
     /// @custom:precondition seize is not paused
     /// @custom:precondition token is  not listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp
@@ -638,7 +638,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         }
     }
 
-    /// @custom:property sc-lend-25 The canSeize function should succeed when seize is not paused, collateral and debt token are listed, and both tokens have the same marketManager.
+    /// @custom:property sc-market-25 The canSeize function should succeed when seize is not paused, collateral and debt token are listed, and both tokens have the same marketManager.
     /// @custom:precondition seize is not paused
     /// @custom:precondition token is  not listed in MarketManager
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp

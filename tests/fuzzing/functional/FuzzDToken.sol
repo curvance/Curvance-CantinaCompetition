@@ -341,33 +341,66 @@ contract FuzzDToken is StatefulBaseMarket {
         address dtoken,
         address collateralToken
     ) public {
-        // Clean this up
-        (
-            ,
-            uint256 collRatio,
-            uint256 collReqSoft,
-            uint256 collReqHard,
-            ,
-            ,
-            ,
-            ,
-
-        ) = marketManager.tokenData(dtoken);
         is_supported_dtoken(dtoken);
+        require(account != msg.sender);
         require(marketManager.isListed(dtoken));
         require(
             DToken(dtoken).marketManager() ==
                 DToken(collateralToken).marketManager()
         );
+        require(IMToken(collateralToken).isCToken());
         require(marketManager.collateralPosted(collateralToken) > 0);
         require(marketManager.seizePaused() != 2);
+        {
+            // Clean this up
+            (
+                ,
+                uint256 collRatio,
+                uint256 collReqSoft,
+                uint256 collReqHard,
+                ,
+                ,
+                ,
+                ,
 
-        uint maxValue = amount * collReqSoft;
-        uint256 minValue = amount * collReqHard;
-        amount = clampBetween(amount, minValue, maxValue);
+            ) = marketManager.tokenData(dtoken);
 
-        try
-            DToken(dtoken).liquidate(account, IMToken(collateralToken))
-        {} catch {}
+            uint maxValue = amount * collReqSoft;
+            uint256 minValue = amount * collReqHard;
+            amount = clampBetween(amount, minValue, maxValue);
+        }
+        address underlying = DToken(dtoken).underlying();
+
+        uint256 senderBalanceUnderlying = IERC20(underlying).balanceOf(
+            msg.sender
+        );
+        uint256 preAccountCollateral = IERC20(collateralToken).balanceOf(
+            msg.sender
+        );
+        (
+            uint256 debtTokenRepaid,
+            uint256 liquidatedCToken,
+            uint256 cToken
+        ) = marketManager.canLiquidateWithExecution(
+                dtoken,
+                collateralToken,
+                account,
+                amount,
+                true
+            );
+
+        hevm.prank(msg.sender);
+        DToken(dtoken).liquidate(account, IMToken(collateralToken));
+
+        // TODO: successful postconditions (needs tweaking)
+        assertWithMsg(
+            IERC20(underlying).balanceOf(msg.sender) > senderBalanceUnderlying,
+            "DTOKEN - liquidate received increase in underlying"
+        );
+        assertGt(
+            IERC20(collateralToken).balanceOf(msg.sender),
+            preAccountCollateral,
+            "DTOKEN - liquidate received account collateral"
+        );
     }
 }

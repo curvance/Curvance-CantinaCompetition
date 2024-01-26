@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
-import { hevm } from "../helpers/Hevm.sol";
 
 contract FuzzVECVE is StatefulBaseMarket {
     RewardsData defaultRewardData;
