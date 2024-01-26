@@ -1,10 +1,6 @@
 testMode: assertion # run to detect failed assertions 
 coverage: true  # turns coverage saving "on" 
-<<<<<<< HEAD:tests/fuzzing/config/echidna-local.yaml
-corpusDir: "output/echidna-vecve-corpus-0125-1207" # saves coverage into ./output/echidna-corpus
-=======
 corpusDir: "output/market-manager-rebase-0123" # saves coverage into ./output/echidna-corpus
->>>>>>> b663daca (Cherry-picked f04cff94 for function, helper, and system folders):tests/fuzzing/echidna-local.yaml
 cryticArgs: ["--ignore-compile"] # do not recompile the contracts when echidna runs 
 testMaxGas: 1250000000 # increases test max gas for future complex operations 
 codeSize: 0xfffffffffff # increase the code size 

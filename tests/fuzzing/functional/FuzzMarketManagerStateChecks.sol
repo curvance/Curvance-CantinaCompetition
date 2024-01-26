@@ -123,7 +123,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canRedeem() expected to revert with pausedSelectorHash"
             );
         }
@@ -158,7 +158,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_tokenNotListedSelectorHash,
+                errorSelector == marketManager_tokenNotListedSelectorHash,
                 "LENDTROLLER - canRedeem() expected to revert with token not listed"
             );
         }
@@ -194,7 +194,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             assertWithMsg(
                 errorSelector ==
-                    marketmanager_insufficientCollateralSelectorHash,
+                    marketManager_insufficientCollateralSelectorHash,
                 "LENDTROLLER - canRedeem() expected to revert with insufficient collateral"
             );
         }
@@ -284,7 +284,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
             );
         }
@@ -308,7 +308,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
             );
         }
@@ -332,7 +332,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
-                errorSelector == marketmanager_tokenNotListedSelectorHash,
+                errorSelector == marketManager_tokenNotListedSelectorHash,
                 "LENDTROLLER - canTransfer() expected NOTLISTED selector hash on failure"
             );
         }
@@ -356,7 +356,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
             );
         }
@@ -402,7 +402,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
             );
         }
@@ -424,7 +424,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_tokenNotListedSelectorHash,
+                errorSelector == marketManager_tokenNotListedSelectorHash,
                 "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
             );
         }
@@ -454,7 +454,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             assertWithMsg(
                 errorSelector ==
-                    marketmanager_insufficientCollateralSelectorHash,
+                    marketManager_insufficientCollateralSelectorHash,
                 "LENDTROLLER - canBorrow() expected INSUFFICIENT COLLATERAL selector hash on failure"
             );
         }
@@ -478,7 +478,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
-                errorSelector == marketmanager_unauthorizedSelectorHash,
+                errorSelector == marketManager_unauthorizedSelectorHash,
                 "LENDTROLLER - canBorrowWithNotify should have thrown unauthorized error but did not"
             );
         }
@@ -518,7 +518,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         ) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
-                errorSelector == marketmanager_tokenNotListedSelectorHash,
+                errorSelector == marketManager_tokenNotListedSelectorHash,
                 "LENDTROLLER - canRepay should have reverted with token not listed errro"
             );
         }
@@ -541,7 +541,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         ) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
-                errorSelector == marketmanager_minHoldSelectorHash,
+                errorSelector == marketManager_minHoldSelectorHash,
                 "LENDTROLLER - canRepay should have reverted with minimum hold period error"
             );
         }
@@ -598,7 +598,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_pausedSelectorHash,
+                errorSelector == marketManager_pausedSelectorHash,
                 "LENDTROLLER - canSeize() should revert with paused selector"
             );
         }
@@ -632,7 +632,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_tokenNotListedSelectorHash,
+                errorSelector == marketManager_tokenNotListedSelectorHash,
                 "LENDTROLLER - canSeize() should revert with token not listed selector"
             );
         }
@@ -644,7 +644,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition MIN_HOLD_PERIOD has not passed since cooldown timestamp
     /// @custom:precondition collateral and debt token are listed
     /// @custom:precondition marketManager for collateral and debt token are not identical
-    function canSeize_should_revert_when_marketmanager_not_equal(
+    function canSeize_should_revert_when_marketManager_not_equal(
         address collateralToken,
         address debtToken
     ) public {
@@ -664,7 +664,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
-                errorSelector == marketmanager_mismatchSelectorHash,
+                errorSelector == marketManager_mismatchSelectorHash,
                 "LENDTROLLER - canSeize() should revert with marketManager mismatch selector hash"
             );
         }

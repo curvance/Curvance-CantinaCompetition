@@ -448,6 +448,17 @@ abstract contract PropertiesAsserts {
         return a;
     }
 
+    function clampBetweenBoundsFromOne(
+        bool lower,
+        uint256 a
+    ) internal returns (uint256 value) {
+        if (lower) {
+            value = clampBetween(a, 1, type(uint128).max - 1);
+        } else {
+            value = clampBetween(a, type(uint128).max, type(uint256).max);
+        }
+    }
+
     function extractErrorSelector(
         bytes memory revertData
     ) public returns (uint256) {

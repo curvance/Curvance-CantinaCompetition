@@ -79,7 +79,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     MockToken public rewardToken;
     GaugePool public gaugePool;
-    PartnerGaugePool public partnerGaugePool;
 
     address public harvester;
     uint256 public voteBoostMultiplier = 10001; // 110%
@@ -443,6 +442,71 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         );
     }
 
+    function mint_and_approve(
+        address underlyingAddress,
+        address mtoken,
+        uint256 amount
+    ) internal returns (bool) {
+        // mint ME enough tokens to cover deposit
+        try MockToken(underlyingAddress).mint(amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 underlyingSupply = MockToken(underlyingAddress)
+                .totalSupply();
+            uint256 mtokenSupply = MockToken(underlyingAddress).totalSupply();
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            unchecked {
+                if (
+                    doesOverflow(
+                        underlyingSupply + amount,
+                        underlyingSupply
+                    ) || doesOverflow(mtokenSupply + amount, mtokenSupply)
+                ) {
+                    assertWithMsg(
+                        errorSelector == token_total_supply_overflow,
+                        "MToken underlying - mint underlying amount should succeed"
+                    );
+                    return false;
+                } else {
+                    assertWithMsg(
+                        false,
+                        "MToken underlying - mint underlying amount should succeed"
+                    );
+                }
+            }
+        }
+        // approve sufficient underlying tokens prior to calling deposit
+        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 currentAllowance = MockToken(underlyingAddress).allowance(
+                msg.sender,
+                mtoken
+            );
+
+            uint256 errorSelector = extractErrorSelector(revertData);
+            unchecked {
+                if (
+                    doesOverflow(currentAllowance + amount, currentAllowance)
+                ) {
+                    assertEq(
+                        errorSelector,
+                        token_allowance_overflow,
+                        "MTOKEN underlying - revert expected when underflow"
+                    );
+                    return false;
+                } else {
+                    assertWithMsg(
+                        false,
+                        "MTOKEN underlying - approve underlying amount should succeed"
+                    );
+                }
+            }
+        }
+        return true;
+    }
+
     MockDataFeed public mockUsdcFeed;
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
@@ -547,85 +611,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         lastRoundUpdate = block.timestamp;
     }
 
-    MockDataFeed public mockUsdcFeed;
-    MockDataFeed public mockDaiFeed;
-    bool feedsSetup;
-    uint256 lastRoundUpdate;
-
-    function setUpFeeds() public {
-        require(centralRegistry.hasElevatedPermissions(address(this)));
-        require(gaugePool.startTime() < block.timestamp);
-        // use mock pricing for testing
-        // StatefulBaseMarket - chainlinkAdaptor - usdc, dai
-        mockUsdcFeed = new MockDataFeed(address(chainlinkUsdcUsd));
-        chainlinkAdaptor.addAsset(address(cUSDC), address(mockUsdcFeed), true);
-        chainlinkAdaptor.addAsset(address(dUSDC), address(mockUsdcFeed), true);
-
-        dualChainlinkAdaptor.addAsset(
-            address(cUSDC),
-            address(mockUsdcFeed),
-            true
-        );
-        mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
-        chainlinkAdaptor.addAsset(address(cDAI), address(mockDaiFeed), true);
-        chainlinkAdaptor.addAsset(address(dDAI), address(mockDaiFeed), true);
-        dualChainlinkAdaptor.addAsset(
-            address(cDAI),
-            address(mockDaiFeed),
-            true
-        );
-
-        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
-        mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e8);
-        chainlinkUsdcUsd.updateRoundData(
-            0,
-            1e8,
-            block.timestamp,
-            block.timestamp
-        );
-        chainlinkDaiUsd.updateRoundData(
-            0,
-            1e8,
-            block.timestamp,
-            block.timestamp
-        );
-        oracleRouter.addMTokenSupport(address(cDAI));
-        oracleRouter.addMTokenSupport(address(cUSDC));
-        oracleRouter.addMTokenSupport(address(dDAI));
-        oracleRouter.addMTokenSupport(address(dUSDC));
-        feedsSetup = true;
-        lastRoundUpdate = block.timestamp;
-    }
-
-    // If the price is stale, update the round data and update lastRoundUpdate
-    function check_price_feed() public {
-        // if lastRoundUpdate timestamp is stale
-        if (lastRoundUpdate > block.timestamp) {
-            lastRoundUpdate = block.timestamp;
-        }
-        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
-            // TODO: Change this to a loop to loop over marketManager.assetsOf()
-            // Save a mapping of assets -> chainlink oracle
-            // call updateRoundData on each oracle
-            chainlinkUsdcUsd.updateRoundData(
-                0,
-                1e8,
-                block.timestamp,
-                block.timestamp
-            );
-            chainlinkDaiUsd.updateRoundData(
-                0,
-                1e8,
-                block.timestamp,
-                block.timestamp
-            );
-        }
-        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
-        mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e8);
-        lastRoundUpdate = block.timestamp;
+    function is_supported_dtoken(address dtoken) internal {
+        require(dtoken == address(dUSDC) || dtoken == address(dDAI));
     }
 }

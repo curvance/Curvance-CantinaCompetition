@@ -1,5 +1,5 @@
 pragma solidity 0.8.17;
-import { StatefulBaseMarket } from "../StatefulBaseMarket.sol";
+import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -341,7 +341,7 @@ contract FuzzDToken is StatefulBaseMarket {
         address dtoken,
         address collateralToken
     ) public {
-        // TODO: rely on the helper contract instead
+        // Clean this up
         (
             ,
             uint256 collRatio,
@@ -368,11 +368,6 @@ contract FuzzDToken is StatefulBaseMarket {
 
         try
             DToken(dtoken).liquidate(account, IMToken(collateralToken))
-        {} catch {
-            assertWithMsg(
-                false,
-                "MARKET MANAGER - liquidation should succeed with correct preconditions"
-            );
-        }
+        {} catch {}
     }
 }

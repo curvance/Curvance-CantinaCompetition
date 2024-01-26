@@ -90,7 +90,7 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
             emit LogUint256("error:", errorSelector);
             // ac-lend-1
             assertWithMsg(
-                errorSelector == marketmanager_unauthorizedSelectorHash,
+                errorSelector == marketManager_unauthorizedSelectorHash,
                 "LENDTROLLER - setRedeemPaused() expected to be successful with correct preconditions"
             );
         }
