@@ -403,10 +403,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
         uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
 
-        uint256 oldCollateralForUser = marketManager.collateralPostedFor(
-            mtoken,
-            address(this)
-        );
+        uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
         uint256 collateralCaps = marketManager.collateralCaps(mtoken);
 
         uint256 oldCollateralForToken = marketManager.collateralPosted(mtoken);
@@ -451,10 +448,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 );
             }
             // ensure account collateral has increased by # of tokens
-            uint256 newCollateralForUser = marketManager.collateralPostedFor(
-                mtoken,
-                address(this)
-            );
+            uint256 newCollateralForUser = _collateralPostedFor(mtoken);
 
             uint256 mtokenExchange = MockCToken(mtoken).exchangeRateSafe();
             // market-9
@@ -505,10 +499,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
         uint256 mtokenBalance = IMToken(mtoken).balanceOf(address(this));
 
-        uint256 oldCollateralForUser = marketManager.collateralPostedFor(
-            mtoken,
-            address(this)
-        );
+        uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
 
         // collateralPosted + tokens <= mtoken.balanceOf(address(this))
         // tokens <= mtoken.balanceOf(address(this)) - collateralPosted
@@ -564,10 +555,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(marketManager.hasPosition(mtoken, address(this)));
         require(marketManager.redeemPaused() != 2);
 
-        uint256 oldCollateralForUser = marketManager.collateralPostedFor(
-            mtoken,
-            address(this)
-        );
+        uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
         tokens = clampBetween(tokens, 1, oldCollateralForUser);
 
         uint256 oldCollateralPostedForToken = marketManager.collateralPosted(
@@ -627,10 +615,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             );
 
             // Collateral posted for the user should decrease
-            uint256 newCollateralForUser = marketManager.collateralPostedFor(
-                mtoken,
-                address(this)
-            );
+            uint256 newCollateralForUser = _collateralPostedFor(mtoken);
             // market-15
             assertEq(
                 newCollateralForUser,
@@ -700,10 +685,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(marketManager.isListed(mtoken));
         check_price_feed();
         require(marketManager.hasPosition(mtoken, address(this)));
-        uint256 oldCollateralForUser = marketManager.collateralPostedFor(
-            mtoken,
-            address(this)
-        );
+        uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
 
         tokens = clampBetween(
             tokens,
@@ -773,10 +755,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.hasPosition(mtoken, address(this)));
         check_price_feed();
-        uint256 collateralPostedForUser = marketManager.collateralPostedFor(
-            address(mtoken),
-            address(this)
-        );
+        uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser > 0);
         require(
             block.timestamp >
@@ -827,10 +806,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.hasPosition(mtoken, address(this)));
         check_price_feed();
-        uint256 collateralPostedForUser = marketManager.collateralPostedFor(
-            address(mtoken),
-            address(this)
-        );
+        uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser == 0);
         require(
             block.timestamp >
@@ -860,7 +836,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             "marketManager - closePosition should remove position in mtoken if successful"
         );
         assertWithMsg(
-            marketManager.collateralPostedFor(mtoken, address(this)) == 0,
+            _collateralPostedFor(mtoken) == 0,
             "marketManager - closePosition should reduce collateralPosted for user to 0"
         );
         IMToken[] memory postAssetsOf = marketManager.assetsOf(address(this));
@@ -987,5 +963,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         ) {
             divergenceTooLarge = true;
         }
+    }
+
+    function _collateralPostedFor(address mToken) private view returns (uint256) {
+        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
+        return collateralPosted;
     }
 }
