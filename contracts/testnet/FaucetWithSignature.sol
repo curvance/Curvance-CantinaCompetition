@@ -11,6 +11,11 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 contract FaucetWithSignature is Ownable {
     using ECDSA for bytes32;
 
+    /// Maximum faucet erc20 claim amount
+    uint256 public maxClaim = 10 ether;
+    /// /// Maximum faucet sepETH claim amount
+    uint256 public maxSepETHClaim = 0.1 ether;
+
     address private signer;
 
     /// user => token => last claimed timestamp
@@ -24,6 +29,14 @@ contract FaucetWithSignature is Ownable {
 
     function setSigner(address _signer) external onlyOwner {
         signer = _signer;
+    }
+
+    function setMaxClaimAmounts(
+        uint256 amountERC20, 
+        uint256 amountSepETH
+    ) external onlyOwner {
+        maxClaim = amountERC20;
+        maxSepETHClaim = amountSepETH;
     }
 
     function claim(
@@ -47,9 +60,11 @@ contract FaucetWithSignature is Ownable {
         );
 
         if (token == address(0)) {
+            require(amount < maxSepETHClaim, "Excessive desired claim amount");
             require(address(this).balance >= amount, "Not enough ETH");
             SafeTransferLib.safeTransferETH(user, amount);
         } else {
+            require(amount < maxClaim, "Excessive desired claim amount");
             require(
                 IERC20(token).balanceOf(address(this)) >= amount,
                 "Not enough Token"

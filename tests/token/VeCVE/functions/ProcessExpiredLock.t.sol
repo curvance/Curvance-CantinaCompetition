@@ -94,6 +94,7 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
         (uint216 amount, uint40 unlockTime) =
             veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
+        uint40 newLockTimestamp = veCVE.freshLockTimestamp();
 
         veCVE.processExpiredLock(
             0,
@@ -103,7 +104,7 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             "",
             0
         );
-        uint40 newLockTimestamp = veCVE.freshLockTimestamp();
+        
         // lockIndex 0 is updated to new timestamp
         (uint216 amount2, uint40 unlockTime2) = veCVE.userLocks(address(this), 0);
 
