@@ -136,10 +136,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// @notice Used for fuzzing.
     function getUnlockTime(
-        address _addr,
-        uint _index
+        address user,
+        uint256 lockIndex
     ) public view returns (uint40) {
-        return userLocks[_addr][_index].unlockTime;
+        return userLocks[user][lockIndex].unlockTime;
     }
 
     /// @notice Used for frontend, needed due to array of structs.
@@ -580,13 +580,13 @@ contract VeCVE is ERC20, ReentrancyGuard {
             if (continuousLock) {
                 // If the relocked lock is continuous update `unlockTime`
                 // to continuous lock value and increase points.
-                lock.unlockTime = CONTINUOUS_LOCK_VALUE;
+                locks[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;
                 _incrementPoints(msg.sender, _getCLPoints(amount));
             } else {
                 // If the relocked lock is a standard lock `unlockTime`
                 // to a fresh lock timestamp and increase points
                 // and set unlock schedule.
-                lock.unlockTime = freshLockTimestamp();
+                locks[lockIndex].unlockTime = freshLockTimestamp();
                 _incrementPoints(msg.sender, amount);
                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
             }

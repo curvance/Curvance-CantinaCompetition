@@ -381,11 +381,9 @@ contract DynamicInterestRateModel {
         RatesConfiguration memory config = ratesConfig;
         uint256 vertexPoint = config.vertexStartingPoint;
 
-        bool belowVertex = (util <= vertexPoint);
-
         // Query base interest rate directly since vertex multiplier is not
         // applied.
-        if (belowVertex) {
+        if (util <= vertexPoint) {
             return getBaseInterestRate(util);
         }
 
@@ -396,7 +394,7 @@ contract DynamicInterestRateModel {
 
         uint256 vertexInterestRate = ratesConfig.vertexInterestRate;
         uint256 newMultiplier = _updateForAboveVertex(config, util);
-        
+
         return (util * vertexInterestRate * newMultiplier) / WAD_SQUARED;
     }
 
