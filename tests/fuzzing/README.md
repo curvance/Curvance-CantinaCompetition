@@ -94,6 +94,127 @@
 | S-VECVE-6 | The sum of all user unlock epochs for each epoch must be less than or equal to the user points. | Passed |
 | S-VECVE-7 | The contract should only have a zero cve balance when there are no user locks.                  | Passed |
 
+## Market Manager - Functional Invariants 
+
+| ID        | Property                                                                                                                                                            | Result |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| MARKET-1  | Once a new token is listed, lendtroller.isListed(mtoken) should return true.                                                                                        | Passed |
+| MARKET-2  | A token already added to the Lendtroller cannot be added again.                                                                                                     | Passed |
+| MARKET-3  | A user can deposit into an mtoken provided that they have the underlying asset, and they have approved the mtoken contract.                                         | Passed |
+| MARKET-4  | When depositing assets into the mtoken, the wrapped token balance for the user should increase.                                                                     | Passed |
+| MARKET-5  | Calling updateCollateralToken with variables in the correct bounds should succeed.                                                                                  | Passed |
+| MARKET-6  | Setting the collateral caps for a token should increase the globally set value for the specific token.                                                              | Passed |
+| MARKET-7  | Setting collateral caps for a token given permissions and collateral values being set should succeed.                                                               | Passed |
+| MARKET-8  | With the correct bounds on input, updateCollateralToken should revert if the price feed is out of date.                                                             | Passed |
+| MARKET-9  | After collateral is posted, the user’s collateral posted position for the respective asset should increase.                                                         | Passed |
+| MARKET-10 | After collateral is posted, calling hasPosition on the user’s mtoken should return true.                                                                            | Passed |
+| MARKET-11 | After collateral is posted, the global collateral for the mtoken should increase by the amount posted.                                                              | Passed |
+| MARKET-12 | When price feed is up to date, address(this) has mtoken, tokens are bound correctly, and caller is correct, the postCollateral call should succeed.                 | Passed |
+| MARKET-13 | Trying to post too much collateral should revert.                                                                                                                   | Passed |
+| MARKET-14 | Removing collateral from the system should decrease the global posted collateral by the removed amount.                                                             | Passed |
+| MARKET-15 | Removing collateral from the system should reduce the user posted collateral by the removed amount.                                                                 | Passed |
+| MARKET-16 | If the user has a liquidity shortfall, the user should not be permitted to remove collateral (function should fail with insufficient collateral selector hash).     | Passed |
+| MARKET-17 | If the user does not have a liquidity shortfall and meets expected preconditions, the removeCollateral should be successful.                                        | Passed |
+| MARKET-18 | Removing collateral for a nonexistent position should revert with invariant error hash.                                                                             | Passed |
+| MARKET-19 | Removing more tokens than a user has for collateral should revert with insufficient collateral hash.                                                                | Passed |
+| MARKET-20 | Calling reduceCollateralIfNecessary should fail when not called within the context of the mtoken.                                                                   | Passed |
+| MARKET-21 | Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is greater than 0.                    | Passed |
+| MARKET-22 | Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is greater than 0. | Passed |
+| MARKET-23 | Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is greater than 0.            | Passed |
+| MARKET-24 | Calling closePosition with correct preconditions should succeed, where collateral posted for the user is greater than 0.                                            | Passed |
+| MARKET-25 | Calling closePosition with correct preconditions should remove a position in the mtoken, where collateral posted for the user is equal to 0.                        | Passed |
+| MARKET-26 | Calling closePosition with correct preconditions should set collateralPosted for the user’s mtoken to zero, where collateral posted for the user is equal to 0.     | Passed |
+| MARKET-27 | Calling closePosition with correct preconditions should reduce the user asset list by 1 element, where collateral posted for the user is equal to 0.                | Passed |
+| MARKET-28 | Calling closePosition with correct preconditions should succeed, where collateral posted for the user is equal to 0.                                                | Passed |
+| MARKET-29 | Calling deposit when convertToShares overflows should revert.                                                                                                       | Passed |
+| MARKET-31 | Calling deposit when totalAssets + amount overflows should revert.                                                                                                  | Passed |
+| MARKET-32 | Calling deposit when oracle price returns <0, deposit should revert.                                                                                                | Passed |
+
+## Market Manager – Access Controls 
+
+| ID           | Property                                                                                  | Result |
+| ------------ | ----------------------------------------------------------------------------------------- | ------ |
+| AC-MARKET-1  | Calling setMintPaused with correct preconditions should not revert.                       | Passed |
+| AC-MARKET-2  | Calling the setMintPaused(mtoken, true) with authorization should set isMintPaused to 2.  | Passed |
+| AC-MARKET-3  | Calling the setMintPaused(mtoken, false) with authorization should set isMintPaused to 1. | Passed |
+| AC-MARKET-4  | Calling setRedeemPaused with the correct preconditions should succeed.                    | Passed |
+| AC-MARKET-5  | Calling setRedeemPaused(true) with authorization should set redeemPaused to 2.            | Passed |
+| AC-MARKET-6  | Calling setRedeemPaused(false) with authorization should set redeemPaused to 1.           | Passed |
+| AC-MARKET-7  | Calling setTransferPaused with the correct preconditions should not revert.               | Passed |
+| AC-MARKET-8  | Calling setTransferPaused(true) with authorization should set transferPaused to 2.        | Passed |
+| AC-MARKET-9  | Calling setTransferPaused(false) with authorization should set transferPaused to 1.       | Passed |
+| AC-MARKET-10 | Calling setSeizePaused with the correct authorization should succeed.                     | Passed |
+| AC-MARKET-11 | Calling setSeizePaused(true) should set seizePaused to 2.                                 | Passed |
+| AC-MARKET-12 | Calling setSeizePaused(false) should set seizePaused to 1.                                | Passed |
+| AC-MARKET-13 | Calling setBorrowPaused with correct preconditions should succeed.                        | Passed |
+| AC-MARKET-14 | Calling setBorrowPaused(mtoken, true) should set isBorrowPaused to 2.                     | Passed |
+| AC-MARKET-15 | Calling setBorrowPaused(mtoken, false) should set isBorrowPaused to 1.                    | Passed |
+
+## Market Manager - State Checks 
+
+| ID           | Property                                                                                                                                                                     | Result |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| SC-MARKET-1  | The canMint function should not revert when mint is not paused and a token is listed in the system.                                                                          | Passed |
+| SC-MARKET-2  | The canMint function should revert when the token is not listed.                                                                                                             | Passed |
+| SC-MARKET-3  | The canMint function should revert when mint is paused.                                                                                                                      | Passed |
+| SC-MARKET-4  | The canRedeem function should succeed when redeem is not paused, mtoken is listed, MIN_HOLD_PERIOD has passed since posting, and the user does not have a liquidity deficit. | Passed |
+| SC-MARKET-5  | The canRedeem function should revert when the redeemPaused flag is set to 2.                                                                                                 | Passed |
+| SC-MARKET-6  | The canRedeem function should revert when the token is not listed.                                                                                                           | Passed |
+| SC-MARKET-7  | The canRedeem function should revert when a user has a liquidityDeficit greater than 0.                                                                                      | Passed |
+| SC-MARKET-8  | The canRedeem function should return (no error or return) when no position exists.                                                                                           | Passed |
+| SC-MARKET-9  | The canRedeemWithCollateralRemoval function should fail when not called by the mtoken address.                                                                               | Passed |
+| SC-MARKET-10 | The canTransfer function should pass when all preconditions are met.                                                                                                         | Passed |
+| SC-MARKET-11 | The canTransfer function should fail when transferring in the system is paused.                                                                                              | Passed |
+| SC-MARKET-12 | The canTransfer function should fail when the mtoken is not listed.                                                                                                          |        |
+| SC-MARKET-13 | The canTransfer function should fail when redeem is paused.                                                                                                                  | Passed |
+| SC-MARKET-14 | The canBorrow function should succeed when borrow is not paused and mtoken is listed.                                                                                        | Passed |
+| SC-MARKET-15 | The canBorrow function should fail when borrow is paused.                                                                                                                    | Passed |
+| SC-MARKET-16 | The canBorrow function should fail when mtoken is unlisted.                                                                                                                  | Passed |
+| SC-MARKET-17 | The canBorrow function should fail when a liquidity deficit exists.                                                                                                          | Passed |
+| SC-MARKET-18 | The canBorrowWithNotify function should fail when called directly.                                                                                                           | Passed |
+| SC-MARKET-19 | The canRepay function should succeed when mtoken is listed and MIN_HOLD_PERIOD has passed.                                                                                   | Passed |
+| SC-MARKET-20 | The canRepay function should revert when mtoken is not listed.                                                                                                               | Passed |
+| SC-MARKET-21 | The canRepay function should revert when MIN_HOLD_PERIOD has not passed.                                                                                                     | Passed |
+| SC-MARKET-22 | The canSeize function should succeed when seize is not paused, collateral and debt token are listed, and both tokens have the same lendtroller.                              | Passed |
+| SC-MARKET-23 | The canSeize function should revert when seize is paused.                                                                                                                    | Passed |
+| SC-MARKET-24 | The canSeize function should revert when collateral or debt token are not listed in the Lendtroller.                                                                         | Passed |
+| SC-MARKET-25 | The canSeize function should revert when both tokens do not have the same Lendtroller.                                                                                       | Passed |
+
+## Market Manager – System Invariants 
+
+| ID         | Property                                                                                      | Result |
+| ---------- | --------------------------------------------------------------------------------------------- | ------ |
+| S-MARKET-1 | A user’s cToken balance must always be greater than the total collateral posted for a ctoken. | Passed |
+| S-MARKET-2 | Market collateral posted should always be less than or equal to collateralCaps for a token.   | Passed |
+| S-MARKET-3 | The total supply of a token should never go down to zero once it has been listed.             | Passed |
+
+
+## DToken - Functional Invariants
+
+| ID      | Property                                                                                           | Result |
+| ------- | -------------------------------------------------------------------------------------------------- | ------ |
+| DTOK-1  | Calling DToken.mint should succeed with correct preconditions.                                     | Passed |
+| DTOK-2  | Underlying balance for sender DToken should decrease by amount after minting DToken.               | Passed |
+| DTOK-3  | Balance of the recipient after minting DToken should increase by amount * WAD/exchangeRateCached() | Passed |
+| DTOK-4  | DToken totalSupply should increase by amount * WAD/exchangeRateCached() after calling DToken mint. | Passed |
+| DTOK-5  | The borrow function should succeed with proper preconditions, when not accruing interest.          | Passed |
+| DTOK-6  | If interest has not accrued, totalBorrows should increase after calling borrow.                    | Passed |
+| DTOK-7  | If interest has not accrued, the underlying balance of the caller should increase by amount        | Passed |
+| DTOK-8  | The borrow function should succeed with proper preconditions, when accruing interest.              | Passed |
+| DTOK-9  | If interest has accrued, the totalBorrows should increase by the amount.                           | Passed |
+| DTOK-10 | If interest has accrued, the underlying balance should increase by amount.                         | Passed |
+| DTOK-11 | The repay function should succeed with proper preconditions.                                       | Passed |
+| DTOK-12 | A user attempting to repay too much should error gracefully.                                       | FAILED |
+| DTOK-13 | A user should be able to repay between 0 and their accountDebt with the repay function.            | Passed |
+| DTOK-14 | If a user repays with amount = 0, they zero out their accountDebt for their account.               | Passed |
+
+## DToken – System Invariants
+
+| ID       | Property                                                                                                     | Result |
+| -------- | ------------------------------------------------------------------------------------------------------------ | ------ |
+| S-DTOK-1 | Market underlying held for a DToken must be equivalent to the balanceOf the underlying token.                | Passed |
+| S-DTOK-2 | The number of decimals for the DToken must be equivalent to the number of decimals for the underlying token. | Passed |
+| S-DTOK-3 | The isCToken function for a DToken must not return true.                                                     | Passed |
 
 ## So you found a failure? 
 
@@ -118,11 +239,10 @@ Tips and tricks:
 - `earlyExpire`
 - additional tests on callers 
 
-## Lendtroller 
+## Market Manager 
 
 - current debt > max allowed debt after folding
 - partner gauges 
-
 
 --- 
 
