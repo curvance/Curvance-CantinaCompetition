@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// // SPDX-License-Identifier: UNLICENSED
+// pragma solidity ^0.8.17;
 
-import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompoundingBase.sol";
+import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { CTokenBase } from "contracts/market/collateral/CTokenBase.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";

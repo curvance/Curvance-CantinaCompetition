@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { PropertiesAsserts } from "tests/fuzzing/PropertiesHelper.sol";
-import { ErrorConstants } from "tests/fuzzing/ErrorConstants.sol";
+import { PropertiesAsserts } from "tests/fuzzing/helpers/PropertiesHelper.sol";
+import { ErrorConstants } from "tests/fuzzing/helpers/ErrorConstants.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
@@ -16,7 +18,6 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
@@ -47,17 +48,21 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     CentralRegistry public centralRegistry;
     FeeAccumulator public feeAccumulator;
     ProtocolMessagingHub public protocolMessagingHub;
-    BalancerStablePoolAdaptor public balRETHAdapter;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
     DynamicInterestRateModel public InterestRateModel;
     MarketManager public marketManager;
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
+
     AuraCToken public auraCToken;
+    AuraCToken public cBALRETH;
+
     DToken public dUSDC;
     DToken public dDAI;
-    AuraCToken public cBALRETH;
+
+    MockCToken public cDAI;
+    MockCToken public cUSDC;
     MockToken public usdc;
     MockToken public dai;
     MockToken public WETH;
@@ -75,14 +80,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     GaugePool public gaugePool;
 
     address public harvester;
-    address public randomUser = address(1000000);
-    address public user1 = address(1000001);
-    address public user2 = address(1000002);
-    address public liquidator = address(1000003);
-    uint256 public clPointMultiplier = 11000; // 110%
-    uint256 public voteBoostMultiplier = 11000; // 110%
-    uint256 public lockBoostMultiplier = 10000; // 110%
-    uint256 public marketInterestFactor = 1000; // 10%
+    uint256 public voteBoostMultiplier = 10001; // 110%
+    uint256 public lockBoostMultiplier = 10001; // 110%
+    uint256 public marketInterestFactor = 1; // 10%
 
     Zapper public zapper;
 
@@ -114,7 +114,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         emit LogString("DEPLOYED: OracleRouter");
         _deployOracleRouter();
-        // _deployChainlinkAdaptors();
+        _deployChainlinkAdaptors();
         emit LogString("DEPLOYED: GaugePool");
         _deployGaugePool();
         emit LogString("DEPLOYED: MarketManager");
@@ -125,8 +125,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         _deployDUSDC();
         emit LogString("DEPLOYED: DDAI");
         _deployDDAI();
-        // emit LogString("DEPLOYED: CBALRETH");
-        // _deployCBALRETH();
+        emit LogString("DEPLOYED: CUSDC");
+        _deployCUSDC();
+        emit LogString("DEPLOYED: DAI");
+        _deployCDAI();
         // emit LogString("DEPLOYED: ZAPPER");
         // _deployZapper();
         emit LogString("DEPLOYED: PositionFolding");
@@ -143,8 +145,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             address(this),
             address(this),
             0,
-            address(this),
-            address(this)
+            address(0),
+            address(usdc)
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
@@ -195,6 +197,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         harvester = address(this);
         centralRegistry.addHarvester(harvester);
 
+        emit LogUint256("woowowo", 0);
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
@@ -260,7 +263,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             _USDC_ADDRESS,
             address(chainlinkAdaptor)
         );
-        oracleRouter.addAssetPriceFeed(_DAI_ADDRESS, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _DAI_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(
             _RETH_ADDRESS,
             address(chainlinkAdaptor)
@@ -341,6 +347,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             address(marketManager),
             marketInterestFactor
         );
+        try gaugePool.start(address(marketManager)) {} catch {
+            assertWithMsg(false, "start gauge pool failed");
+        }
     }
 
     function _deployDynamicInterestRateModel() internal {
@@ -364,6 +373,24 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployDDAI() internal returns (DToken) {
         dDAI = _deployDToken(_DAI_ADDRESS);
         return dDAI;
+    }
+
+    function _deployCUSDC() internal returns (MockCToken) {
+        cUSDC = new MockCToken(
+            ICentralRegistry(address(centralRegistry)),
+            IERC20(address(usdc)),
+            address(marketManager)
+        );
+        return cUSDC;
+    }
+
+    function _deployCDAI() internal returns (MockCToken) {
+        cDAI = new MockCToken(
+            ICentralRegistry(address(centralRegistry)),
+            IERC20(address(dai)),
+            address(marketManager)
+        );
+        return cDAI;
     }
 
     function _deployDToken(address token) internal returns (DToken) {
@@ -400,5 +427,109 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             _USDC_ADDRESS,
             address(dualChainlinkAdaptor)
         );
+    }
+
+    MockDataFeed public mockUsdcFeed;
+    MockDataFeed public mockDaiFeed;
+    bool feedsSetup;
+    uint256 lastRoundUpdate;
+
+    function setUpFeeds() public {
+        require(centralRegistry.hasElevatedPermissions(address(this)));
+        require(gaugePool.startTime() < block.timestamp);
+        // use mock pricing for testing
+        // StatefulBaseMarket - chainlinkAdaptor - usdc, dai
+        mockUsdcFeed = new MockDataFeed(address(chainlinkUsdcUsd));
+        chainlinkAdaptor.addAsset(
+            address(cUSDC),
+            address(mockUsdcFeed),
+            0,
+            true
+        );
+        chainlinkAdaptor.addAsset(
+            address(dUSDC),
+            address(mockUsdcFeed),
+            0,
+            true
+        );
+
+        dualChainlinkAdaptor.addAsset(
+            address(cUSDC),
+            address(mockUsdcFeed),
+            0,
+            true
+        );
+        mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
+        chainlinkAdaptor.addAsset(
+            address(cDAI),
+            address(mockDaiFeed),
+            0,
+            true
+        );
+        chainlinkAdaptor.addAsset(
+            address(dDAI),
+            address(mockDaiFeed),
+            0,
+            true
+        );
+        dualChainlinkAdaptor.addAsset(
+            address(cDAI),
+            address(mockDaiFeed),
+            0,
+            true
+        );
+
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        chainlinkDaiUsd.updateRoundData(
+            0,
+            1e8,
+            block.timestamp,
+            block.timestamp
+        );
+        oracleRouter.addMTokenSupport(address(cDAI));
+        oracleRouter.addMTokenSupport(address(cUSDC));
+        oracleRouter.addMTokenSupport(address(dDAI));
+        oracleRouter.addMTokenSupport(address(dUSDC));
+        feedsSetup = true;
+        lastRoundUpdate = block.timestamp;
+    }
+
+    // If the price is stale, update the round data and update lastRoundUpdate
+    function check_price_feed() public {
+        // if lastRoundUpdate timestamp is stale
+        if (lastRoundUpdate > block.timestamp) {
+            lastRoundUpdate = block.timestamp;
+        }
+        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
+            // TODO: Change this to a loop to loop over marketManager.assetsOf()
+            // Save a mapping of assets -> chainlink oracle
+            // call updateRoundData on each oracle
+            chainlinkUsdcUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+            chainlinkDaiUsd.updateRoundData(
+                0,
+                1e8,
+                block.timestamp,
+                block.timestamp
+            );
+        }
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
+        lastRoundUpdate = block.timestamp;
     }
 }

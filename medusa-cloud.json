@@ -7,7 +7,7 @@
 		"callSequenceLength": 100,
 		"corpusDirectory": "output/medusa-corpus",
 		"coverageEnabled": true,
-		"deploymentOrder": [
+		"targetContracts": [
 			"FuzzingSuite"
 		],
 		"constructorArgs": {},

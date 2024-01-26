@@ -7,6 +7,7 @@ import { VeCVE } from "contracts/token/VeCVE.sol";
 
 contract LockTest is TestBaseVeCVE {
     event Locked(address indexed user, uint256 amount);
+    event RewardPaid(address user, address rewardToken, uint256 amount);
 
     function test_lock_fail_whenVeCVEShutdown(
         bool shouldLock,
@@ -65,6 +66,7 @@ contract LockTest is TestBaseVeCVE {
         veCVE.createLock(amount, true, rewardsData, "", 0);
 
         assertEq(cve.balanceOf(address(this)), 100e18 - amount);
+
         assertEq(veCVE.balanceOf(address(this)), amount);
 
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
@@ -75,6 +77,7 @@ contract LockTest is TestBaseVeCVE {
             amount * veCVE.CL_POINT_MULTIPLIER()
         );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
+
         assertEq(
             veCVE.userUnlocksByEpoch(
                 address(this),
@@ -118,5 +121,36 @@ contract LockTest is TestBaseVeCVE {
             ),
             amount
         );
+    }
+
+    function test_lock_with_claimRewards(
+        uint256 amount,
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        amount = bound(amount, _MIN_FUZZ_AMOUNT * 2, _MAX_FUZZ_AMOUNT);
+        deal(address(cve), address(this), amount);
+        cve.approve(address(veCVE), amount);
+
+        deal(_USDC_ADDRESS, address(cveLocker), amount);
+
+        vm.expectEmit(true, true, true, true, address(veCVE));
+        emit Locked(address(this), amount / 2);
+        veCVE.createLock(amount / 2, false, rewardsData, "", 0);
+
+        vm.prank(address(cveLocker.veCVE()));
+        cveLocker.updateUserClaimIndex(address(this), 1);
+
+        for (uint256 i = 0; i < 2; i++) {
+            vm.prank(centralRegistry.feeAccumulator());
+            cveLocker.recordEpochRewards(_ONE);
+        }
+
+        // verify that rewards are delivered
+        vm.expectEmit(true, true, true, true, address(cveLocker));
+        emit RewardPaid(address(this), _USDC_ADDRESS, amount / 2);
+        veCVE.createLock(amount / 2, false, rewardsData, "", 0);
+        assertEq(usdc.balanceOf(address(this)), amount / 2);
     }
 }

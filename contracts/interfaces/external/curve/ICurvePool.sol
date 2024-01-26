@@ -2,6 +2,8 @@
 pragma solidity ^0.8.17;
 
 interface ICurvePool {
+    function balances(uint256 i) external view returns (uint256);
+
     function coins(uint256 i) external view returns (address);
 
     function get_virtual_price() external view returns (uint256);
@@ -26,4 +28,12 @@ interface ICurvePool {
         uint256 dx,
         uint256 min_dy
     ) external payable returns (uint256);
+
+    function stored_rates() external view returns (uint256[2] memory);
+
+    function get_dy(
+        int128 from,
+        int128 to,
+        uint256 _from_amount
+    ) external view returns (uint256);
 }

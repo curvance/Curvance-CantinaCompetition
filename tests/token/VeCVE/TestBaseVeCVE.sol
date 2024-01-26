@@ -6,6 +6,8 @@ import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract TestBaseVeCVE is TestBaseMarket {
     RewardsData public rewardsData;
+    uint256 internal constant _MIN_FUZZ_AMOUNT = 1e18;
+    uint256 internal constant _MAX_FUZZ_AMOUNT = 420e24;
 
     modifier setRewardsData(
         bool shouldLock,

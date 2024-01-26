@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// // SPDX-License-Identifier: UNLICENSED
+// pragma solidity ^0.8.17;
 
-import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompoundingBase.sol";
+import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 
 contract CTokenApproveTest is TestBaseCTokenCompounding {
     event Approval(

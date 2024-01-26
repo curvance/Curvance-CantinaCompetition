@@ -1269,4 +1269,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
     ) public view returns (uint40) {
         return userLocks[_addr][_index].unlockTime;
     }
+
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocksLength(address user) external view returns (uint) {
+        return userLocks[user].length;
+    }
 }
