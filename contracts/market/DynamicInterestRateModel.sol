@@ -46,11 +46,13 @@ contract DynamicInterestRateModel {
 
     /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
-    /// @notice Rate at which interest is compounded, in seconds.
+    /// @notice Rate at which interest is compounded, in seconds. 
+    ///         600 = 10 minutes.
     uint256 public constant INTEREST_COMPOUND_RATE = 600;
     /// @notice Maximum Rate at which the vertex multiplier will
-    ///         decay per adjustment, in `WAD`.
-    uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18; // 5%.
+    ///         decay per adjustment, in `WAD`. 
+    ///         .05e18 = 5%.
+    uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18;
     /// @notice The maximum frequency in which the vertex can have
     ///         between adjustments. It is important that this value is not
     ///         too high as users could in theory borrow a ton of assets
@@ -61,14 +63,16 @@ contract DynamicInterestRateModel {
     uint256 public constant MIN_VERTEX_ADJUSTMENT_RATE = 1 hours;
     /// @notice The maximum rate at with the vertex multiplier is adjusted,
     ///         in WAD on top of base rate (1 `WAD`).
-    ///         E.g. 3 * WAD = triples vertex interest rate per adjustment
-    ///         at 100% utilization.
-    uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 3 * WAD;
+    ///         E.g. 2 * WAD = 300% increase to vertex interest rate per
+    ///         adjustment at 100% utilization, 
+    ///         due to 100% (in WAD) applied on top.
+    uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 2e18;
     /// @notice The minimum rate at with the vertex multiplier is adjusted,
     ///         in WAD on top of base rate (1 `WAD`).
-    ///         E.g. 1.5 * WAD = 50% increase to vertex interest rate per
-    ///         adjustment at 100% utilization.
-    uint256 public constant MIN_VERTEX_ADJUSTMENT_VELOCITY = 1.5e18;
+    ///         E.g. 0.5 * WAD = 150% increase to vertex interest rate per
+    ///         adjustment at 100% utilization, 
+    ///         due to 100% (in WAD) applied on top.
+    uint256 public constant MIN_VERTEX_ADJUSTMENT_VELOCITY = 0.5e18;
 
     /// @notice Unix time has 31,536,000 seconds per year.
     ///         All my homies hate leap seconds and leap years.
@@ -213,6 +217,80 @@ contract DynamicInterestRateModel {
         );
     }
 
+    /// @notice Calculates the current borrow rate per compound,
+    ///          and updates the vertex multiplier if necessary.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return borrowRate The borrow rate percentage per compound, in `WAD`.
+    function getBorrowRateWithUpdate(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) external returns (uint256 borrowRate) {
+        uint256 util = utilizationRate(cash, borrows, reserves);
+        RatesConfiguration memory config = ratesConfig;
+        uint256 vertexPoint = config.vertexStartingPoint;
+
+        bool belowVertex = (util <= vertexPoint);
+
+        // Query current interest rate.
+        if (belowVertex) {
+            unchecked {
+                borrowRate = getBaseInterestRate(util);
+            }
+        } else {
+            /// We know this will not underflow or overflow,
+            /// because of Interest Rate Model configurations.
+            unchecked {
+                borrowRate = (getVertexInterestRate(util - vertexPoint) +
+                    getBaseInterestRate(vertexPoint));
+            }
+        }
+
+        // Execute interest rate update if necessary. 
+        if (block.timestamp >= updateTimestamp()) {
+            // If the vertex multiplier is already at its minimum,
+            // and would decrease more, can break here.
+            if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
+                _setUpdateTimestamp(
+                    uint64(block.timestamp + config.adjustmentRate)
+                );
+                return borrowRate;
+            }
+
+            if (belowVertex) {
+                _currentRates = _packRatesData(
+                    _updateForBelowVertex(config, util),
+                    uint64(block.timestamp + config.adjustmentRate)
+                );
+                return borrowRate;
+            }
+
+            _currentRates = _packRatesData(
+                _updateForAboveVertex(config, util),
+                uint64(block.timestamp + config.adjustmentRate)
+            );
+        }
+    }
+
+    /// @notice Calculates the current borrow rate per year,
+    ///         with updated vertex multiplier applied.
+    /// @param cash The amount of cash in the market.
+    /// @param borrows The amount of borrows in the market.
+    /// @param reserves The amount of reserves in the market.
+    /// @return The borrow rate percentage per year, in `WAD`.
+    function getTheoreticalUpdatedBorrowRatePerYear(
+        uint256 cash,
+        uint256 borrows,
+        uint256 reserves
+    ) external view returns (uint256) {
+        return
+            _SECONDS_PER_YEAR *
+            (getTheoreticalUpdatedBorrowRate(cash, borrows, reserves) / 
+            INTEREST_COMPOUND_RATE);
+    }
+
     /// @notice Calculates the current borrow rate per year.
     /// @param cash The amount of cash in the market.
     /// @param borrows The amount of borrows in the market.
@@ -285,57 +363,43 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Calculates the current borrow rate per compound,
-    ///          and updates the vertex multiplier if necessary.
+    ///         with updated vertex multiplier applied.
     /// @param cash The amount of cash in the market.
     /// @param borrows The amount of borrows in the market.
     /// @param reserves The amount of reserves in the market.
-    /// @return borrowRate The borrow rate percentage per compound, in `WAD`.
-    function getBorrowRateWithUpdate(
+    /// @return The borrow rate percentage per compound, in `WAD`.
+    function getTheoreticalUpdatedBorrowRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves
-    ) public returns (uint256 borrowRate) {
+    ) public view returns (uint256) {
         uint256 util = utilizationRate(cash, borrows, reserves);
         RatesConfiguration memory config = ratesConfig;
         uint256 vertexPoint = config.vertexStartingPoint;
 
         bool belowVertex = (util <= vertexPoint);
 
+        // Query base interest rate directly since vertex multiplier is not
+        // applied.
         if (belowVertex) {
-            unchecked {
-                borrowRate = getBaseInterestRate(util);
-            }
-        } else {
-            /// We know this will not underflow or overflow,
-            /// because of Interest Rate Model configurations.
-            unchecked {
-                borrowRate = (getVertexInterestRate(util - vertexPoint) +
+            return getBaseInterestRate(util);
+        }
+
+        if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
+            return (getVertexInterestRate(util - vertexPoint) +
                     getBaseInterestRate(vertexPoint));
-            }
         }
-        if (block.timestamp >= updateTimestamp()) {
-            // If the vertex multiplier is already at its minimum,
-            // and would decrease more, can break here.
-            if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
-                _setUpdateTimestamp(
-                    uint64(block.timestamp + config.adjustmentRate)
-                );
-                return borrowRate;
-            }
 
-            if (belowVertex) {
-                _currentRates = _packRatesData(
-                    _updateForBelowVertex(config, util),
-                    uint64(block.timestamp + config.adjustmentRate)
-                );
-                return borrowRate;
-            }
+        uint256 newMultiplier;
+        uint256 vertexInterestRate = ratesConfig.vertexInterestRate;
 
-            _currentRates = _packRatesData(
-                _updateForAboveVertex(config, util),
-                uint64(block.timestamp + config.adjustmentRate)
-            );
+        if (belowVertex) {
+            newMultiplier = _updateForBelowVertex(config, util);
+            return (util * vertexInterestRate * newMultiplier) / WAD_SQUARED;
         }
+
+        newMultiplier = _updateForAboveVertex(config, util);
+        return (util * vertexInterestRate * newMultiplier) / WAD_SQUARED;
     }
 
     /// @notice Calculates the current borrow rate, per compound.
@@ -423,178 +487,7 @@ contract DynamicInterestRateModel {
             WAD_SQUARED;
     }
 
-    /// @notice Calculates and returns the updated multiplier for scenarios
-    ///         where the utilization rate is below the vertex.
-    /// @dev This function is used to adjust the vertex multiplier based on
-    ///      the dToken's current borrow utilization.
-    ///      A decay mechanism is incorporated to gradually decrease the
-    ///      multiplier, and ensures the multiplier does not fall below 1 (in WAD).
-    ///      NOTE: The multiplier is updated with the following logic:
-    ///      If the utilization is below the 'decreaseThresholdMax',
-    ///      decay rate and maximum adjustment velocity is applied.
-    ///      For higher utilizations (but still below the vertex),
-    ///      a new multiplier is calculated by applying a negative curve value
-    ///      to the adjustment. This new multiplier is also subjected to the
-    ///      decay multiplier.
-    /// @param config The cached version of the current `RatesConfiguration`.
-    /// @param util The current utilization value, used to determine how the
-    ///             multiplier should be adjusted.
-    /// @return The updated multiplier after applying decay and
-    ///         adjustments based on the current utilization level.
-    function _updateForBelowVertex(
-        RatesConfiguration memory config,
-        uint256 util
-    ) internal view returns (uint256) {
-        uint256 currentMultiplier = vertexMultiplier();
-        // Calculate decay rate.
-        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
-        uint256 newMultiplier;
-
-        if (util <= config.decreaseThresholdMax) {
-            newMultiplier =
-                ((currentMultiplier * WAD) / config.adjustmentVelocity) -
-                decay;
-
-            // Check if decay rate sends multiplier below 1.
-            return newMultiplier < WAD ? WAD : newMultiplier;
-        }
-
-        uint256 curveResult = _getNegativeCurveResult(
-            util,
-            config.decreaseThreshold,
-            config.decreaseThresholdMax
-        );
-
-        // If utilization is equal to decrease threshold the curve will
-        // result in 0, causing a divide by 0 error.
-        if (curveResult == 0) {
-            newMultiplier = currentMultiplier - decay;
-            return newMultiplier < WAD ? WAD : newMultiplier;
-        }
-
-        newMultiplier = ((currentMultiplier * WAD_SQUARED) / 
-        (curveResult * config.adjustmentVelocity)) - decay;
-
-        // Update and return with adjustment and decay rate applied.
-        // But first check if new rate sends multiplier below 1.
-        return newMultiplier < WAD ? WAD : newMultiplier;
-    }
-
-    /// @notice Calculates and returns the updated multiplier for scenarios
-    ///         where the utilization is above the vertex.
-    /// @dev This function is used to adjust the vertex multiplier based on
-    ///      the dToken's current borrow utilization.
-    ///      A decay mechanism is incorporated to gradually decrease the
-    ///      multiplier, and ensures the multiplier does not fall below 1 (in WAD).
-    ///      NOTE: The multiplier is updated with the following logic:
-    ///      If the utilization is below the 'increaseThreshold',
-    ///      it simply applies the decay to the current multiplier.
-    ///      If the utilization is higher, it calculates a new multiplier by
-    ///      applying a positive curve value to the adjustment. This adjustment
-    ///      is also subjected to the decay multiplier.
-    /// @param config The cached version of the current `RatesConfiguration`.
-    /// @param util The current utilization value, used to determine how the
-    ///             multiplier should be adjusted.
-    /// @return The updated multiplier after applying decay and
-    ///         adjustments based on the current utilization level.
-    function _updateForAboveVertex(
-        RatesConfiguration memory config,
-        uint256 util
-    ) internal view returns (uint256) {
-        uint256 currentMultiplier = vertexMultiplier();
-        // Calculate decay rate.
-        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
-        uint256 newMultiplier;
-
-        if (util <= config.increaseThreshold) {
-            newMultiplier = currentMultiplier - decay;
-
-            // Check if decay rate sends new rate below 1.
-            return newMultiplier < WAD ? WAD : newMultiplier;
-        }
-
-        uint256 curveResultWithMultiplication = ((currentMultiplier *
-                (config.adjustmentVelocity *
-                    _getPositiveCurveResult(
-                        util,
-                        config.increaseThreshold,
-                        config.increaseThresholdMax
-                    ))) /
-                WAD_SQUARED);
-
-        // Theoretically if util is slightly above increaseThreshold and decay
-        // is large, curve result could be less than decay rate, 
-        // so we check whether we can instantly return WAD.
-        if (curveResultWithMultiplication < decay) {
-            return WAD;
-        }
-
-        newMultiplier = curveResultWithMultiplication - decay;
-
-        // Update and return with adjustment and decay rate applied.
-        // Its theorectically possible for the multiplier to be below 1
-        // due to decay, so we need to check like in below vertex.
-        if (newMultiplier < WAD) {
-            return WAD;
-        }
-
-        // Make sure we are not above the vertex multiplier maximum.
-        return
-            newMultiplier < config.vertexMultiplierMax
-                ? newMultiplier
-                : config.vertexMultiplierMax;
-    }
-
-    /// @notice Calculates a positive curve value based on `current`,
-    ///         `start`, and `end` values.
-    /// @dev The function scales current, start, and end values by `WAD`
-    ///      to maintain precision. It returns 1, (in `WAD`) if the
-    ///      current value is greater than or equal to `end`. The formula
-    ///      used is (current - start) / (end - start), ensuring the result
-    ///      is scaled properly.
-    /// @param current The current value, representing a point on the curve.
-    /// @param start The start value of the curve, marking the beginning of
-    ///              the calculation range.
-    /// @param end The end value of the curve, marking the end of the
-    ///            calculation range.
-    /// @return The calculated positive curve value, a proportion between
-    ///         the start and end points.
-    function _getPositiveCurveResult(
-        uint256 current,
-        uint256 start,
-        uint256 end
-    ) internal pure returns (uint256) {
-        if (current >= end) {
-            return WAD;
-        }
-        return ((current - start) * WAD) / (end - start);
-    }
-
-    /// @notice Calculates a negative curve value based on `current`,
-    ///         `start`, and `end` values.
-    /// @dev The function scales current, start, and end values by WAD
-    ///      to maintain precision. It returns 1, (`in WAD`) if the
-    ///      current value is less than or equal to `end`. The formula
-    ///      used is (start - current) / (start - end), ensuring the result
-    ///      is scaled properly.
-    /// @param current The current value, representing a point on the curve.
-    /// @param start The start value of the curve, marking the beginning of
-    ///              the calculation range.
-    /// @param end The end value of the curve, marking the end of the
-    ///            calculation range.
-    /// @return The calculated negative curve value, a proportion between
-    ///         the start and end points.
-    function _getNegativeCurveResult(
-        uint256 current,
-        uint256 start,
-        uint256 end
-    ) internal pure returns (uint256) {
-        if (current <= end) {
-            return WAD;
-        }
-
-        return ((start - current) * WAD) / (start - end);
-    }
+    /// INTERNAL FUNCTIONS ///
 
     /// @notice Updates the parameters of the dynamic interest rate model
     ///         used in the market.
@@ -631,7 +524,7 @@ contract DynamicInterestRateModel {
         vertexUtilizationStart = _bpToWad(vertexUtilizationStart);
         // This is a multiplier/divisor so it needs to be on top
         // of the base value (1 `WAD`).
-        adjustmentVelocity = _bpToWad(adjustmentVelocity) + WAD;
+        adjustmentVelocity = _bpToWad(adjustmentVelocity);
         vertexMultiplierMax = _bpToWad(vertexMultiplierMax);
         decayRate = _bpToWad(decayRate);
 
@@ -713,6 +606,202 @@ contract DynamicInterestRateModel {
         );
     }
 
+    /// @notice Calculates and returns the updated multiplier for scenarios
+    ///         where the utilization is above the vertex.
+    /// @dev This function is used to adjust the vertex multiplier based on
+    ///      the dToken's current borrow utilization.
+    ///      A decay mechanism is incorporated to gradually decrease the
+    ///      multiplier, and ensures the multiplier does not fall below 1 (in WAD).
+    ///      NOTE: The multiplier is updated with the following logic:
+    ///      If the utilization is below the 'increaseThreshold',
+    ///      it simply applies the decay to the current multiplier.
+    ///      If the utilization is higher, it calculates a new multiplier by
+    ///      applying a positive curve value to the adjustment. This adjustment
+    ///      is also subjected to the decay multiplier.
+    /// @param config The cached version of the current `RatesConfiguration`.
+    /// @param util The current utilization value, used to determine how the
+    ///             multiplier should be adjusted.
+    /// @return The updated multiplier after applying decay and
+    ///         adjustments based on the current utilization level.
+    function _updateForAboveVertex(
+        RatesConfiguration memory config,
+        uint256 util
+    ) internal view returns (uint256) {
+        uint256 currentMultiplier = vertexMultiplier();
+        // Calculate decay rate.
+        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
+        uint256 newMultiplier;
+
+        if (util <= config.increaseThreshold) {
+            newMultiplier = currentMultiplier - decay;
+
+            // Check if decay rate sends new rate below 1.
+            return newMultiplier < WAD ? WAD : newMultiplier;
+        }
+
+        // Apply a positive multiplier to the current multiplier based on
+        // `util` vs `increaseThreshold` and `increaseThresholdMax`.
+        // Then apply decay effect.
+        newMultiplier = _applyPositiveCurveEffect(
+            currentMultiplier, // `multiplier`
+            config.adjustmentVelocity, // `adjustmentVelocity`
+            decay, // `decay`
+            util, // `current`
+            config.increaseThreshold, // `start`
+            config.increaseThresholdMax // `end`
+        );
+
+        // Update and return with adjustment and decay rate applied.
+        // Its theorectically possible for the multiplier to be below 1
+        // due to decay, so we need to check like in below vertex.
+        if (newMultiplier < WAD) {
+            return WAD;
+        }
+
+        // Make sure `newMultiplier` is not above the maximum allowed
+        // vertex multiplier.
+        return
+            newMultiplier < config.vertexMultiplierMax
+                ? newMultiplier
+                : config.vertexMultiplierMax;
+    }
+
+    /// @notice Calculates and returns the updated multiplier for scenarios
+    ///         where the utilization rate is below the vertex.
+    /// @dev This function is used to adjust the vertex multiplier based on
+    ///      the dToken's current borrow utilization.
+    ///      A decay mechanism is incorporated to gradually decrease the
+    ///      multiplier, and ensures the multiplier does not fall below 1 (in WAD).
+    ///      NOTE: The multiplier is updated with the following logic:
+    ///      If the utilization is below the 'decreaseThresholdMax',
+    ///      decay rate and maximum adjustment velocity is applied.
+    ///      For higher utilizations (but still below the vertex),
+    ///      a new multiplier is calculated by applying a negative curve value
+    ///      to the adjustment. This new multiplier is also subjected to the
+    ///      decay multiplier.
+    /// @param config The cached version of the current `RatesConfiguration`.
+    /// @param util The current utilization value, used to determine how the
+    ///             multiplier should be adjusted.
+    /// @return The updated multiplier after applying decay and
+    ///         adjustments based on the current utilization level.
+    function _updateForBelowVertex(
+        RatesConfiguration memory config,
+        uint256 util
+    ) internal view returns (uint256) {
+        uint256 currentMultiplier = vertexMultiplier();
+        // Calculate decay rate.
+        uint256 decay = (currentMultiplier * config.decayRate) / WAD;
+        uint256 newMultiplier;
+
+        if (util <= config.decreaseThresholdMax) {
+            // Apply maximum adjustVelocity reduction (cFactor = 1).
+            // We only need to adjust for 1e18 precision since `cFactor`
+            // is not used here.
+            // currentMultiplier / (1 + adjustmentVelocity) = newMultiplier.
+            newMultiplier =
+                ((currentMultiplier * WAD) / (WAD + config.adjustmentVelocity)) -
+                decay;
+
+            // Check if decay rate sends multiplier below 1.
+            return newMultiplier < WAD ? WAD : newMultiplier;
+        }
+
+        // Apply a negative multiplier to the current multiplier based on
+        // `util` vs `decreaseThreshold` and `decreaseThresholdMax`.
+        // Then apply decay effect.
+        newMultiplier = _applyNegativeCurveEffect(
+            currentMultiplier, // `multiplier`
+            config.adjustmentVelocity, // `adjustmentVelocity`
+            decay, // `decay`
+            util, // `current`
+            config.decreaseThreshold, // `start`
+            config.decreaseThresholdMax // `end`
+        );
+
+        // Update and return with adjustment and decay rate applied.
+        // But first check if new rate sends multiplier below 1.
+        return newMultiplier < WAD ? WAD : newMultiplier;
+    }
+
+    /// @notice Calculates a positive curve value based on `current`,
+    ///         `start`, and `end` values. Then applies the linear curve
+    ///         effect to the adjustment velocity, then applies the
+    ///         adjustment velocity and decay effect to `multiplier`.
+    /// @dev The function scales current, start, and end values by `WAD`
+    ///      to maintain precision. It returns 1, (in `WAD`) if the
+    ///      current value is greater than or equal to `end`. The formula
+    ///      used is (current - start) / (end - start), ensuring the result
+    ///      is scaled properly.
+    /// @param current The current value, representing a point on the curve.
+    /// @param start The start value of the curve, marking the beginning of
+    ///              the calculation range.
+    /// @param end The end value of the curve, marking the end of the
+    ///            calculation range.
+    /// @return The calculated positive curve value, a proportion between
+    ///         the start and end points.
+    function _applyPositiveCurveEffect(
+        uint256 multiplier,
+        uint256 adjustmentVelocity,
+        uint256 decay,
+        uint256 current, // `util`
+        uint256 start, // `increaseThreshold`
+        uint256 end // `increaseThresholdMax`
+    ) internal pure returns (uint256) {
+        uint256 cFactor;
+
+        // We do not need to check for current >= end, since we know util is
+        // the absolute maximum utilization is 100%, and thus current == end.
+        // Which will result in WAD result for `cFactor`.
+        // Thus, this will be bound between [0, WAD].
+        cFactor = ((current - start) * WAD) / (end - start);
+   
+        // Apply curve multiplier to adjustment velocity.
+        cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);
+
+        // Apply positive `cFactor` effect to `currentMultiplier`, and
+        // adjust for 1e36 precision. Then apply decay effect.
+        return ((multiplier * cFactor) / WAD_SQUARED) - decay;
+    }
+
+    /// @notice Calculates a negative curve value based on `current`,
+    ///         `start`, and `end` values. Then applies the linear curve
+    ///         effect to the adjustment velocity, then applies the
+    ///         adjustment velocity and decay effect to `multiplier`.
+    /// @dev The function scales current, start, and end values by WAD
+    ///      to maintain precision. It returns 1, (`in WAD`) if the
+    ///      current value is less than or equal to `end`. The formula
+    ///      used is (start - current) / (start - end), ensuring the result
+    ///      is scaled properly.
+    /// @param current The current value, representing a point on the curve.
+    /// @param start The start value of the curve, marking the beginning of
+    ///              the calculation range.
+    /// @param end The end value of the curve, marking the end of the
+    ///            calculation range.
+    /// @return The calculated negative curve value, a proportion between
+    ///         the start and end points.
+    function _applyNegativeCurveEffect(
+        uint256 multiplier,
+        uint256 adjustmentVelocity,
+        uint256 decay,
+        uint256 current, // `util`
+        uint256 start, // `decreaseThreshold`
+        uint256 end // `decreaseThresholdMax`
+    ) internal pure returns (uint256) {
+        uint256 cFactor;
+
+        // Calculate linear curve multiplier. We know that current > end,
+        // based on pre conditional checks. 
+        // Thus, this will be bound between [0, WAD].
+        cFactor = ((start - current) * WAD) / (start - end);
+
+        // Apply curve multiplier to adjustment velocity.
+        cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);
+
+        // Apply negative `cFactor` effect to `currentMultiplier`, and
+        // adjust for 1e36 precision. Then apply decay effect.
+        return ((multiplier * WAD_SQUARED) / cFactor) - decay;
+    }
+
     /// @notice Packs `newVertexMultiplier` together with `newTimestamp`,
     ///         to create new packed `_currentRates` value.
     /// @param newVertexMultiplier The new rate at which vertexInterestRate
@@ -756,7 +845,7 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
-    ///         to WAD.
+    ///         to `WAD`.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
         return value * 100000000000000;

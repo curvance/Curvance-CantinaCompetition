@@ -51,10 +51,12 @@ contract OracleRouter {
     /// STORAGE ///
 
     /// @notice The maximum allowed divergence between prices
-    ///         before CAUTION is flipped, in `DENOMINATOR`. 5%.
+    ///         before CAUTION is flipped, in `DENOMINATOR`.
+    ///         10500 = 5% deviation.
     uint256 public cautionDivergenceFlag = 10500;
     /// @notice The maximum allowed divergence between prices
-    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`. 10%.
+    ///         before BAD_SOURCE is flipped, in `DENOMINATOR`.
+    ///         11000 = 10% deviation.
     uint256 public badSourceDivergenceFlag = 11000;
     /// @notice The maximum delay accepted between answers from chainlink.
     uint256 public CHAINLINK_MAX_DELAY = 1 days;
