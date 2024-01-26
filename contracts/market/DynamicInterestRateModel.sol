@@ -755,15 +755,14 @@ contract DynamicInterestRateModel {
         uint256 start, // `increaseThreshold`
         uint256 end // `increaseThresholdMax`
     ) internal pure returns (uint256) {
-        uint256 cFactor;
-
         // We do not need to check for current >= end, since we know util is
         // the absolute maximum utilization is 100%, and thus current == end.
         // Which will result in WAD result for `cFactor`.
         // Thus, this will be bound between [0, WAD].
-        cFactor = ((current - start) * WAD) / (end - start);
+        uint256 cFactor = ((current - start) * WAD) / (end - start);
    
-        // Apply curve multiplier to adjustment velocity.
+        // Apply cFactor curve result to adjustment velocity.
+        // Then add 100% on top for final adjustment value to `multiplier`.
         cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);
 
         // Apply positive `cFactor` effect to `currentMultiplier`, and
@@ -803,14 +802,13 @@ contract DynamicInterestRateModel {
         uint256 start, // `decreaseThreshold`
         uint256 end // `decreaseThresholdMax`
     ) internal pure returns (uint256) {
-        uint256 cFactor;
-
         // Calculate linear curve multiplier. We know that current > end,
         // based on pre conditional checks. 
         // Thus, this will be bound between [0, WAD].
-        cFactor = ((start - current) * WAD) / (start - end);
+        uint256 cFactor = ((start - current) * WAD) / (start - end);
 
-        // Apply curve multiplier to adjustment velocity.
+        // Apply cFactor curve result to adjustment velocity.
+        // Then add 100% on top for final adjustment value to `multiplier`.
         cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);
 
         // Apply negative `cFactor` effect to `currentMultiplier`, and
