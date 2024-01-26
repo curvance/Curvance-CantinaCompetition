@@ -199,8 +199,9 @@ contract GMAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
-    /// @param asset The address of the token to remove.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
@@ -214,7 +215,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         // Wipe config mapping entries for a gas refund.
         delete marketData[asset];
 
-        // Notify the price router that we are going to
+        // Notify the oracle router that we are going to
         // stop supporting the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }

@@ -2,8 +2,10 @@
 pragma solidity ^0.8.17;
 
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
+import "contracts/token/VeCVE.sol";
 
 interface IVeCVE {
+
     /// @notice Sends CVE to a desired destination chain
     function createLockFor(
         address recipient,
@@ -24,6 +26,11 @@ interface IVeCVE {
         bytes memory params,
         uint256 aux
     ) external;
+
+    /// @notice Used for frontend, needed due to array of structs.
+    function queryUserLocks(
+        address user
+    ) external view returns (uint256[] memory, uint256[] memory);
 
     /// @notice Returns the chain's current token points for
     function chainPoints() external view returns (uint256);

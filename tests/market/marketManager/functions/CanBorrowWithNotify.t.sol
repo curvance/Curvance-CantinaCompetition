@@ -215,14 +215,19 @@ contract CanBorrowWithNotifyTest is TestBaseMarketManager {
             block.timestamp
         );
 
-        assertFalse(marketManager.hasPosition(address(dUSDC), user1));
+        bool hasPosition;
+        (hasPosition,,)= marketManager.tokenDataOf(user1, address(dUSDC));
+
+        assertFalse(hasPosition);
         IMToken[] memory accountAssets = marketManager.assetsOf(user1);
         assertEq(accountAssets.length, 0);
 
         vm.prank(address(dUSDC));
         marketManager.canBorrowWithNotify(address(dUSDC), user1, 0);
 
-        assertTrue(marketManager.hasPosition(address(dUSDC), user1));
+        (hasPosition,,)= marketManager.tokenDataOf(user1, address(dUSDC));
+
+        assertTrue(hasPosition);
 
         accountAssets = marketManager.assetsOf(user1);
         assertEq(accountAssets.length, 1);

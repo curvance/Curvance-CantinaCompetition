@@ -14,3 +14,6 @@ medusa-local, ml:
 
 medusa-cloud, mc: 
 	medusa fuzz --config medusa-cloud.json
+
+start-local, s: 
+	python3 ./tests/fuzzing/scripts/spawn-infinite-local.py

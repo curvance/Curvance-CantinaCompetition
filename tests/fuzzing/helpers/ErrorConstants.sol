@@ -13,41 +13,41 @@ contract ErrorConstants {
     uint256 vecve_unauthorizedSelectorHash =
         uint256(uint32(bytes4(keccak256("VeCVE__Unauthorized()"))));
 
-    uint256 marketmanager_unauthorizedSelectorHash =
+    uint256 marketManager_unauthorizedSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__Unauthorized()"))));
 
-    uint256 marketmanager_tokenAlreadyListedSelectorHash =
+    uint256 marketManager_tokenAlreadyListedSelectorHash =
         uint256(
             uint32(bytes4(keccak256("MarketManager__TokenAlreadyListed()")))
         );
 
-    uint256 marketmanager_tokenNotListedSelectorHash =
+    uint256 marketManager_tokenNotListedSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__TokenNotListed()"))));
 
-    uint256 marketmanager_insufficientCollateralSelectorHash =
+    uint256 marketManager_insufficientCollateralSelectorHash =
         uint256(
             uint32(
                 bytes4(keccak256("MarketManager__InsufficientCollateral()"))
             )
         );
 
-    uint256 marketmanager_invariantErrorSelectorHash =
+    uint256 marketManager_invariantErrorSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__InvariantError()"))));
 
-    uint256 marketmanager_pausedSelectorHash =
+    uint256 marketManager_pausedSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__Paused()"))));
 
-    uint256 marketmanager_minHoldSelectorHash =
+    uint256 marketManager_minHoldSelectorHash =
         uint256(
             uint32(bytes4(keccak256("MarketManager__MinimumHoldPeriod()")))
         );
 
-    uint256 marketmanager_mismatchSelectorHash =
+    uint256 marketManager_mismatchSelectorHash =
         uint256(
             uint32(bytes4(keccak256("MarketManager__MarketManagerMismatch()")))
         );
 
-    uint256 marketmanager_priceErrorSelectorHash =
+    uint256 marketManager_priceErrorSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__PriceError()"))));
 
     uint256 token_total_supply_overflow =

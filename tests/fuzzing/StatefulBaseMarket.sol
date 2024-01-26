@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import { IHevm } from "./helpers/Hevm.sol";
 import { PropertiesAsserts } from "tests/fuzzing/helpers/PropertiesHelper.sol";
 import { ErrorConstants } from "tests/fuzzing/helpers/ErrorConstants.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 import { MockToken } from "contracts/mocks/MockToken.sol";
+import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
 import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
@@ -36,6 +38,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
+    IHevm constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     address internal _WETH_ADDRESS;
     address internal _USDC_ADDRESS;
     address internal _RETH_ADDRESS;
@@ -85,6 +88,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     uint256 public marketInterestFactor = 1; // 10%
 
     Zapper public zapper;
+    mapping(address => uint256) postedCollateralAt;
+    // the maximum collateral cap for a specific mtoken
+    mapping(address => uint256) maxCollateralCap;
 
     constructor() {
         // _fork(18031848);
@@ -336,6 +342,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _deployGaugePool() internal {
         gaugePool = new GaugePool(ICentralRegistry(address(centralRegistry)));
         centralRegistry.addGaugeController(address(gaugePool));
+
+        // Additional logic for partner gauge pool fuzzing logic
+        // partnerGaugePool = new PartnerGaugePool(
+        //     address(gaugePool),
+        //     address(usdc),
+        //     ICentralRegistry(address(centralRegistry))
+        // );
+        // gaugePool.addPartnerGauge(address(partnerGaugePool));
     }
 
     function _deployMarketManager() internal {
@@ -429,6 +443,71 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         );
     }
 
+    function mint_and_approve(
+        address underlyingAddress,
+        address mtoken,
+        uint256 amount
+    ) internal returns (bool) {
+        // mint ME enough tokens to cover deposit
+        try MockToken(underlyingAddress).mint(amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 underlyingSupply = MockToken(underlyingAddress)
+                .totalSupply();
+            uint256 mtokenSupply = MockToken(underlyingAddress).totalSupply();
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            unchecked {
+                if (
+                    doesOverflow(
+                        underlyingSupply + amount,
+                        underlyingSupply
+                    ) || doesOverflow(mtokenSupply + amount, mtokenSupply)
+                ) {
+                    assertWithMsg(
+                        errorSelector == token_total_supply_overflow,
+                        "MToken underlying - mint underlying amount should succeed"
+                    );
+                    return false;
+                } else {
+                    assertWithMsg(
+                        false,
+                        "MToken underlying - mint underlying amount should succeed"
+                    );
+                }
+            }
+        }
+        // approve sufficient underlying tokens prior to calling deposit
+        try MockToken(underlyingAddress).approve(mtoken, amount) {} catch (
+            bytes memory revertData
+        ) {
+            uint256 currentAllowance = MockToken(underlyingAddress).allowance(
+                msg.sender,
+                mtoken
+            );
+
+            uint256 errorSelector = extractErrorSelector(revertData);
+            unchecked {
+                if (
+                    doesOverflow(currentAllowance + amount, currentAllowance)
+                ) {
+                    assertEq(
+                        errorSelector,
+                        token_allowance_overflow,
+                        "MTOKEN underlying - revert expected when underflow"
+                    );
+                    return false;
+                } else {
+                    assertWithMsg(
+                        false,
+                        "MTOKEN underlying - approve underlying amount should succeed"
+                    );
+                }
+            }
+        }
+        return true;
+    }
+
     MockDataFeed public mockUsdcFeed;
     MockDataFeed public mockDaiFeed;
     bool feedsSetup;
@@ -504,7 +583,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     // If the price is stale, update the round data and update lastRoundUpdate
-    function check_price_feed() public {
+    function check_price_feed() internal {
         // if lastRoundUpdate timestamp is stale
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
@@ -531,5 +610,19 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         mockUsdcFeed.setMockAnswer(1e8);
         mockDaiFeed.setMockAnswer(1e8);
         lastRoundUpdate = block.timestamp;
+    }
+
+    function is_supported_dtoken(address dtoken) internal view {
+        require(dtoken == address(dUSDC) || dtoken == address(dDAI));
+    }
+
+    function _hasPosition(address mToken) internal view returns (bool) {
+        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        return hasPosition;
+    }
+
+    function _collateralPostedFor(address mToken) internal view returns (uint256) {
+        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
+        return collateralPosted;
     }
 }
