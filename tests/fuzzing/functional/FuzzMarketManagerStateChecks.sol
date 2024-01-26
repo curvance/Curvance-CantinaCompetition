@@ -705,9 +705,4 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             )
         {} catch {}
     }
-
-    function _hasPosition(address mToken) private view returns (bool) {
-        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
-        return hasPosition;
-    }
 }

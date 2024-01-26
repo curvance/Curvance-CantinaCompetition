@@ -616,4 +616,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function is_supported_dtoken(address dtoken) internal view {
         require(dtoken == address(dUSDC) || dtoken == address(dDAI));
     }
+
+    function _hasPosition(address mToken) internal view returns (bool) {
+        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        return hasPosition;
+    }
+
+    function _collateralPostedFor(address mToken) internal view returns (uint256) {
+        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
+        return collateralPosted;
+    }
 }

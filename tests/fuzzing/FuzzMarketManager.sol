@@ -964,14 +964,4 @@ contract FuzzMarketManager is StatefulBaseMarket {
             divergenceTooLarge = true;
         }
     }
-
-    function _collateralPostedFor(address mToken) private view returns (uint256) {
-        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
-        return collateralPosted;
-    }
-
-    function _hasPosition(address mToken) private view returns (bool) {
-        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
-        return hasPosition;
-    }
 }
