@@ -18,3 +18,4 @@ fs_permissions = [
 # This overrides the `auto_detect_solc` value
 solc_version = '0.8.17'
 auto_detect_solc = false
+evm_version = 'london'

@@ -6,12 +6,12 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { ICurveRemoveLiquidity } from "contracts/interfaces/external/curve/ICurveReentrancy.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-/// Kudos to Curve/Silo/Chain Security for researching
-/// specific gas limit values for Pool Reentrancy
+/// Kudos to Curve Finance/Silo Finance/Chain Security for researching
+/// specific gas limit values for Pool Reentrancy.
 abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 
-    /// @notice Minimum gas limit allowed for reentrancy check configuration
+    /// @notice Minimum gas limit allowed for reentrancy check configuration.
     uint256 public constant MIN_GAS_LIMIT = 6000;
 
     /// STORAGE ///
@@ -90,9 +90,9 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Sets or updates a Curve pool configuration for the reentrancy check
-    /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool
-    /// @param gasLimit The gas limit to be set on the check
+    /// @notice Sets or updates a Curve pool configuration for the reentrancy check.
+    /// @param coinsLength The number of coins (from .coinsLength) on the Curve pool.
+    /// @param gasLimit The gas limit to be set on the check.
     function _setReentrancyConfig(
         uint256 coinsLength,
         uint256 gasLimit
@@ -102,7 +102,7 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
             revert CurveBaseAdaptor__InvalidConfiguration();
         }
 
-        // Make sure the pool is not above 4 or below 2underlying tokens, 
+        // Make sure the pool is not above 4 or below 2underlying tokens,
         // we limit pools to 4.
         if (coinsLength < 2 || coinsLength > 4) {
             revert CurveBaseAdaptor__InvalidConfiguration();

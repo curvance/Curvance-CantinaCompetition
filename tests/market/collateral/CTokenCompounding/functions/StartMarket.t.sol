@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// // SPDX-License-Identifier: UNLICENSED
+// pragma solidity ^0.8.17;
 
 // import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 // import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
@@ -19,24 +19,6 @@ pragma solidity ^0.8.17;
 
 //         vm.prank(address(marketManager));
 //         cBALRETH.startMarket(address(0));
-//     }
-
-//     function test_CTokenCompounding_StartMarket_fail_whenVaultIsNotActive() public {
-//         cBALRETH.initiateShutdown();
-
-//         vm.prank(user1);
-//         SafeTransferLib.safeApprove(
-//             _BALANCER_WETH_RETH,
-//             address(cBALRETH),
-//             1e18
-//         );
-
-//         vm.expectRevert(
-//             CTokenCompounding.CTokenCompounding__VaultNotActive.selector
-//         );
-
-//         vm.prank(address(marketManager));
-//         cBALRETH.startMarket(user1);
 //     }
 
 //     function test_CTokenCompounding_StartMarket_success() public {
