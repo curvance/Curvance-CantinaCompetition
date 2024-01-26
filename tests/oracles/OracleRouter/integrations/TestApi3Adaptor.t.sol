@@ -14,7 +14,7 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
         0x669bFFFAb8866d84F832abF90Dc9c1D73b7525Bc;
     address private CHAINLINK_PRICE_FEED_ETH =
         0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
-    string memory private ARB_TICKER = "ARB/USD";
+    string private ARB_TICKER = "ARB/USD";
 
     Api3Adaptor public adapter;
 
