@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import { TestStatefulDeployments } from "tests/fuzzing/TestStatefulDeployments.sol";
+import { TestStatefulDeployments } from "tests/fuzzing/system/TestStatefulDeployments.sol";
 import { FuzzVECVE } from "tests/fuzzing/functional/FuzzVECVE.sol";
 import { FuzzMarketManager } from "tests/fuzzing/FuzzMarketManager.sol";
 import { FuzzMarketManagerSystem } from "tests/fuzzing/system/FuzzMarketManagerSystem.sol";
