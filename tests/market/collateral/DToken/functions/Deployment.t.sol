@@ -20,17 +20,19 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,
             address(marketManager),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
     }
 
     function test_dTokenDeployment_fail_whenMarketManagerIsNotSet() public {
-        vm.expectRevert(DToken.DToken__MarketManagerIsNotLendingMarket.selector);
+        vm.expectRevert(
+            DToken.DToken__MarketManagerIsNotLendingMarket.selector
+        );
         new DToken(
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(1),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
     }
 
@@ -61,7 +63,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(marketManager),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
     }
 
@@ -76,12 +78,15 @@ contract DTokenDeploymentTest is TestBaseDToken {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(marketManager),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
 
         assertEq(address(dUSDC.centralRegistry()), address(centralRegistry));
         assertEq(dUSDC.underlying(), _USDC_ADDRESS);
-        assertEq(address(dUSDC.interestRateModel()), address(InterestRateModel));
+        assertEq(
+            address(dUSDC.interestRateModel()),
+            address(interestRateModel)
+        );
         assertEq(address(dUSDC.marketManager()), address(marketManager));
     }
 }

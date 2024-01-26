@@ -53,7 +53,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     ProtocolMessagingHub public protocolMessagingHub;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    DynamicInterestRateModel public InterestRateModel;
+    DynamicInterestRateModel public interestRateModel;
     MarketManager public marketManager;
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
@@ -367,8 +367,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployDynamicInterestRateModel() internal {
-        // TODO: this can be setup using dynamic values as per fuzzing suite
-        InterestRateModel = new DynamicInterestRateModel(
+        interestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
             1000, // baseRatePerYear
             1000, // vertexRatePerYear
@@ -414,7 +413,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
                 ICentralRegistry(address(centralRegistry)),
                 token,
                 address(marketManager),
-                address(InterestRateModel)
+                address(interestRateModel)
             );
     }
 
