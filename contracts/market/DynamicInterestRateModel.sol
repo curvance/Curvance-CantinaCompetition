@@ -727,11 +727,12 @@ contract DynamicInterestRateModel {
     ///         `start`, and `end` values. Then applies the linear curve
     ///         effect to the adjustment velocity, then applies the
     ///         adjustment velocity and decay effect to `multiplier`.
-    /// @dev The function scales current, start, and end values by `WAD`
-    ///      to maintain precision. It returns 1, (in `WAD`) if the
-    ///      current value is greater than or equal to `end`. The formula
-    ///      used is (current - start) / (end - start), ensuring the result
-    ///      is scaled properly.
+    /// @dev The cFactor is scaled by current, start, and end values and
+    ///      multiplied by `WAD` to maintain precision. This results in 1,
+    ///      (in `WAD`) if the current value is greater than or equal to
+    ///      `end`. The terminal cFactor is then applied to the
+    ///      adjustmentVelocity in determining the growth of `multiplier` for
+    ///      this cycle, then the decay rate is applied.
     /// @param multiplier The current vertex multiplier value, in `WAD`.
     /// @param adjustmentVelocity The current adjustment velocity, the maximum
     ///                           rate at with the vertex multiplier is
@@ -774,11 +775,12 @@ contract DynamicInterestRateModel {
     ///         `start`, and `end` values. Then applies the linear curve
     ///         effect to the adjustment velocity, then applies the
     ///         adjustment velocity and decay effect to `multiplier`.
-    /// @dev The function scales current, start, and end values by WAD
-    ///      to maintain precision. It returns 1, (`in WAD`) if the
-    ///      current value is less than or equal to `end`. The formula
-    ///      used is (start - current) / (start - end), ensuring the result
-    ///      is scaled properly.
+    /// @dev The cFactor is scaled by current, start, and end values and
+    ///      multiplied by `WAD` to maintain precision. This results in 1,
+    ///      (in `WAD`) if the current value is less than or equal to
+    ///      `end`. The terminal cFactor is then applied to the
+    ///      adjustmentVelocity in determining the reduction of `multiplier`
+    ///      for this cycle, then the decay rate is applied.
     /// @param multiplier The current vertex multiplier value, in `WAD`.
     /// @param adjustmentVelocity The current adjustment velocity, the maximum
     ///                           rate at with the vertex multiplier is
