@@ -1,6 +1,0 @@
-testMode: assertion # run to detect assertions 
-testLimit: 10000000 # note: significantly larger test limit for server runs 
-coverage: true # turns coverage saving on 
-corpusDir: "output/echidna-corpus" # save in ./output/echidna-corpus 
-cryticArgs: ["--ignore-compile"] # do not recompile when running 
-workers: 10 # increased number of workers 
