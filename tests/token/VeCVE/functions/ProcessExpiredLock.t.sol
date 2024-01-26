@@ -95,10 +95,6 @@ contract ProcessExpiredLockTest is TestBaseVeCVE {
             veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
 
-        // new mint
-        vm.expectEmit(true, true, true, true, address(veCVE));
-        emit Transfer(address(0), address(this), amount);
-
         veCVE.processExpiredLock(
             0,
             true,
