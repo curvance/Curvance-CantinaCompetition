@@ -5,7 +5,6 @@ import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "co
 
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";

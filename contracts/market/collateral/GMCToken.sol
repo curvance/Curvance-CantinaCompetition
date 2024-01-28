@@ -3,8 +3,6 @@ pragma solidity ^0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
-import { WAD } from "contracts/libraries/Constants.sol";
-
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 import { IGMXDeposit } from "contracts/interfaces/external/gmx/IGMXDeposit.sol";
 import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils.sol";

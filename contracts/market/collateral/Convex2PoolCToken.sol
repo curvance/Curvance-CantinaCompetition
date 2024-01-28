@@ -5,7 +5,6 @@ import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "co
 
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";

@@ -558,7 +558,7 @@ abstract contract CTokenCompounding is CTokenBase {
         uint256 periodToVest
     ) internal {
         _vaultData = _packVaultData(
-            _mulDivDown(yieldToVest, WAD, periodToVest), // New Reward Rate.
+            _mulDivDown(yieldToVest, 1e18, periodToVest), // New Reward Rate.
             block.timestamp + periodToVest // New Vest Period.
             ); // Packs block.timestamp at the end as new last vest claim.
     }

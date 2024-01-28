@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
@@ -223,7 +222,7 @@ contract AerodromeStableCToken is CTokenCompounding {
 
             // Update vesting info, query `vestPeriod` here to cache it.
             _setNewVaultData(yield, vestPeriod);
-            
+
             emit Harvest(yield);
         }
         // else yield is zero
