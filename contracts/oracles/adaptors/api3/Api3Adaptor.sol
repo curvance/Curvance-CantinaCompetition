@@ -90,7 +90,8 @@ contract Api3Adaptor is BaseOracleAdaptor {
     }
 
     /// @notice Add a Api3 Price Feed as an asset.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the token to add pricing support for.
     /// @param ticker The ticker of the token to add pricing for.
     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.

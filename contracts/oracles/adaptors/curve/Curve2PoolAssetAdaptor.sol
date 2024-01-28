@@ -154,8 +154,10 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         pData.price = uint240(price);
     }
 
-    /// @notice Adds pricing support for `asset`, an asset inside a Curve V2 pool.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @notice Adds pricing support for `asset`, an asset inside
+    ///         a Curve V2 pool.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the token to add pricing support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {

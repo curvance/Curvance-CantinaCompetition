@@ -148,8 +148,10 @@ contract GMAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Adds pricing support for `asset`, a GMX GM token.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
-    /// @param asset The address of the GMX GM token to add pricing support for.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the GMX GM token to add pricing
+    ///              support for.
     /// @param alteredToken The address of the token to use to price
     ///                     a GM token synthetically.
     function addAsset(address asset, address alteredToken) external {

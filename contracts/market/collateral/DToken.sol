@@ -707,6 +707,18 @@ contract DToken is ERC165, ReentrancyGuard {
             );
     }
 
+    /// @notice Returns predicted upcoming dToken borrow interest rate
+    ///         per year.
+    /// @return The predicted borrow interest rate per year, in `WAD`.
+    function predictedBorrowRatePerYear() external view returns (uint256) {
+        return
+            interestRateModel.getPredictedBorrowRatePerYear(
+                marketUnderlyingHeld(),
+                totalBorrows,
+                totalReserves
+            );
+    }
+
     /// @notice Returns the current dToken supply interest rate per year.
     /// @return The supply interest rate per year, in `WAD`.
     function supplyRatePerYear() external view returns (uint256) {

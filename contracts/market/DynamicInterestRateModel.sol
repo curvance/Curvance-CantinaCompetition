@@ -284,14 +284,14 @@ contract DynamicInterestRateModel {
     /// @param borrows The amount of borrows in the market.
     /// @param reserves The amount of reserves in the market.
     /// @return The borrow rate percentage per year, in `WAD`.
-    function getTheoreticalUpdatedBorrowRatePerYear(
+    function getPredictedBorrowRatePerYear(
         uint256 cash,
         uint256 borrows,
         uint256 reserves
     ) external view returns (uint256) {
         return
             _SECONDS_PER_YEAR *
-            (getTheoreticalUpdatedBorrowRate(cash, borrows, reserves) / 
+            (getPredictedBorrowRate(cash, borrows, reserves) / 
             INTEREST_COMPOUND_RATE);
     }
 
@@ -372,7 +372,7 @@ contract DynamicInterestRateModel {
     /// @param borrows The amount of borrows in the market.
     /// @param reserves The amount of reserves in the market.
     /// @return The borrow rate percentage per compound, in `WAD`.
-    function getTheoreticalUpdatedBorrowRate(
+    function getPredictedBorrowRate(
         uint256 cash,
         uint256 borrows,
         uint256 reserves

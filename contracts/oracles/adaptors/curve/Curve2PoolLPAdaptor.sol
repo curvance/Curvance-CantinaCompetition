@@ -179,7 +179,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     }
 
     /// @notice Adds pricing support for `asset`, a Curve V2 lp token.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
     /// @param asset The address of the lp token to add pricing support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {

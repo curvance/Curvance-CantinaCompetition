@@ -148,10 +148,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
             revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
 
+        // Wipe config mapping entries for a gas refund.
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-
-        // Wipe config mapping entries for a gas refund.
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
@@ -192,9 +191,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         return _parseData(adaptorDataUSD[asset], true);
     }
 
-    /// @notice Extracts the redstone core feed data for pricing of an asset.
-    /// @dev Calls read() from Redstone Core to get the latest data
-    ///      for pricing and staleness.
+    /// @notice Extracts the Redstone Core feed data for pricing of an asset.
+    /// @dev Extracts price from Redstone Core attached msg.data to get
+    ///      the latest data. Natively validates staleness.
     /// @param data Redstone Core feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return pData A structure containing the price, error status,
@@ -205,7 +204,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     ) internal view returns (PriceReturnData memory pData) {
         uint256 price = _extractPrice(data.symbolHash);
 
-        // Load decimals into cache to minimize MLOADs/SLOADs.
+        // Cache decimals value.
         uint256 quoteDecimals = data.decimals;
         if (quoteDecimals != 18) {
             // Decimals are < 18 so we need to multiply up to coerce to
@@ -238,6 +237,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 value,
         uint256 max
     ) internal pure returns (bool) {
+        // Validate `value` is not above the buffered maximum value allowed.
         if (value > max) {
             return true;
         }
