@@ -354,7 +354,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Execute transfer.
         super.transfer(to, amount);
-        // Emit deposit deposit on gauge pool.
+        // Emit deposit events on gauge pool.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
@@ -381,7 +381,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Execute transfer.
         super.transferFrom(from, to, amount);
-        // Emit deposit deposit on gauge pool.
+        // Emit deposit events on gauge pool.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
@@ -421,14 +421,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, liquidatorTokens);
-        // Emit deposit deposit on gauge pool.
+        // Emit deposit events on gauge pool.
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
             // Efficiently transfer token balances from `account` to `daoAddress`.
             _transferFromWithoutAllowance(account, daoAddress, protocolTokens);
-            // Emit deposit deposit on gauge pool.
+            // Emit deposit events on gauge pool.
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
     }
@@ -461,7 +461,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, shares);
-        // Emit deposit deposit on gauge pool.
+        // Emit deposit events on gauge pool.
         gaugePool.deposit(address(this), liquidator, shares);
     }
 
@@ -752,7 +752,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// INTERNAL CONVERSION FUNCTIONS TO OVERRIDE ///
 
-    /// @notice Deposits assets and mints shares to `receiver`.
+    /// @notice Deposits `assets` and mints shares to `receiver`.
     /// @param assets The amount of the underlying asset to supply.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
@@ -761,8 +761,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address receiver
     ) internal virtual returns (uint256 shares) {}
 
-    /// @notice Deposits assets and mints shares to `receiver`.
-    /// @notice Caller deposits assets into the market and receives shares.
+    /// @notice Deposits assets and mints `shares` to `receiver`.
     /// @param shares The amount of the underlying assets quoted in shares
     ///               to supply.
     /// @param receiver The account that should receive the cToken shares.
@@ -773,7 +772,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address receiver
     ) internal virtual returns (uint256 assets) {}
 
-    /// @notice Withdraws assets to `receiver` from the market and burns
+    /// @notice Withdraws `assets` to `receiver` from the market and burns
     ///         `owner` shares.
     /// @param assets The amount of the underlying asset to withdraw.
     /// @param receiver The account that should receive the assets.
@@ -791,7 +790,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) internal virtual returns (uint256 shares) {}
 
     /// @notice Withdraws assets to `receiver` from the market and burns
-    ///         `owner` shares.
+    ///         `owner` `shares`.
     /// @param shares The amount of shares to burn to withdraw assets.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
