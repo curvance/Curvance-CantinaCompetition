@@ -80,8 +80,8 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// @dev Uses oracles (mostly Chainlink), can price both direct
     ///      and synthetic GM Tokens.
     /// @param asset The address of the asset for which the price is needed.
-    /// @return A structure containing the price, error status,
-    ///         and the quote format of the price.
+    /// @return pData A structure containing the price, error status,
+    ///               and the quote format of the price.
     function getPrice(
         address asset,
         bool, /* inUSD */
