@@ -84,12 +84,12 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();
         }
 
         AdaptorData memory data = adaptorData[asset];
-        pData.inUSD = inUSD;
         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);
 
         (uint256 price, uint256 errorCode) = IOracleRouter(
@@ -110,6 +110,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
+        pData.inUSD = inUSD;
         pData.price = uint240(price);
     }
 

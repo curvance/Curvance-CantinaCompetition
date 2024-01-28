@@ -29,10 +29,10 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Redstone Adaptor Data for pricing in ETH
+    /// @notice Redstone Adaptor Data for pricing in ETH.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Redstone Adaptor Data for pricing in USD
+    /// @notice Redstone Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
@@ -65,6 +65,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
@@ -202,7 +203,6 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory pData) {
-        pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
 
         // Load decimals into cache to minimize MLOADs/SLOADs.
@@ -222,6 +222,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         pData.hadError = _verifyData(price, data.max);
 
         if (!pData.hadError) {
+            pData.inUSD = inUSD;
             pData.price = uint240(price);
         }
     }

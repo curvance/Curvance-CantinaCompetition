@@ -77,6 +77,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
         bool inUSD,
         bool /* getLower */
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert Api3Adaptor__AssetIsNotSupported();
         }

@@ -80,11 +80,13 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }
 
         AdaptorData memory data = adaptorData[asset];
+        
         address[] memory pools = new address[](1);
         pools[0] = data.priceSource;
         uint256 twapPrice;

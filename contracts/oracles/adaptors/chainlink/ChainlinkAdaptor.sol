@@ -81,6 +81,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool  /* getLower */
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
         }

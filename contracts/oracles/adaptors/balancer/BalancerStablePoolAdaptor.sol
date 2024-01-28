@@ -70,6 +70,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }

@@ -83,15 +83,14 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        AdaptorData memory data = adaptorData[asset];
-
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert PendleLPTokenAdaptor__AssetIsNotSupported();
         }
 
+        AdaptorData memory data = adaptorData[asset];
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
-        pData.inUSD = inUSD;
-
+        
         (uint256 price, uint256 errorCode) = IOracleRouter(
             centralRegistry.oracleRouter()
         ).getPrice(data.quoteAsset, inUSD, getLower);
@@ -110,6 +109,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
+        pData.inUSD = inUSD;
         pData.price = uint240(price);
     }
 

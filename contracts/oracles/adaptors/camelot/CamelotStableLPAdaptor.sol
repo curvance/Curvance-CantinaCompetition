@@ -42,6 +42,7 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert CamelotStableLPAdaptor__AssetIsNotSupported();
         }

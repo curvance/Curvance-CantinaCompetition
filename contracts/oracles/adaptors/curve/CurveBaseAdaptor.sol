@@ -16,7 +16,8 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice coinsLength => gasLimit
+    /// @notice The number of underlying tokens inside a pool => Maximum
+    ///         gas allowed in Reentry check.
     mapping(uint256 => uint256) public reentrancyConfig;
 
     /// EVENTS ///

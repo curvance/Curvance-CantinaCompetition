@@ -98,13 +98,16 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        pData.inUSD = inUSD;
-
         AdaptorData memory data = adaptorData[asset];
-        ICurvePool pool = ICurvePool(data.pool);
+        
+        // Validate we support this pool and that this is not
+        // a reeentrant call.
         if (isLocked(data.pool, 2)) {
             revert Curve2PoolLPAdaptor__Reentrant();
         }
+
+        // Cache the curve pool.
+        ICurvePool pool = ICurvePool(data.pool);
 
         // Make sure virtualPrice is reasonable.
         uint256 virtualPrice = pool.get_virtual_price();
@@ -171,6 +174,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
             return pData;
         }
 
+        pData.inUSD = inUSD;
         pData.price = uint240(price);
     }
 

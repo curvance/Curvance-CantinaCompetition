@@ -42,6 +42,7 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
         }
