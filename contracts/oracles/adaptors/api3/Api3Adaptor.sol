@@ -70,12 +70,12 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
     ///              USD or not.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return A structure containing the price, error status,
+    ///         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
-        bool
+        bool /* getLower */
     ) external view override returns (PriceReturnData memory) {
         if (!isSupportedAsset[asset]) {
             revert Api3Adaptor__AssetIsNotSupported();
@@ -133,6 +133,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
             ? heartbeat
             : DEFAULT_HEART_BEAT;
 
+        // Save adaptor data and update mapping that we support `asset` now.
         // Add a ~10% buffer to maximum price allowed from Api3 can stop 
         // updating its price before/above the min/max price. We use a maximum
         // buffered price of 2^224 - 1, which could overflow when trying to
@@ -148,6 +149,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {

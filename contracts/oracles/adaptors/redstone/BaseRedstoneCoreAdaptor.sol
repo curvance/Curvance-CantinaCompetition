@@ -136,6 +136,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {

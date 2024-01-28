@@ -91,8 +91,9 @@ contract BaseStableLPAdaptor is BaseOracleAdaptor {
         return data;
     }
 
-    /// @notice Removes a supported asset from the adaptor.
+    /// @notice Helper function to remove a supported asset from the adaptor.
     /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function _removeAsset(address asset) internal {

@@ -11,10 +11,10 @@ abstract contract BalancerBaseAdaptor is BaseOracleAdaptor {
     
     /// CONSTANTS ///
 
-    /// @notice Gas limit allowed for reentrancy check
+    /// @notice Gas limit allowed for reentrancy check.
     uint256 public constant GAS_LIMIT = 10000;
 
-    /// @notice The Balancer Vault
+    /// @notice The Balancer Vault.
     IVault public immutable balancerVault;
 
     /// ERRORS ///

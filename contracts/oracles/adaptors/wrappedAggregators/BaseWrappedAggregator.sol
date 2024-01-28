@@ -102,6 +102,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
     /// PUBLIC FUNCTIONS TO OVERRIDE ///
 
     /// @notice Returns the underlying aggregator address.
+    /// @dev Overridden in implemented wrapped oracle aggregators.
     function underlyingAssetAggregator()
         public
         view

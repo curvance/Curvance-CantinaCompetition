@@ -13,14 +13,14 @@ import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
 
-    /// @notice Adaptor storage
-    /// @param poolId the pool id of the BPT being priced
-    /// @param poolDecimals the decimals of the BPT being priced
+    /// @notice Adaptor storage.
+    /// @param poolId the pool id of the BPT being priced.
+    /// @param poolDecimals the decimals of the BPT being priced.
     /// @param rateProviders array of rate providers for each constituent
     ///        a zero address rate provider means we are using an underlying
     ///        correlated to the pools virtual base.
     /// @param underlyingOrConstituent the ERC20 underlying asset or
-    ///                                the constituent in the pool
+    ///                                the constituent in the pool.
     /// @dev Only use the underlying asset, if the underlying is correlated
     ///      to the pools virtual base.
     struct AdaptorData {
@@ -33,7 +33,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Balancer Stable Pool Adaptor Storage
+    /// @notice Balancer Stable pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
@@ -56,12 +56,15 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset the bpt being priced
-    /// @param inUSD indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
+    /// @notice Retrieves the price of a given BPT.
+    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return pData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -71,8 +74,10 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
+        // Validate that the vault is not being reentered.
         _ensureNotInVaultContext(balancerVault);
-        // Read Adaptor storage and grab pool tokens
+
+        // Cache adaptor data.
         AdaptorData memory data = adaptorData[asset];
         IBalancerPool pool = IBalancerPool(asset);
 
@@ -99,17 +104,22 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 inUSD,
                 getLower
             );
-            // If error code is BAD_SOURCE we can't use this price.
+            // If we receive a BAD_SOURCE error, bubble up an error.
             if (errorCode == BAD_SOURCE) {
                 pData.hadError = true;
+                return pData;
+            // Otherwise add the price to the average and increment
+            // number of prices.
+            } else {
+                averagePrice += price;
+                ++availablePriceCount;
             }
-
-            averagePrice += price;
-            availablePriceCount += 1;
         }
 
+        // If we were not able to price anything, bubble up an error.
         if (averagePrice == 0) {
             pData.hadError = true;
+            return pData;
         } else {
             averagePrice = ((averagePrice / availablePriceCount) * pool.getRate()) / WAD;
             
@@ -122,10 +132,10 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         }
     }
 
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset the address of the bpt to add
-    /// @param data AdaptorData needed to add `asset`
+    /// @notice Add a Balancer Stable Pool BPT as an asset.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
+    /// @param asset The address of the BPT to add.
+    /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
@@ -135,7 +145,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
         IBalancerPool pool = IBalancerPool(asset);
 
-        // Grab the poolId and decimals.
+        // Query the poolId and decimals from the pool contract.
         data.poolId = pool.getPoolId();
         data.poolDecimals = pool.decimals();
 
@@ -171,7 +181,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             }
         }
 
-        // Save values in Adaptor storage.
+        // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
         isSupportedAsset[asset] = true;
         emit BalancerStablePoolAssetAdded(asset, data);
@@ -179,6 +189,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {

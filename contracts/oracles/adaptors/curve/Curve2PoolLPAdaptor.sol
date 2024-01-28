@@ -280,7 +280,10 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into price router to notify it of its removal.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
