@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
-import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";

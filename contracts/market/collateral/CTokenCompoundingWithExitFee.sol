@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, ICentralRegistry, IERC20 } from "contracts/market/collateral/CTokenCompounding.sol";
-
-import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+import { CTokenCompounding, FixedPointMathLib, ICentralRegistry, IERC20 } from "contracts/market/collateral/CTokenCompounding.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -54,7 +52,7 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
     function _removeExitFeeFromAssets(uint256 assets) internal view returns (uint256) {
         // Rounds up with an enforced minimum of assets = 1,
         // so this can never underflow.
-        return assets - FixedPointMathLib.mulWadUp(exitFee, assets);
+        return assets - FixedPointMathLib.mulDivUp(exitFee, assets, 1e18);
     }
 
     function _processWithdraw(
