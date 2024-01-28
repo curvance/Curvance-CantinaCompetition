@@ -133,7 +133,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
                 if (rewardAmount > 0) {
                     // take protocol fee
-                    uint256 protocolFee = mulDivDown(
+                    uint256 protocolFee = _mulDivDown(
                         rewardAmount,
                         centralRegistry.protocolHarvestFee(),
                         1e18
