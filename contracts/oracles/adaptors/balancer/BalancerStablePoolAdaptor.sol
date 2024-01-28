@@ -33,7 +33,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Balancer Stable pool address => AdaptorData.
+    /// @notice Balancer stable pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
@@ -134,7 +134,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// @notice Adds pricing support for `asset`, a new Balancer BPT.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
-    /// @param asset The address of the BPT to add.
+    /// @param asset The address of the BPT to add pricing support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();

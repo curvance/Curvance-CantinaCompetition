@@ -36,15 +36,17 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
 
     /// @notice Maximum bound range that can be increased on either side,
     ///         this is not meant to be anti tamperproof but,
-    ///         more-so mitigate any human error. 2%.
+    ///         more-so mitigate any human error.
+    ///         .02e18 = 2%.
     uint256 internal constant _MAX_BOUND_INCREASE = .02e18;
     /// @notice Maximum difference between lower bound and upper bound,
-    ///         checked on configuration. 5%.
+    ///         checked on configuration.
+    ///         .05e18 = 5%.
     uint256 internal constant _MAX_BOUND_RANGE = .05e18;
 
     /// STORAGE ///
 
-    /// @notice Curve Pool Adaptor Storage.
+    /// @notice Curve asset address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
@@ -81,7 +83,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         _setReentrancyConfig(coinsLength, gasLimit);
     }
 
-    /// @notice Retrieves the price of a given asset.
+    /// @notice Retrieves the price of a given Curve V2 lp token.
     /// @dev Uses Curve to fetch the price data for the LP token.
     ///      Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
@@ -172,12 +174,14 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         pData.price = uint240(price);
     }
 
-    /// @notice Adds a Curve LP as an asset.
+    /// @notice Adds pricing support for `asset`, a Curve V2 lp token.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
-    /// @param asset the address of the lp to add
+    /// @param asset The address of the lp token to add pricing support for.
+    /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
+        // Validate we do not currently support `asset`.
         if (isSupportedAsset[asset]) {
             revert Curve2PoolLPAdaptor__AssetIsAlreadyAdded();
         }
@@ -190,6 +194,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
 
         address oracleRouter = centralRegistry.oracleRouter();
 
+        // Make sure that the underlying asset is supported
+        // by the Oracle Router.
         if (
             !IOracleRouter(oracleRouter).isSupportedAsset(
                 data.underlyingOrConstituent0
@@ -198,6 +204,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
             revert Curve2PoolLPAdaptor__QuoteAssetIsNotSupported();
         }
 
+        // Make sure that the underlying asset is supported
+        // by the Oracle Router.
         if (
             !IOracleRouter(oracleRouter).isSupportedAsset(
                 data.underlyingOrConstituent1
@@ -231,6 +239,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         for (uint256 i; i < coinsLength; ) {
             underlying = pool.coins(i++);
 
+            // Make sure that data underlying is configured properly
+            // via onchain pool check.
             if (
                 underlying != data.underlyingOrConstituent0 &&
                 underlying != data.underlyingOrConstituent1
@@ -272,9 +282,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         // Validate the virtualPrice is within the desired bounds.
         _enforceBounds(testVirtualPrice, data.lowerBound, data.upperBound);
 
+        // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
-
-        // Notify the adaptor to support the asset.
         isSupportedAsset[asset] = true;
         emit CurvePoolAssetAdded(asset, data);
     }
@@ -292,9 +301,9 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
             revert Curve2PoolLPAdaptor__AssetIsNotSupported();
         }
 
+        // Wipe config mapping entries for a gas refund.
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
         // Notify the price router that we are going to stop supporting
@@ -303,6 +312,17 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         emit CurvePoolAssetRemoved(asset);
     }
 
+    /// @notice Raises virtual price bounds for `asset`. Must be greater than
+    ///         old bounds, cannot be more than `_MAX_BOUND_RANGE` apart.
+    /// @dev Reverts if the new bounds are not larger than the old ones,
+    ///      as virtual price should always be increasing,
+    ///      barring a pool exploit.
+    /// @param asset The address of the asset to update virtual price
+    ///              bounds for.
+    /// @param newLowerBound The new lower bound to make sure `price`
+    ///                      is greater than.
+    /// @param newUpperBound The new upper bound to make sure `price`
+    ///                      is less than.
     function raiseBounds(
         address asset,
         uint256 newLowerBound,
@@ -354,13 +374,19 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         data.upperBound = newUpperBound;
     }
 
-    /// @notice Checks if `price` is within a reasonable bound.
+    /// @notice Helper function to check if `price` is within a reasonable
+    ///         bound. 
+    /// @dev Reverts if bounds are breached.
+    /// @param virtualPrice The virtual price to check against `lowerBound`
+    ///                     and `upperBound`.
+    /// @param lowerBound The lower bound to make sure `price` is greater than.
+    /// @param upperBound The upper bound to make sure `price` is less than.
     function _enforceBounds(
-        uint256 price,
+        uint256 virtualPrice,
         uint256 lowerBound,
         uint256 upperBound
     ) internal view {
-        if (price < lowerBound || price > upperBound) {
+        if (virtualPrice < lowerBound || virtualPrice > upperBound) {
             revert Curve2PoolLPAdaptor__BoundsExceeded();
         }
     }

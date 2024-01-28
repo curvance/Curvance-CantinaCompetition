@@ -97,7 +97,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @notice Adds pricing support for `asset` via a new Chainlink feed.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token to add pricing for.
+    /// @param asset The address of the token to add pricing support for.
     /// @param aggregator Chainlink aggregator to use for pricing `asset`.
     /// @param heartbeat Chainlink heartbeat to use when validating prices
     ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
