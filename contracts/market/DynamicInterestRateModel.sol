@@ -49,8 +49,8 @@ contract DynamicInterestRateModel {
     /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
     /// @notice Rate at which interest is compounded, in seconds. 
-    ///         600 = 10 minutes.
-    uint256 public constant INTEREST_COMPOUND_RATE = 600;
+    ///         10 minutes = 600 seconds.
+    uint256 public constant INTEREST_COMPOUND_RATE = 10 minutes;
     /// @notice Maximum Rate at which the vertex multiplier will
     ///         decay per adjustment, in `WAD`. 
     ///         .05e18 = 5%.
@@ -857,9 +857,9 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
-    ///         to `WAD`.
+    ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        return value * 100000000000000;
+        return value * 1e14;
     }
 }

@@ -13,12 +13,13 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    /// @notice 2% maximum exit fee configurable by DAO.
+    /// @notice Maximum exit fee configurable by DAO.
+    ///         .02e18 = 2%.
     uint256 public constant MAXIMUM_EXIT_FEE = .02e18;
 
     /// STORAGE ///
 
-    // Fee for exiting a vault position, in `WAD`.
+    /// @notice Fee for exiting a vault position, in `WAD`.
     uint256 public exitFee;
 
     /// EVENTS ///
@@ -42,6 +43,12 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Permissioned function for setting the exit fee on redemption
+    ///         of shares for assets.
+    /// @dev Parameter passed in basis points and converted to `WAD`.
+    ///      Has a maximum value of `MAXIMUM_EXIT_FEE`.
+    /// @param newExitFee The new exit fee to set for redemption of assets,
+    ///                   in basis points.
     function setExitFee(uint256 newExitFee) external {
         _checkElevatedPermissions();
         _setExitFee(newExitFee);
@@ -49,12 +56,29 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Efficient internal calculation of `assets`
+    ///         with corresponding exit fee removed.
+    /// @param assets The number of assets to remove exit fee from.
+    /// @return The number of assets remaining after removing the exit fee.
     function _removeExitFeeFromAssets(uint256 assets) internal view returns (uint256) {
         // Rounds up with an enforced minimum of assets = 1,
         // so this can never underflow.
         return assets - FixedPointMathLib.mulDivUp(exitFee, assets, 1e18);
     }
 
+    /// @notice Processes a withdrawal of `shares` from the market by burning
+    ///         `owner` shares and transferring `assets` minus proportional
+    ///         `exitFee` to `to`, then  decreases `ta` by post exit fee
+    ///         `assets`, and vests rewards if `pending` > 0.
+    /// @param by The account that is executing the withdrawal.
+    /// @param to The account that should receive `assets`.
+    /// @param owner The account that will have `shares` burned to withdraw `assets`.
+    /// @param assets The amount of the underlying asset to withdraw,
+    ///               prior to exit fee being applied.
+    /// @param shares The amount of shares redeemed from `owner`.
+    /// @param ta The current total number of assets for assets to shares conversion.
+    /// @param pending The current rewards that are pending and will be vested
+    ///                during this withdrawal.
     function _processWithdraw(
         address by,
         address to,
@@ -70,6 +94,12 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
         super._processWithdraw(by, to, owner, assets, shares, ta, pending);
     }
 
+    /// @notice Helper function for setting the exit fee on redemption
+    ///         of shares for assets.
+    /// @dev Parameter passed in basis points and converted to `WAD`.
+    ///      Has a maximum value of `MAXIMUM_EXIT_FEE`. 
+    /// @param newExitFee The new exit fee to set for redemption of assets,
+    ///                   in basis points.
     function _setExitFee(uint256 newExitFee) internal {
         // Convert `newExitFee` parameter from `basis points` to `WAD`.
         newExitFee = _bpToWad(newExitFee);
@@ -87,10 +117,11 @@ abstract contract CTokenCompoundingWithExitFee is CTokenCompounding {
         emit ExitFeeSet(oldExitFee, newExitFee);
     }
 
+    /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
+    ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // multiplies by 1e14 to convert from basis points to WAD.
-        return value * 100000000000000;
+        return value * 1e14;
     }
 
 }

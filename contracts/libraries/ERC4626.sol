@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import {ERC20} from "contracts/libraries/external/ERC20.sol";
-import {FixedPointMathLib} from "contracts/libraries/FixedPointMathLib.sol";
-import {SafeTransferLib} from "contracts/libraries/external/SafeTransferLib.sol";
+import { ERC20 } from "contracts/libraries/external/ERC20.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
 /// @notice Simple ERC4626 tokenized Vault implementation.
 /// @author Solady (https://github.com/vectorized/solady/blob/main/src/tokens/ERC4626.sol)

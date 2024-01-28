@@ -955,7 +955,7 @@ contract CentralRegistry is ERC165 {
     ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        return value * 100000000000000;
+        return value * 1e14;
     }
 
     /// @dev Internal helper for reverting efficiently.
