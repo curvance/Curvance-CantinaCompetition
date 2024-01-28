@@ -45,8 +45,8 @@ abstract contract BaseOracleAdaptor {
     ///              USD or not.
     /// @param getLower A boolean to determine if lower of two oracle prices
     ///                 should be retrieved.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return A structure containing the price, error status,
+    ///         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
