@@ -291,11 +291,8 @@ contract AuraCToken is CTokenCompounding {
             yield = IERC20(asset()).balanceOf(address(this));
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            _vaultData = _packVaultData(
-                _mulDivDown(yield, WAD, vestPeriod),
-                block.timestamp + vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

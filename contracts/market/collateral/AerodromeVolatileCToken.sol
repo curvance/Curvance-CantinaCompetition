@@ -215,13 +215,8 @@ contract AerodromeVolatileCToken is CTokenCompounding {
             // deposit assets into aerodrome gauge
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(
-                mulDivDown(yield, WAD, _vestPeriod),
-                block.timestamp + _vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

@@ -236,12 +236,8 @@ contract PendleLPCToken is CTokenCompounding {
                 );
             }
 
-            // There is no gauge for pendle, so no _afterDeposit here
-            // update vesting info
-            _vaultData = _packVaultData(
-                _mulDivDown(yield, WAD, vestPeriod),
-                block.timestamp + vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

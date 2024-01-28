@@ -115,18 +115,22 @@ contract GMCToken is CTokenCompounding {
             // Claim GM pool rewards.
             uint256[] memory rewardAmounts = _claimReward();
 
+            // Cache Central registry values so we dont pay gas multiple times
+            address feeAccumulator = centralRegistry.feeAccumulator();
+            uint256 harvestFee = centralRegistry.protocolHarvestFee();
+
             for (uint256 i = 0; i < 2; ++i) {
                 if (rewardAmounts[i] > 0) {
                     // Take protocol fee.
                     uint256 protocolFee = _mulDivDown(
                         rewardAmounts[i],
-                        centralRegistry.protocolHarvestFee(),
+                        harvestFee,
                         1e18
                     );
                     rewardAmounts[i] -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         underlyingTokens[i],
-                        centralRegistry.feeAccumulator(),
+                        feeAccumulator,
                         protocolFee
                     );
                 }
@@ -141,17 +145,19 @@ contract GMCToken is CTokenCompounding {
                 0.01e18
             );
 
+            uint256 rewardAmount;
             for (uint256 i = 0; i < 2; ) {
+                rewardAmount = rewardAmounts[i];
                 SafeTransferLib.safeApprove(
                     underlyingTokens[i],
                     gmxRouter,
-                    rewardAmounts[i]
+                    rewardAmount
                 );
                 data[++i] = abi.encodeWithSelector(
                     IGMXExchangeRouter.sendTokens.selector,
                     underlyingTokens[i],
                     gmxDepositVault,
-                    rewardAmounts[i]
+                    rewardAmount
                 );
             }
             data[3] = abi.encodeWithSelector(
@@ -195,13 +201,8 @@ contract GMCToken is CTokenCompounding {
 
         uint256 yield = eventData.uintItems.items[0].value;
 
-        // Update vesting info.
-        // Cache vest period so we do not need to load it twice.
-        uint256 _vestPeriod = vestPeriod;
-        _vaultData = _packVaultData(
-            _mulDivDown(yield, WAD, _vestPeriod),
-            block.timestamp + _vestPeriod
-        );
+        // Update vesting info, query `vestPeriod` here to cache it.
+        _setNewVaultData(yield, vestPeriod);
 
         delete _isDepositKey[key];
 

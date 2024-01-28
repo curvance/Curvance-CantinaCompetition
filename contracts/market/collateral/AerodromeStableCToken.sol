@@ -140,7 +140,7 @@ contract AerodromeStableCToken is CTokenCompounding {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
                 if (rewardAmount > 0) {
                     // take protocol fee
-                    uint256 protocolFee = mulDivDown(
+                    uint256 protocolFee = _mulDivDown(
                         rewardAmount,
                         centralRegistry.protocolHarvestFee(),
                         1e18
@@ -221,14 +221,9 @@ contract AerodromeStableCToken is CTokenCompounding {
             // deposit assets into aerodrome gauge
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(
-                _mulDivDown(yield, WAD, _vestPeriod),
-                block.timestamp + _vestPeriod
-            );
-
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
+            
             emit Harvest(yield);
         }
         // else yield is zero

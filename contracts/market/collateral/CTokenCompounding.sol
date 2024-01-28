@@ -547,6 +547,22 @@ abstract contract CTokenCompounding is CTokenBase {
         }
     }
 
+    /// @notice Sets a new `_vaultData` invariant based on `yieldToVest`,
+    ///         and `periodToVest` parameters together with the current
+    ///         block timestamp.
+    /// @param yieldToVest The yield to vest over `periodToVest`.
+    /// @param periodToVest The period in which `yieldToVest` is vested
+    ///                     over to users.
+    function _setNewVaultData(
+        uint256 yieldToVest, 
+        uint256 periodToVest
+    ) internal {
+        _vaultData = _packVaultData(
+            _mulDivDown(yieldToVest, WAD, periodToVest), // New Reward Rate.
+            block.timestamp + periodToVest // New Vest Period.
+            ); // Packs block.timestamp at the end as new last vest claim.
+    }
+
     /// @notice Packs parameters together with current block timestamp
     ///         to calculate the new packed vault data value.
     /// @param newRewardRate The new rate, per second, that the vault vests
