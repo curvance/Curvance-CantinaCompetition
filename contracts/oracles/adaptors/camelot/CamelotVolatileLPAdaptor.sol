@@ -31,12 +31,15 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset The bpt being priced
-    /// @param inUSD Indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
+    /// @notice Retrieves the price of a given Camelot Volatile LP.
+    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return A structure containing the price, error status,
+    ///         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -49,9 +52,10 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
         return _getPrice(asset, inUSD, getLower);
     }
 
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset The address of the bpt to add
+    /// @notice Adds pricing support for `asset`, a new Camelot Volatile LP.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the token to add pricing for.
     function addAsset(
         address asset
     ) external override {
@@ -73,11 +77,10 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
-    function removeAsset(
-        address asset
-    ) external virtual override {
+    function removeAsset(address asset) external virtual override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
         }

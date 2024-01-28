@@ -78,6 +78,7 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     ) external virtual override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
         }

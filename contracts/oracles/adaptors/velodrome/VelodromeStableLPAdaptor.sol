@@ -76,6 +76,7 @@ contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert VelodromeStableLPAdaptor__AssetIsNotSupported();
         }

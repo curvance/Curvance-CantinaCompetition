@@ -132,7 +132,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
         }
     }
 
-    /// @notice Add a Balancer Stable Pool BPT as an asset.
+    /// @notice Adds pricing support for `asset`, a new Balancer BPT.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
     /// @param asset The address of the BPT to add.
     /// @param data The adaptor data needed to add `asset`.
@@ -195,6 +195,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }

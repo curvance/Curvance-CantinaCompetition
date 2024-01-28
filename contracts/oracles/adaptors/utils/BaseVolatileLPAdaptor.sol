@@ -98,12 +98,13 @@ contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function _removeAsset(address asset) internal {
+        // Wipe config mapping entries for a gas refund.
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
-        // Notify the oracle router that we are going to stop supporting the asset.
+        // Notify the oracle router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 

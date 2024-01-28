@@ -226,6 +226,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert UniswapV3Adaptor__AssetIsNotSupported();
         }

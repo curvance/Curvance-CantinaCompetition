@@ -287,6 +287,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert Curve2PoolLPAdaptor__AssetIsNotSupported();
         }
