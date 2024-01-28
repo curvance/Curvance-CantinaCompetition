@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenBase, SafeTransferLib, ERC4626 } from "contracts/market/collateral/CTokenBase.sol";
+import { CTokenBase, FixedPointMathLib, SafeTransferLib, ERC4626 } from "contracts/market/collateral/CTokenBase.sol";
 
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
@@ -560,7 +560,7 @@ abstract contract CTokenCompounding is CTokenBase {
         // Set rewardRate equal to prorated `yieldToVest` over `periodToVest`,
         // in `WAD` (1e18).
         _vaultData = _packVaultData(
-            _mulDivDown(yieldToVest, 1e18, periodToVest),
+            FixedPointMathLib.mulDiv(yieldToVest, 1e18, periodToVest),
             block.timestamp + periodToVest
             );
     }

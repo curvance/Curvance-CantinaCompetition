@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 import { IGMXDeposit } from "contracts/interfaces/external/gmx/IGMXDeposit.sol";
@@ -120,7 +120,7 @@ contract GMCToken is CTokenCompounding {
             for (uint256 i = 0; i < 2; ++i) {
                 if (rewardAmounts[i] > 0) {
                     // Take protocol fee.
-                    uint256 protocolFee = _mulDivDown(
+                    uint256 protocolFee = FixedPointMathLib.mulDiv(
                         rewardAmounts[i],
                         harvestFee,
                         1e18

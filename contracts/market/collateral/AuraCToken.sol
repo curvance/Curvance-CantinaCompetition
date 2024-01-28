@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
@@ -218,7 +218,7 @@ contract AuraCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = _mulDivDown(rewardAmount, harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,

@@ -5,6 +5,7 @@ import { WAD } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib } from "contracts/libraries/external/ERC4626.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
@@ -681,7 +682,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         shares = totalShares == 0
             ? assets
-            : _mulDivDown(assets, totalShares, ta);
+            : FixedPointMathLib.mulDiv(assets, totalShares, ta);
     }
 
     function _convertToAssets(
@@ -692,7 +693,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         assets = totalShares == 0
             ? shares
-            : _mulDivDown(shares, ta, totalShares);
+            : FixedPointMathLib.mulDiv(shares, ta, totalShares);
     }
 
     function _previewDeposit(
@@ -708,7 +709,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
-        assets = totalShares == 0 ? shares : shares.mulDivUp(ta, totalShares);
+        assets = totalShares == 0 ? shares : FixedPointMathLib.mulDivUp(shares, ta, totalShares);
     }
 
     function _previewWithdraw(
@@ -717,7 +718,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        shares = totalShares == 0 ? assets : assets.mulDivUp(totalShares, ta);
+        shares = totalShares == 0 ? assets : FixedPointMathLib.mulDivUp(assets, totalShares, ta);
     }
 
     function _previewRedeem(
@@ -725,31 +726,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 ta
     ) internal view returns (uint256) {
         return _convertToAssets(shares, ta);
-    }
-
-    /// @notice Equivalent to (x * y) / WAD rounded down.
-    function _mulDivDown(
-        uint256 x,
-        uint256 y,
-        uint256 denominator
-    ) internal pure returns (uint256 z) {
-        assembly {
-            // z = x * y.
-            z := mul(x, y)
-
-            // require(denominator != 0 && (x == 0 || (x * y) / x == y)).
-            if iszero(
-                and(
-                    iszero(iszero(denominator)),
-                    or(iszero(x), eq(div(z, x), y))
-                )
-            ) {
-                revert(0, 0)
-            }
-
-            // Divide z by the denominator.
-            z := div(z, denominator)
-        }
     }
 
     /// @notice Returns gauge pool contract address.

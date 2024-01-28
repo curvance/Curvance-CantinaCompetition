@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
@@ -134,7 +134,7 @@ contract VelodromeVolatileCToken is CTokenCompounding {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
                 if (rewardAmount > 0) {
                     // take protocol fee
-                    uint256 protocolFee = _mulDivDown(
+                    uint256 protocolFee = FixedPointMathLib.mulDiv(
                         rewardAmount, 
                         centralRegistry.protocolHarvestFee(),
                         1e18
