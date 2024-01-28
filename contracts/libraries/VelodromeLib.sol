@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
+import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
@@ -222,7 +222,7 @@ library VelodromeLib {
             uint256 swapFeeFactor = 10000 - swapFee;
             uint256 a = (10000 + swapFeeFactor) * reserveA;
             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;
-            uint256 c = Math.sqrt(a * a + b);
+            uint256 c = FixedPointMathLib.sqrt(a * a + b);
             uint256 d = swapFeeFactor * 2;
             return (c - a) / d;
         }
