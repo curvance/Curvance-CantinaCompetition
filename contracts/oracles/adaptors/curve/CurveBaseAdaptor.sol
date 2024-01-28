@@ -28,7 +28,7 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
     /// ERRORS ///
 
-    error CurveBaseAdaptor__AssetNotFound();
+    error CurveBaseAdaptor__PoolNotFound();
     error CurveBaseAdaptor__InvalidConfiguration();
 
     /// CONSTRUCTOR ///
@@ -44,19 +44,21 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
     ///         that there was not excess gas remaining on the call, as that
     ///         means they currently are in the remove liquidity context and
     ///         are manipulating the virtual price.
+    /// @param pool The address of the Curve pool to check for Reentry.
+    /// @param coinsLength The number of underlying tokens inside `pool`. 
     function isLocked(
-        address asset,
+        address pool,
         uint256 coinsLength
     ) public view returns (bool) {
         uint256 gasLimit = reentrancyConfig[coinsLength];
 
         if (gasLimit == 0) {
-            revert CurveBaseAdaptor__AssetNotFound();
+            revert CurveBaseAdaptor__PoolNotFound();
         }
 
         uint256 gasStart = gasleft();
 
-        ICurveRemoveLiquidity pool = ICurveRemoveLiquidity(asset);
+        ICurveRemoveLiquidity pool = ICurveRemoveLiquidity(pool);
 
         if (coinsLength == 2) {
             uint256[2] memory amounts;
