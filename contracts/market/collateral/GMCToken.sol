@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -11,8 +11,6 @@ import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils
 import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchangeRouter.sol";
 
 contract GMCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// STORAGE ///
 
     /// @notice The address of GMX Deposit Vault.
@@ -120,7 +118,8 @@ contract GMCToken is CTokenCompounding {
             for (uint256 i = 0; i < 2; ++i) {
                 if (rewardAmounts[i] > 0) {
                     // Take protocol fee.
-                    uint256 protocolFee = rewardAmounts[i].mulDivDown(
+                    uint256 protocolFee = _mulDivDown(
+                        rewardAmounts[i],
                         centralRegistry.protocolHarvestFee(),
                         1e18
                     );
@@ -200,7 +199,7 @@ contract GMCToken is CTokenCompounding {
         // Cache vest period so we do not need to load it twice.
         uint256 _vestPeriod = vestPeriod;
         _vaultData = _packVaultData(
-            yield.mulDivDown(WAD, _vestPeriod),
+            _mulDivDown(yield, WAD, _vestPeriod),
             block.timestamp + _vestPeriod
         );
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -13,8 +13,6 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract AerodromeVolatileCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -136,7 +134,8 @@ contract AerodromeVolatileCToken is CTokenCompounding {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
                 if (rewardAmount > 0) {
                     // take protocol fee
-                    uint256 protocolFee = rewardAmount.mulDivDown(
+                    uint256 protocolFee = mulDivDown(
+                        rewardAmount,
                         centralRegistry.protocolHarvestFee(),
                         1e18
                     );
@@ -220,7 +219,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
             // Cache vest period so we do not need to load it twice
             uint256 _vestPeriod = vestPeriod;
             _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, _vestPeriod),
+                mulDivDown(yield, WAD, _vestPeriod),
                 block.timestamp + _vestPeriod
             );
 

@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ERC4626, SafeTransferLib } from "contracts/libraries/external/ERC4626.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
 import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -18,8 +17,6 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
 abstract contract CTokenBase is ERC4626, ReentrancyGuard {
-    using Math for uint256;
-
     /// CONSTANTS ///
 
     /// @dev `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
@@ -684,7 +681,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         shares = totalShares == 0
             ? assets
-            : assets.mulDivDown(totalShares, ta);
+            : _mulDivDown(assets, totalShares, ta);
     }
 
     function _convertToAssets(
@@ -695,7 +692,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
         assets = totalShares == 0
             ? shares
-            : shares.mulDivDown(ta, totalShares);
+            : _mulDivDown(shares, ta, totalShares);
     }
 
     function _previewDeposit(
@@ -728,6 +725,31 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         uint256 ta
     ) internal view returns (uint256) {
         return _convertToAssets(shares, ta);
+    }
+
+    /// @notice Equivalent to (x * y) / WAD rounded down.
+    function _mulDivDown(
+        uint256 x,
+        uint256 y,
+        uint256 denominator
+    ) internal pure returns (uint256 z) {
+        assembly {
+            // z = x * y.
+            z := mul(x, y)
+
+            // require(denominator != 0 && (x == 0 || (x * y) / x == y)).
+            if iszero(
+                and(
+                    iszero(iszero(denominator)),
+                    or(iszero(x), eq(div(z, x), y))
+                )
+            ) {
+                revert(0, 0)
+            }
+
+            // Divide z by the denominator.
+            z := div(z, denominator)
+        }
     }
 
     /// @notice Returns gauge pool contract address.

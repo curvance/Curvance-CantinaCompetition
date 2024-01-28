@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -13,8 +13,6 @@ import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
 
 contract PendleLPCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -157,7 +155,7 @@ contract PendleLPCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
+                    protocolFee = _mulDivDown(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -241,7 +239,7 @@ contract PendleLPCToken is CTokenCompounding {
             // There is no gauge for pendle, so no _afterDeposit here
             // update vesting info
             _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, vestPeriod),
+                _mulDivDown(yield, WAD, vestPeriod),
                 block.timestamp + vestPeriod
             );
 
