@@ -136,7 +136,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
 
     function _checkLiquidation(address _user, DToken _dToken, MockCTokenPrimitive _cToken, uint256 _amount, bool _exact)
         internal
-        view
+        
         returns (uint256 liqAmount, uint256 liquidatedTokens, uint256 protocolTokens)
     {
         (liqAmount, liquidatedTokens, protocolTokens) =
@@ -308,6 +308,8 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
     function _liquidate(DToken _dToken, MockCTokenPrimitive _cToken, address _user, bool _exact) internal {
         console2.log("\n expected liquidation");
         (uint256 expectedLiqAmount,,) = _expectedLiquidation(_cToken.balanceOf(_user), _user, _dToken, _cToken);
+
+        _dToken.accrueInterest();
 
         console2.log("\n check liquidation");
         _checkLiquidation(_user, _dToken, _cToken, expectedLiqAmount, _exact);
