@@ -27,8 +27,7 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
         );
 
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            CHAINLINK_PRICE_FEED_ETH
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
