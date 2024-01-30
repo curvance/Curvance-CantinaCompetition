@@ -108,7 +108,6 @@ contract CentralRegistryDeployer is DeployConfiguration {
 
     function _setWormholeCore(address wormholeCore) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(wormholeCore != address(0), "Set the wormholeCore!");
 
         CentralRegistry(centralRegistry).setWormholeCore(wormholeCore);
         console.log("centralRegistry.setWormholeCore: ", wormholeCore);
@@ -116,7 +115,6 @@ contract CentralRegistryDeployer is DeployConfiguration {
 
     function _setWormholeRelayer(address wormholeRelayer) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(wormholeRelayer != address(0), "Set the wormholeRelayer!");
 
         CentralRegistry(centralRegistry).setWormholeRelayer(wormholeRelayer);
         console.log("centralRegistry.setWormholeRelayer: ", wormholeRelayer);
