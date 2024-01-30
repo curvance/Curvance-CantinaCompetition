@@ -48,7 +48,9 @@ contract GMAdaptor is BaseOracleAdaptor {
 
     event GMXGMAssetAdded(
         address asset, 
-        address[] marketTokens, 
+        address[] marketTokens,
+        bool isSynthetic,
+        address alteredToken,
         bool isUpdate
     );
     event GMXGMAssetRemoved(address asset);
@@ -225,7 +227,13 @@ contract GMAdaptor is BaseOracleAdaptor {
         }
 
         isSupportedAsset[asset] = true;
-        emit GMXGMAssetAdded(asset, tokens, isUpdate);
+        emit GMXGMAssetAdded(
+            asset, 
+            tokens, 
+            isSynthetic, 
+            alteredToken, 
+            isUpdate
+        );
     }
 
     /// @notice Removes a supported asset from the adaptor.

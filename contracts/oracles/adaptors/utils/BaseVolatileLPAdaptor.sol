@@ -66,7 +66,6 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
     /// @param asset The address of the token.
-    /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset) external virtual {
         _checkElevatedPermissions();
         _addAsset(asset);
@@ -103,7 +102,7 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     ) internal view returns (PriceReturnData memory pData) {
         // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
-            revert BaseVolatilePAdaptor__AssetIsNotSupported();
+            revert BaseVolatileLPAdaptor__AssetIsNotSupported();
         }
 
         // Cache AdaptorData and grab pool tokens.
