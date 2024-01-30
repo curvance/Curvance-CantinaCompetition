@@ -34,7 +34,10 @@ contract CanRedeemTest is TestBaseMarketManager {
     }
 
     function test_canRedeem_success_whenRedeemerNotInMarket() public {
-        assertFalse(marketManager.hasPosition(address(dUSDC), user1));
+        bool hasPosition;
+        (hasPosition,,)= marketManager.tokenDataOf(user1, address(dUSDC));
+
+        assertFalse(hasPosition);
         marketManager.canRedeem(address(dUSDC), user1, 100e6);
     }
 
@@ -77,7 +80,10 @@ contract CanRedeemTest is TestBaseMarketManager {
         marketManager.postCollateral(user1, address(cBALRETH), 9e17);
         vm.stopPrank();
 
-        assertTrue(marketManager.hasPosition(address(cBALRETH), user1));
+        bool hasPosition;
+        (hasPosition,,)= marketManager.tokenDataOf(user1, address(cBALRETH));
+
+        assertTrue(hasPosition);
 
         skip(20 minutes);
         vm.expectRevert(

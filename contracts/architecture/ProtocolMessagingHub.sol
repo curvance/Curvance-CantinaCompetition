@@ -175,7 +175,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 IFeeAccumulator(centralRegistry.feeAccumulator())
                     .receiveCrossChainLockData(
                         EpochRolloverData({
-                            chainId: operator.chainId,
+                            chainId: gethChainId,
                             value: chainLockedAmount,
                             numChainData: 0,
                             epoch: 0

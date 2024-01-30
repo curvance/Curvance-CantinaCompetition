@@ -11,15 +11,10 @@ import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITok
 /// @param isAuthorized Whether the contract is supported or not.
 ///                     2 = yes
 ///                     0 or 1 = no
-/// @dev We will need to make sure SALTs are different crosschain
-///      so that we do not accidently deploy the same contract address
-///      across multiple chains.
-/// @param chainId chainId where this address authorized.
 /// @param messagingChainId messaging chainId where this address authorized.
 /// @param cveAddress CVE address on the chain.
 struct OmnichainData {
     uint256 isAuthorized;
-    uint256 chainId;
     uint16 messagingChainId;
     address cveAddress;
 }

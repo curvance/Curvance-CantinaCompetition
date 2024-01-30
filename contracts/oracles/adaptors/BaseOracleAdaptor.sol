@@ -57,7 +57,9 @@ abstract contract BaseOracleAdaptor {
 
     /// @notice Checks whether `price` would overflow based on a
     ///         uint240 maximum.
-    function _checkOracleOverflow(uint256 price) internal pure returns (bool) {
+    function _checkOracleOverflow(
+        uint256 price
+    ) internal pure returns (bool) {
         return price > type(uint240).max;
     }
 

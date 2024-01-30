@@ -72,20 +72,18 @@ interface IMarketManager {
 
     function notifyBorrow(address mToken, address account) external;
 
-    function isListed(address mToken) external view returns (bool);
+    function tokensListed() external view returns (address[] memory);
 
-    function hasPosition(
-        address mToken,
-        address user
-    ) external view returns (bool);
+    function isListed(address mToken) external view returns (bool);
 
     function assetsOf(
         address mToken
     ) external view returns (IMToken[] memory);
 
-    function positionFolding() external view returns (address);
-
-    function gaugePool() external view returns (GaugePool);
+    function tokenDataOf(
+        address account,
+        address mToken
+    ) external view returns (bool, uint256, uint256);
 
     function statusOf(
         address account
@@ -95,5 +93,7 @@ interface IMarketManager {
         address account
     ) external view returns (uint256, uint256);
 
-    function tokensListed() external view returns (address[] memory);
+    function positionFolding() external view returns (address);
+
+    function gaugePool() external view returns (GaugePool);
 }

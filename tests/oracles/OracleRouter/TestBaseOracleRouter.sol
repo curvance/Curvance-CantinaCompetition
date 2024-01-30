@@ -25,7 +25,7 @@ contract TestBaseOracleRouter is TestBase {
     CentralRegistry public centralRegistry;
     ChainlinkAdaptor public chainlinkAdaptor;
     ChainlinkAdaptor public dualChainlinkAdaptor;
-    DynamicInterestRateModel public InterestRateModel;
+    DynamicInterestRateModel public interestRateModel;
     MarketManager public marketManager;
     OracleRouter public oracleRouter;
     DToken public mUSDC;
@@ -75,7 +75,12 @@ contract TestBaseOracleRouter is TestBase {
         );
 
         chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_USD, 0, true);
-        chainlinkAdaptor.addAsset(_USDC_ADDRESS, _CHAINLINK_USDC_ETH, 0, false);
+        chainlinkAdaptor.addAsset(
+            _USDC_ADDRESS,
+            _CHAINLINK_USDC_ETH,
+            0,
+            false
+        );
 
         dualChainlinkAdaptor.addAsset(
             _USDC_ADDRESS,
@@ -103,7 +108,7 @@ contract TestBaseOracleRouter is TestBase {
     }
 
     function _deployDynamicInterestRateModel() internal {
-        InterestRateModel = new DynamicInterestRateModel(
+        interestRateModel = new DynamicInterestRateModel(
             ICentralRegistry(address(centralRegistry)),
             1000, // baseRatePerYear
             1000, // vertexRatePerYear
@@ -120,7 +125,7 @@ contract TestBaseOracleRouter is TestBase {
             ICentralRegistry(address(centralRegistry)),
             _USDC_ADDRESS,
             address(marketManager),
-            address(InterestRateModel)
+            address(interestRateModel)
         );
     }
 
