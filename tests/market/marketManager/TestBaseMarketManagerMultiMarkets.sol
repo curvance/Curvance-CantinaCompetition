@@ -200,8 +200,13 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         uint256 debtToCollateralRatio = (incentive * debtTokenPrice * WAD) / (price * _cToken.exchangeRateCached());
         uint256 amountAdjusted = (debtAmount * (10 ** _cToken.decimals())) / (10 ** _dToken.decimals());
         uint256 expectedLiquidatedTokens = (amountAdjusted * debtToCollateralRatio) / WAD;
-        expectedLiqAmount = (debtAmount * collateralAvailable) / expectedLiquidatedTokens;
         uint256 liqFee = (WAD * (10 * 1e14)) / liqBaseIncentive;
+        expectedLiqAmount = debtAmount;
+
+        if (expectedLiquidatedTokens > collateralAvailable) {
+            expectedLiqAmount = (expectedLiqAmount * collateralAvailable) / expectedLiquidatedTokens;
+        }
+
         expectedProtocolTokens = (collateralAvailable * liqFee) / WAD;
 
         console2.log(
