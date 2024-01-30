@@ -6,6 +6,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { PendleLPCToken, IERC20 } from "contracts/market/collateral/PendleLPCToken.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -52,6 +53,10 @@ contract TestPendleLPCToken is TestBaseMarket {
         );
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V3_SWAP_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V3_SWAP_ROUTER))
+        );
 
         gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime());
