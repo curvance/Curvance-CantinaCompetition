@@ -148,7 +148,7 @@ contract Zapper is ReentrancyGuard {
             }
 
             unchecked {
-                SwapperLib.swap(tokenSwaps[i++]);
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
         }
 
@@ -239,7 +239,7 @@ contract Zapper is ReentrancyGuard {
             }
 
             unchecked {
-                SwapperLib.swap(tokenSwaps[i++]);
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
         }
 
@@ -319,7 +319,7 @@ contract Zapper is ReentrancyGuard {
             }
 
             unchecked {
-                SwapperLib.swap(tokenSwaps[i++]);
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
         }
 
@@ -369,7 +369,7 @@ contract Zapper is ReentrancyGuard {
             }
 
             unchecked {
-                SwapperLib.swap(tokenSwaps[i++]);
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
         }
     }

@@ -217,7 +217,7 @@ contract ConvexPositionVault is BasePositionVault {
                             swapDataArray[i].target
                         );
                     }
-                    SwapperLib.swap(swapDataArray[i]);
+                    SwapperLib.swap(centralRegistry, swapDataArray[i]);
                 }
             }
 

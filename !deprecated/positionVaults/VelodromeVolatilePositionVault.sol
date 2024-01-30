@@ -158,7 +158,7 @@ contract VelodromeVolatilePositionVault is BasePositionVault {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }

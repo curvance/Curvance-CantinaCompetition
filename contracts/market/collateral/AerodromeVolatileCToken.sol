@@ -160,7 +160,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }
@@ -245,16 +245,5 @@ contract AerodromeVolatileCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);
-    }
-
-    /// @notice Gets the balance of assets inside aerodrome gauge pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.gauge.balanceOf(address(this));
     }
 }
