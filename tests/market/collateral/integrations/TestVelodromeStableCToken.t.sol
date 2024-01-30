@@ -5,6 +5,7 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeStableCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, IERC20 } from "contracts/market/collateral/VelodromeStableCToken.sol";
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 contract TestVelodromeStableCToken is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
@@ -47,6 +48,10 @@ contract TestVelodromeStableCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
+        centralRegistry.setExternalCallDataChecker(
+            address(veloRouter),
+            address(new MockCallDataChecker(address(veloRouter)))
+        );
 
         cUSDCDAI = new VelodromeStableCToken(
             ICentralRegistry(address(centralRegistry)),

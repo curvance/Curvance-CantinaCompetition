@@ -219,7 +219,7 @@ contract Convex2PoolCToken is CTokenCompounding {
                             swapDataArray[i].target
                         );
                     }
-                    SwapperLib.swap(swapDataArray[i]);
+                    SwapperLib.swap(centralRegistry, swapDataArray[i]);
                 }
             }
 
@@ -256,17 +256,6 @@ contract Convex2PoolCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
-    }
-
-    /// @notice Gets the balance of assets inside Convex reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.rewarder.balanceOf(address(this));
     }
 
     /// @notice Adds underlying tokens to the vaults Curve 2Pool LP

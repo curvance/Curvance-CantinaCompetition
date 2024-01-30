@@ -12,7 +12,6 @@ import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-
 contract CVELocker is ReentrancyGuard {
     /// CONSTANTS ///
 
@@ -43,8 +42,7 @@ contract CVELocker is ReentrancyGuard {
     /// @notice The next undelivered epoch index.
     uint256 public nextEpochToDeliver;
 
-    
-    /// @notice Important user invariant for rewards. 
+    /// @notice Important user invariant for rewards.
     ///         User => Reward Next Claim Index.
     mapping(address => uint256) public userNextClaimIndex;
     /// @notice RewardToken => 2 = yes; 0 or 1 = no.
@@ -426,7 +424,7 @@ contract CVELocker is ReentrancyGuard {
                 revert CVELocker__SwapDataIsInvalid();
             }
 
-            uint256 reward = SwapperLib.swap(swapData);
+            uint256 reward = SwapperLib.swap(centralRegistry, swapData);
 
             if (swapData.outputToken == address(0)) {
                 SafeTransferLib.safeTransferETH(user, reward);

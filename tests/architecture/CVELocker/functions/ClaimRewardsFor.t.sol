@@ -6,6 +6,7 @@ import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
@@ -39,6 +40,10 @@ contract ClaimRewardsForTest is TestBaseCVELocker {
         );
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V2_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V2_ROUTER))
+        );
 
         deal(_USDC_ADDRESS, address(cveLocker), 1e18);
     }

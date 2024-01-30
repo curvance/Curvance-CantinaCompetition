@@ -99,6 +99,14 @@ contract PendleLPCToken is CTokenCompounding {
         }
     }
 
+    function rewardTokens() external view returns (address[] memory) {
+        return strategyData.rewardTokens;
+    }
+
+    function underlyingTokens() external view returns (address[] memory) {
+        return strategyData.underlyingTokens;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
@@ -173,7 +181,7 @@ contract PendleLPCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }
@@ -241,18 +249,5 @@ contract PendleLPCToken is CTokenCompounding {
             emit Harvest(yield);
         }
         // else yield is zero
-    }
-
-    /// INTERNAL FUNCTIONS ///
-
-    /// @notice Gets the balance of assets inside Aura reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return IERC20(asset()).balanceOf(address(this));
     }
 }

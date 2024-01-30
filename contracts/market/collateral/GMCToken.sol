@@ -291,17 +291,6 @@ contract GMCToken is CTokenCompounding {
 
     // INTERNAL POSITION LOGIC
 
-    /// @notice Gets the balance of assets inside GM pool.
-    /// @return The current balance of assets.
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return IERC20(asset()).balanceOf(address(this));
-    }
-
     /// @notice Claim rewards from GM pool.
     function _claimReward() internal returns (uint256[] memory rewardAmounts) {
         // claim GM pool rewards

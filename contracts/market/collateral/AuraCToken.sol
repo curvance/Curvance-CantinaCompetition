@@ -35,7 +35,7 @@ contract AuraCToken is CTokenCompounding {
     /// STORAGE ///
 
     /// @notice StrategyData packed configuration data
-    StrategyData public strategyData; 
+    StrategyData public strategyData;
 
     /// @notice Token => underlying token of the BPT or not
     mapping(address => bool) public isUnderlyingToken;
@@ -237,7 +237,7 @@ contract AuraCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }
@@ -312,16 +312,5 @@ contract AuraCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
-    }
-
-    /// @notice Gets the balance of assets inside Aura reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.rewarder.balanceOf(address(this));
     }
 }

@@ -714,8 +714,4 @@ abstract contract CTokenCompounding is CTokenBase {
             delete pendingVestUpdate.updateNeeded;
         }
     }
-
-    /// INTERNAL POSITION LOGIC TO OVERRIDE
-
-    function _getRealPositionBalance() internal view virtual returns (uint256);
 }

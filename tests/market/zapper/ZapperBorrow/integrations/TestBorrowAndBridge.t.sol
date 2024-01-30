@@ -7,6 +7,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { ZapperBorrow } from "contracts/market/zapper/ZapperBorrow.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -174,6 +175,10 @@ contract TestBorrowAndBridge is TestBaseMarket {
         assertEq(cBALRETH.exchangeRateCached(), _ONE);
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V3_SWAP_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V3_SWAP_ROUTER))
+        );
 
         SwapperLib.Swap memory swapData;
         swapData.inputToken = _DAI_ADDRESS;

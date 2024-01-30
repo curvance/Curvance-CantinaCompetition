@@ -219,7 +219,7 @@ contract FeeAccumulator is ReentrancyGuard {
             //       We route liquidity to 1Inch with tight slippage
             //       requirement, meaning we do not need to separately check
             //       for slippage here.
-            SwapperLib.swap(swapDataArray[i]);
+            SwapperLib.swap(centralRegistry, swapDataArray[i]);
         }
 
         SafeTransferLib.safeTransfer(
@@ -249,7 +249,9 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
 
         (uint256 priceSwap, uint256 errorCodeSwap) = oracleRouter.getPrice(
             tokenToOTC,

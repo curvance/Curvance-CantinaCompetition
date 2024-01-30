@@ -48,9 +48,7 @@ contract VelodromeStableCToken is CTokenCompounding {
     /// ERRORS ///
 
     error VelodromeStableCToken__ChainIsNotSupported();
-    error VelodromeStableCToken__StakingTokenIsNotAsset(
-        address stakingToken
-    );
+    error VelodromeStableCToken__StakingTokenIsNotAsset(address stakingToken);
     error VelodromeStableCToken__AssetIsNotStable();
     error VelodromeStableCToken__SlippageError();
     error VelodromeStableCToken__InvalidSwapper(address invalidSwapper);
@@ -127,9 +125,8 @@ contract VelodromeStableCToken is CTokenCompounding {
 
         // can only harvest once previous reward period is done
         if (_checkVestStatus(_vaultData)) {
-
             _updateVestingPeriodIfNeeded();
-            
+
             // cache strategy data
             StrategyData memory sd = strategyData;
 
@@ -165,7 +162,7 @@ contract VelodromeStableCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }
@@ -246,16 +243,4 @@ contract VelodromeStableCToken is CTokenCompounding {
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);
     }
-
-    /// @notice Gets the balance of assets inside velodrome gauge pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.gauge.balanceOf(address(this));
-    }
-
 }
