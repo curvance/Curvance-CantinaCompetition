@@ -102,6 +102,14 @@ contract PendleLPCToken is CTokenCompounding {
         }
     }
 
+    function rewardTokens() external view returns (address[] memory) {
+        return strategyData.rewardTokens;
+    }
+
+    function underlyingTokens() external view returns (address[] memory) {
+        return strategyData.underlyingTokens;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
