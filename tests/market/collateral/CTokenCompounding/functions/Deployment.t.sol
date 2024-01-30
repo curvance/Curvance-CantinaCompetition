@@ -33,9 +33,7 @@ contract CTokenCompounding_DeploymentTest is TestBaseCTokenCompounding {
     function test_CTokenCompoundingDeployment_fail_whenMarketManagerIsNotSet()
         public
     {
-        vm.expectRevert(
-            CTokenBase.CTokenBase__MarketManagerIsNotLendingMarket.selector
-        );
+        vm.expectRevert(CTokenBase.CTokenBase__InvalidMarketManager.selector);
         new AuraCToken(
             ICentralRegistry(address(centralRegistry)),
             IERC20(_BALANCER_WETH_RETH),
