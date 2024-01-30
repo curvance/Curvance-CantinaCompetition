@@ -31,18 +31,18 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
             <td class="headerCovTableEntry">5</td>
-            <td class="headerCovTableEntry">5</td>
-            <td class="headerCovTableEntryHi">100.0 %</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:24:50</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">0</td>
             <td class="headerCovTableEntry">2</td>
-            <td class="headerCovTableEntry">2</td>
-            <td class="headerCovTableEntryHi">100.0 %</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
           </tr>
           <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -68,18 +68,18 @@
 <a name="6"><span class="lineNum">       6 </span>            : // To solve this problem, need to use mock contract.</a>
 <a name="7"><span class="lineNum">       7 </span>            : contract MockArbSys {</a>
 <a name="8"><span class="lineNum">       8 </span>            :     function arbBlockNumber() external view returns (uint256) {</a>
-<a name="9"><span class="lineNum">       9 </span><span class="lineCov">          5 :         return block.number;</span></a>
+<a name="9"><span class="lineNum">       9 </span><span class="lineNoCov">          0 :         return block.number;</span></a>
 <a name="10"><span class="lineNum">      10 </span>            :     }</a>
 <a name="11"><span class="lineNum">      11 </span>            : </a>
 <a name="12"><span class="lineNum">      12 </span>            :     function arbBlockHash(</a>
 <a name="13"><span class="lineNum">      13 </span>            :         uint256 blockNumber</a>
 <a name="14"><span class="lineNum">      14 </span>            :     ) external pure returns (bytes32) {</a>
 <a name="15"><span class="lineNum">      15 </span>            :         // Hardcoded values to simulate the deposit execution.</a>
-<a name="16"><span class="lineNum">      16 </span><span class="lineCov">          4 :         if (blockNumber == 150368147) {</span></a>
-<a name="17"><span class="lineNum">      17 </span><span class="lineCov">          2 :             return</span></a>
+<a name="16"><span class="lineNum">      16 </span><span class="lineNoCov">          0 :         if (blockNumber == 150368147) {</span></a>
+<a name="17"><span class="lineNum">      17 </span><span class="lineNoCov">          0 :             return</span></a>
 <a name="18"><span class="lineNum">      18 </span>            :                 0x1829312c7ab7afd4792be2df4561fc9b293341021905134670a05c2152c0b081;</a>
-<a name="19"><span class="lineNum">      19 </span><span class="lineCov">          2 :         } else if (blockNumber == 150368148) {</span></a>
-<a name="20"><span class="lineNum">      20 </span><span class="lineCov">          2 :             return</span></a>
+<a name="19"><span class="lineNum">      19 </span><span class="lineNoCov">          0 :         } else if (blockNumber == 150368148) {</span></a>
+<a name="20"><span class="lineNum">      20 </span><span class="lineNoCov">          0 :             return</span></a>
 <a name="21"><span class="lineNum">      21 </span>            :                 0x950cea2980f9a92d1e2c59526071f2d793b9f40d84ca1974948d35a0649c0a15;</a>
 <a name="22"><span class="lineNum">      22 </span>            :         }</a>
 <a name="23"><span class="lineNum">      23 </span>            :     }</a>

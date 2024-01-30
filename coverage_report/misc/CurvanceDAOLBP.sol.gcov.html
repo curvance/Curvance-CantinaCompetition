@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">9</td>
@@ -64,7 +64,7 @@
 <a name="2"><span class="lineNum">       2 </span>            : pragma solidity ^0.8.17;</a>
 <a name="3"><span class="lineNum">       3 </span>            : </a>
 <a name="4"><span class="lineNum">       4 </span>            : import { WAD } from &quot;contracts/libraries/Constants.sol&quot;;</a>
-<a name="5"><span class="lineNum">       5 </span>            : import { FixedPointMathLib } from &quot;contracts/libraries/external/FixedPointMathLib.sol&quot;;</a>
+<a name="5"><span class="lineNum">       5 </span>            : import { FixedPointMathLib } from &quot;contracts/libraries/FixedPointMathLib.sol&quot;;</a>
 <a name="6"><span class="lineNum">       6 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
 <a name="7"><span class="lineNum">       7 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
 <a name="8"><span class="lineNum">       8 </span>            : </a>
@@ -304,7 +304,7 @@
 <a name="242"><span class="lineNum">     242 </span>            :         }</a>
 <a name="243"><span class="lineNum">     243 </span>            : </a>
 <a name="244"><span class="lineNum">     244 </span>            :         // Equivalent to (amount * WAD) / cveAmountForSale rounded up.</a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineCov">          7 :         return FixedPointMathLib.divWadUp(amount, cveAmountForSale);</span></a>
+<a name="245"><span class="lineNum">     245 </span><span class="lineCov">          7 :         return FixedPointMathLib.mulDivUp(amount, WAD, cveAmountForSale);</span></a>
 <a name="246"><span class="lineNum">     246 </span>            :     }</a>
 <a name="247"><span class="lineNum">     247 </span>            : </a>
 <a name="248"><span class="lineNum">     248 </span>            :     /// @notice Returns the current price based on current commitments.</a>

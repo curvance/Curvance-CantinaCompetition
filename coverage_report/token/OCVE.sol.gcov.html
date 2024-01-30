@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">8</td>
@@ -64,7 +64,7 @@
 <a name="2"><span class="lineNum">       2 </span>            : pragma solidity ^0.8.17;</a>
 <a name="3"><span class="lineNum">       3 </span>            : </a>
 <a name="4"><span class="lineNum">       4 </span>            : import { WAD } from &quot;contracts/libraries/Constants.sol&quot;;</a>
-<a name="5"><span class="lineNum">       5 </span>            : import { FixedPointMathLib } from &quot;contracts/libraries/external/FixedPointMathLib.sol&quot;;</a>
+<a name="5"><span class="lineNum">       5 </span>            : import { FixedPointMathLib } from &quot;contracts/libraries/FixedPointMathLib.sol&quot;;</a>
 <a name="6"><span class="lineNum">       6 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
 <a name="7"><span class="lineNum">       7 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
 <a name="8"><span class="lineNum">       8 </span>            : import { ERC20 } from &quot;contracts/libraries/external/ERC20.sol&quot;;</a>
@@ -304,57 +304,58 @@
 <a name="242"><span class="lineNum">     242 </span>            :             );</a>
 <a name="243"><span class="lineNum">     243 </span>            : </a>
 <a name="244"><span class="lineNum">     244 </span>            :             /// Equivalent to `(optionExerciseCost * amount) / WAD` rounded up.</a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineCov">        256 :             payAmount = FixedPointMathLib.mulWadUp(</span></a>
+<a name="245"><span class="lineNum">     245 </span><span class="lineCov">        256 :             payAmount = FixedPointMathLib.mulDivUp(</span></a>
 <a name="246"><span class="lineNum">     246 </span>            :                 optionExerciseCost, </a>
-<a name="247"><span class="lineNum">     247 </span>            :                 payAmount</a>
-<a name="248"><span class="lineNum">     248 </span>            :             );</a>
-<a name="249"><span class="lineNum">     249 </span>            : </a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineCov">        256 :             if (payAmount == 0) {</span></a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineNoCov">          0 :                 revert OCVE__CannotExercise();</span></a>
-<a name="252"><span class="lineNum">     252 </span>            :             }</a>
-<a name="253"><span class="lineNum">     253 </span>            : </a>
-<a name="254"><span class="lineNum">     254 </span><span class="lineCov">        256 :             SafeTransferLib.safeTransferFrom(</span></a>
-<a name="255"><span class="lineNum">     255 </span>            :                 paymentToken,</a>
-<a name="256"><span class="lineNum">     256 </span>            :                 msg.sender,</a>
-<a name="257"><span class="lineNum">     257 </span>            :                 address(this),</a>
-<a name="258"><span class="lineNum">     258 </span>            :                 payAmount</a>
-<a name="259"><span class="lineNum">     259 </span>            :             );</a>
-<a name="260"><span class="lineNum">     260 </span>            :         }</a>
-<a name="261"><span class="lineNum">     261 </span>            : </a>
-<a name="262"><span class="lineNum">     262 </span>            :         // Burn the call options.</a>
-<a name="263"><span class="lineNum">     263 </span><span class="lineCov">        512 :         _burn(msg.sender, amount);</span></a>
-<a name="264"><span class="lineNum">     264 </span>            : </a>
-<a name="265"><span class="lineNum">     265 </span>            :         // Transfer them corresponding CVE.</a>
-<a name="266"><span class="lineNum">     266 </span><span class="lineCov">        512 :         SafeTransferLib.safeTransfer(cve, msg.sender, amount);</span></a>
-<a name="267"><span class="lineNum">     267 </span>            : </a>
-<a name="268"><span class="lineNum">     268 </span><span class="lineCov">        512 :         emit OptionsExercised(msg.sender, amount);</span></a>
-<a name="269"><span class="lineNum">     269 </span>            :     }</a>
-<a name="270"><span class="lineNum">     270 </span>            : </a>
-<a name="271"><span class="lineNum">     271 </span>            :     /// INTERNAL FUNCTIONS ///</a>
-<a name="272"><span class="lineNum">     272 </span>            : </a>
-<a name="273"><span class="lineNum">     273 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
-<a name="274"><span class="lineNum">     274 </span>            :     function _checkDaoPermissions() internal view {</a>
-<a name="275"><span class="lineNum">     275 </span><span class="lineCov">        282 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
-<a name="276"><span class="lineNum">     276 </span><span class="lineCov">          3 :             revert OCVE__Unauthorized();</span></a>
-<a name="277"><span class="lineNum">     277 </span>            :         }</a>
-<a name="278"><span class="lineNum">     278 </span>            :     }</a>
-<a name="279"><span class="lineNum">     279 </span>            : </a>
-<a name="280"><span class="lineNum">     280 </span>            :     /// @dev Converting `amount` into proper form between potentially two</a>
-<a name="281"><span class="lineNum">     281 </span>            :     ///      different decimal forms.</a>
-<a name="282"><span class="lineNum">     282 </span>            :     function _adjustDecimals(</a>
-<a name="283"><span class="lineNum">     283 </span>            :         uint256 amount,</a>
-<a name="284"><span class="lineNum">     284 </span>            :         uint8 fromDecimals,</a>
-<a name="285"><span class="lineNum">     285 </span>            :         uint8 toDecimals</a>
-<a name="286"><span class="lineNum">     286 </span>            :     ) internal pure returns (uint256) {</a>
-<a name="287"><span class="lineNum">     287 </span><span class="lineCov">        256 :         if (fromDecimals == toDecimals) {</span></a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineNoCov">          0 :             return amount;</span></a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">        256 :         } else if (fromDecimals &lt; toDecimals) {</span></a>
-<a name="290"><span class="lineNum">     290 </span><span class="lineCov">        256 :             return amount * 10 ** (toDecimals - fromDecimals);</span></a>
-<a name="291"><span class="lineNum">     291 </span>            :         } else {</a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineNoCov">          0 :             return amount / 10 ** (fromDecimals - toDecimals);</span></a>
-<a name="293"><span class="lineNum">     293 </span>            :         }</a>
-<a name="294"><span class="lineNum">     294 </span>            :     }</a>
-<a name="295"><span class="lineNum">     295 </span>            : }</a>
+<a name="247"><span class="lineNum">     247 </span>            :                 payAmount,</a>
+<a name="248"><span class="lineNum">     248 </span>            :                 WAD</a>
+<a name="249"><span class="lineNum">     249 </span>            :             );</a>
+<a name="250"><span class="lineNum">     250 </span>            : </a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">        256 :             if (payAmount == 0) {</span></a>
+<a name="252"><span class="lineNum">     252 </span><span class="lineNoCov">          0 :                 revert OCVE__CannotExercise();</span></a>
+<a name="253"><span class="lineNum">     253 </span>            :             }</a>
+<a name="254"><span class="lineNum">     254 </span>            : </a>
+<a name="255"><span class="lineNum">     255 </span><span class="lineCov">        256 :             SafeTransferLib.safeTransferFrom(</span></a>
+<a name="256"><span class="lineNum">     256 </span>            :                 paymentToken,</a>
+<a name="257"><span class="lineNum">     257 </span>            :                 msg.sender,</a>
+<a name="258"><span class="lineNum">     258 </span>            :                 address(this),</a>
+<a name="259"><span class="lineNum">     259 </span>            :                 payAmount</a>
+<a name="260"><span class="lineNum">     260 </span>            :             );</a>
+<a name="261"><span class="lineNum">     261 </span>            :         }</a>
+<a name="262"><span class="lineNum">     262 </span>            : </a>
+<a name="263"><span class="lineNum">     263 </span>            :         // Burn the call options.</a>
+<a name="264"><span class="lineNum">     264 </span><span class="lineCov">        512 :         _burn(msg.sender, amount);</span></a>
+<a name="265"><span class="lineNum">     265 </span>            : </a>
+<a name="266"><span class="lineNum">     266 </span>            :         // Transfer them corresponding CVE.</a>
+<a name="267"><span class="lineNum">     267 </span><span class="lineCov">        512 :         SafeTransferLib.safeTransfer(cve, msg.sender, amount);</span></a>
+<a name="268"><span class="lineNum">     268 </span>            : </a>
+<a name="269"><span class="lineNum">     269 </span><span class="lineCov">        512 :         emit OptionsExercised(msg.sender, amount);</span></a>
+<a name="270"><span class="lineNum">     270 </span>            :     }</a>
+<a name="271"><span class="lineNum">     271 </span>            : </a>
+<a name="272"><span class="lineNum">     272 </span>            :     /// INTERNAL FUNCTIONS ///</a>
+<a name="273"><span class="lineNum">     273 </span>            : </a>
+<a name="274"><span class="lineNum">     274 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
+<a name="275"><span class="lineNum">     275 </span>            :     function _checkDaoPermissions() internal view {</a>
+<a name="276"><span class="lineNum">     276 </span><span class="lineCov">        282 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
+<a name="277"><span class="lineNum">     277 </span><span class="lineCov">          3 :             revert OCVE__Unauthorized();</span></a>
+<a name="278"><span class="lineNum">     278 </span>            :         }</a>
+<a name="279"><span class="lineNum">     279 </span>            :     }</a>
+<a name="280"><span class="lineNum">     280 </span>            : </a>
+<a name="281"><span class="lineNum">     281 </span>            :     /// @dev Converting `amount` into proper form between potentially two</a>
+<a name="282"><span class="lineNum">     282 </span>            :     ///      different decimal forms.</a>
+<a name="283"><span class="lineNum">     283 </span>            :     function _adjustDecimals(</a>
+<a name="284"><span class="lineNum">     284 </span>            :         uint256 amount,</a>
+<a name="285"><span class="lineNum">     285 </span>            :         uint8 fromDecimals,</a>
+<a name="286"><span class="lineNum">     286 </span>            :         uint8 toDecimals</a>
+<a name="287"><span class="lineNum">     287 </span>            :     ) internal pure returns (uint256) {</a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">        256 :         if (fromDecimals == toDecimals) {</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineNoCov">          0 :             return amount;</span></a>
+<a name="290"><span class="lineNum">     290 </span><span class="lineCov">        256 :         } else if (fromDecimals &lt; toDecimals) {</span></a>
+<a name="291"><span class="lineNum">     291 </span><span class="lineCov">        256 :             return amount * 10 ** (toDecimals - fromDecimals);</span></a>
+<a name="292"><span class="lineNum">     292 </span>            :         } else {</a>
+<a name="293"><span class="lineNum">     293 </span><span class="lineNoCov">          0 :             return amount / 10 ** (fromDecimals - toDecimals);</span></a>
+<a name="294"><span class="lineNum">     294 </span>            :         }</a>
+<a name="295"><span class="lineNum">     295 </span>            :     }</a>
+<a name="296"><span class="lineNum">     296 </span>            : }</a>
 </pre>
       </td>
     </tr>

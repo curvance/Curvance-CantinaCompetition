@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">254</td>
+            <td class="headerCovTableEntry">260</td>
             <td class="headerCovTableEntry">286</td>
-            <td class="headerCovTableEntryMed">88.8 %</td>
+            <td class="headerCovTableEntryHi">90.9 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">38</td>
@@ -64,10 +64,10 @@
 <a name="2"><span class="lineNum">       2 </span>            : pragma solidity ^0.8.17;</a>
 <a name="3"><span class="lineNum">       3 </span>            : </a>
 <a name="4"><span class="lineNum">       4 </span>            : import { WAD } from &quot;contracts/libraries/Constants.sol&quot;;</a>
-<a name="5"><span class="lineNum">       5 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
-<a name="6"><span class="lineNum">       6 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
-<a name="7"><span class="lineNum">       7 </span>            : import { ERC20 } from &quot;contracts/libraries/external/ERC20.sol&quot;;</a>
-<a name="8"><span class="lineNum">       8 </span>            : import { ReentrancyGuard } from &quot;contracts/libraries/external/ReentrancyGuard.sol&quot;;</a>
+<a name="5"><span class="lineNum">       5 </span>            : import { ReentrancyGuard } from &quot;contracts/libraries/ReentrancyGuard.sol&quot;;</a>
+<a name="6"><span class="lineNum">       6 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
+<a name="7"><span class="lineNum">       7 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
+<a name="8"><span class="lineNum">       8 </span>            : import { ERC20 } from &quot;contracts/libraries/external/ERC20.sol&quot;;</a>
 <a name="9"><span class="lineNum">       9 </span>            : </a>
 <a name="10"><span class="lineNum">      10 </span>            : import { IERC20 } from &quot;contracts/interfaces/IERC20.sol&quot;;</a>
 <a name="11"><span class="lineNum">      11 </span>            : import { ICVE } from &quot;contracts/interfaces/ICVE.sol&quot;;</a>
@@ -198,10 +198,10 @@
 <a name="136"><span class="lineNum">     136 </span>            : </a>
 <a name="137"><span class="lineNum">     137 </span>            :     /// @notice Used for fuzzing.</a>
 <a name="138"><span class="lineNum">     138 </span>            :     function getUnlockTime(</a>
-<a name="139"><span class="lineNum">     139 </span>            :         address _addr,</a>
-<a name="140"><span class="lineNum">     140 </span>            :         uint _index</a>
+<a name="139"><span class="lineNum">     139 </span>            :         address user,</a>
+<a name="140"><span class="lineNum">     140 </span>            :         uint256 lockIndex</a>
 <a name="141"><span class="lineNum">     141 </span>            :     ) public view returns (uint40) {</a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :         return userLocks[_addr][_index].unlockTime;</span></a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :         return userLocks[user][lockIndex].unlockTime;</span></a>
 <a name="143"><span class="lineNum">     143 </span>            :     }</a>
 <a name="144"><span class="lineNum">     144 </span>            : </a>
 <a name="145"><span class="lineNum">     145 </span>            :     /// @notice Used for frontend, needed due to array of structs.</a>
@@ -263,9 +263,9 @@
 <a name="201"><span class="lineNum">     201 </span>            :         bytes calldata params,</a>
 <a name="202"><span class="lineNum">     202 </span>            :         uint256 aux</a>
 <a name="203"><span class="lineNum">     203 </span>            :     ) external nonReentrant {</a>
-<a name="204"><span class="lineNum">     204 </span><span class="lineCov">       5165 :         _canLock(amount);</span></a>
+<a name="204"><span class="lineNum">     204 </span><span class="lineCov">       5166 :         _canLock(amount);</span></a>
 <a name="205"><span class="lineNum">     205 </span>            : </a>
-<a name="206"><span class="lineNum">     206 </span><span class="lineCov">       4653 :         SafeTransferLib.safeTransferFrom(</span></a>
+<a name="206"><span class="lineNum">     206 </span><span class="lineCov">       4654 :         SafeTransferLib.safeTransferFrom(</span></a>
 <a name="207"><span class="lineNum">     207 </span>            :             cve,</a>
 <a name="208"><span class="lineNum">     208 </span>            :             msg.sender,</a>
 <a name="209"><span class="lineNum">     209 </span>            :             address(this),</a>
@@ -273,11 +273,11 @@
 <a name="211"><span class="lineNum">     211 </span>            :         );</a>
 <a name="212"><span class="lineNum">     212 </span>            : </a>
 <a name="213"><span class="lineNum">     213 </span>            :         // Claim any pending locker rewards.</a>
-<a name="214"><span class="lineNum">     214 </span><span class="lineCov">       4141 :         _claimRewards(msg.sender, rewardsData, params, aux);</span></a>
+<a name="214"><span class="lineNum">     214 </span><span class="lineCov">       4142 :         _claimRewards(msg.sender, rewardsData, params, aux);</span></a>
 <a name="215"><span class="lineNum">     215 </span>            : </a>
-<a name="216"><span class="lineNum">     216 </span><span class="lineCov">       4141 :         _lock(msg.sender, amount, continuousLock);</span></a>
+<a name="216"><span class="lineNum">     216 </span><span class="lineCov">       4142 :         _lock(msg.sender, amount, continuousLock);</span></a>
 <a name="217"><span class="lineNum">     217 </span>            : </a>
-<a name="218"><span class="lineNum">     218 </span><span class="lineCov">       4141 :         emit Locked(msg.sender, amount);</span></a>
+<a name="218"><span class="lineNum">     218 </span><span class="lineCov">       4142 :         emit Locked(msg.sender, amount);</span></a>
 <a name="219"><span class="lineNum">     219 </span>            :     }</a>
 <a name="220"><span class="lineNum">     220 </span>            : </a>
 <a name="221"><span class="lineNum">     221 </span>            :     /// @notice Locks a given amount of cve tokens on behalf of another user,</a>
@@ -611,46 +611,46 @@
 <a name="549"><span class="lineNum">     549 </span>            :         bytes calldata params,</a>
 <a name="550"><span class="lineNum">     550 </span>            :         uint256 aux</a>
 <a name="551"><span class="lineNum">     551 </span>            :     ) external nonReentrant {</a>
-<a name="552"><span class="lineNum">     552 </span><span class="lineCov">        771 :         Lock[] storage locks = userLocks[msg.sender];</span></a>
+<a name="552"><span class="lineNum">     552 </span><span class="lineCov">       1283 :         Lock[] storage locks = userLocks[msg.sender];</span></a>
 <a name="553"><span class="lineNum">     553 </span>            : </a>
 <a name="554"><span class="lineNum">     554 </span>            :         // Length is index + 1 so has to be less than array length.</a>
-<a name="555"><span class="lineNum">     555 </span><span class="lineCov">        771 :         if (lockIndex &gt;= locks.length) {</span></a>
+<a name="555"><span class="lineNum">     555 </span><span class="lineCov">       1283 :         if (lockIndex &gt;= locks.length) {</span></a>
 <a name="556"><span class="lineNum">     556 </span><span class="lineCov">          1 :             _revert(_INVALID_LOCK_SELECTOR);</span></a>
 <a name="557"><span class="lineNum">     557 </span>            :         }</a>
 <a name="558"><span class="lineNum">     558 </span>            : </a>
-<a name="559"><span class="lineNum">     559 </span><span class="lineCov">        770 :         if (block.timestamp &lt; locks[lockIndex].unlockTime &amp;&amp; isShutdown != 2) {</span></a>
+<a name="559"><span class="lineNum">     559 </span><span class="lineCov">       1282 :         if (block.timestamp &lt; locks[lockIndex].unlockTime &amp;&amp; isShutdown != 2) {</span></a>
 <a name="560"><span class="lineNum">     560 </span><span class="lineCov">          1 :             _revert(_INVALID_LOCK_SELECTOR);</span></a>
 <a name="561"><span class="lineNum">     561 </span>            :         }</a>
 <a name="562"><span class="lineNum">     562 </span>            : </a>
 <a name="563"><span class="lineNum">     563 </span>            :         // Claim any pending locker rewards.</a>
-<a name="564"><span class="lineNum">     564 </span><span class="lineCov">        769 :         _claimRewards(msg.sender, rewardsData, params, aux);</span></a>
+<a name="564"><span class="lineNum">     564 </span><span class="lineCov">       1281 :         _claimRewards(msg.sender, rewardsData, params, aux);</span></a>
 <a name="565"><span class="lineNum">     565 </span>            : </a>
-<a name="566"><span class="lineNum">     566 </span><span class="lineCov">        769 :         Lock memory lock = locks[lockIndex];</span></a>
-<a name="567"><span class="lineNum">     567 </span><span class="lineCov">        769 :         uint256 amount = lock.amount;</span></a>
+<a name="566"><span class="lineNum">     566 </span><span class="lineCov">       1281 :         Lock memory lock = locks[lockIndex];</span></a>
+<a name="567"><span class="lineNum">     567 </span><span class="lineCov">       1281 :         uint256 amount = lock.amount;</span></a>
 <a name="568"><span class="lineNum">     568 </span>            : </a>
 <a name="569"><span class="lineNum">     569 </span>            :         // If the locker is shutdown, do not allow them to relock,</a>
 <a name="570"><span class="lineNum">     570 </span>            :         // we'd want them to exit locked positions.</a>
-<a name="571"><span class="lineNum">     571 </span><span class="lineCov">        769 :         if (isShutdown == 2) {</span></a>
+<a name="571"><span class="lineNum">     571 </span><span class="lineCov">       1281 :         if (isShutdown == 2) {</span></a>
 <a name="572"><span class="lineNum">     572 </span><span class="lineCov">        256 :             relock = false;</span></a>
 <a name="573"><span class="lineNum">     573 </span>            :             // Update their points to reflect the removed lock</a>
 <a name="574"><span class="lineNum">     574 </span><span class="lineCov">        256 :             _updateDataFromEarlyUnlock(msg.sender, amount, lock.unlockTime);</span></a>
 <a name="575"><span class="lineNum">     575 </span>            :         }</a>
 <a name="576"><span class="lineNum">     576 </span>            : </a>
-<a name="577"><span class="lineNum">     577 </span><span class="lineCov">        769 :         if (relock) {</span></a>
+<a name="577"><span class="lineNum">     577 </span><span class="lineCov">       1281 :         if (relock) {</span></a>
 <a name="578"><span class="lineNum">     578 </span>            :             // Token points will be caught up by _claimRewards call so we can</a>
 <a name="579"><span class="lineNum">     579 </span>            :             // treat this as a fresh lock and increment points.</a>
-<a name="580"><span class="lineNum">     580 </span><span class="lineNoCov">          0 :             if (continuousLock) {</span></a>
+<a name="580"><span class="lineNum">     580 </span><span class="lineCov">        512 :             if (continuousLock) {</span></a>
 <a name="581"><span class="lineNum">     581 </span>            :                 // If the relocked lock is continuous update `unlockTime`</a>
 <a name="582"><span class="lineNum">     582 </span>            :                 // to continuous lock value and increase points.</a>
-<a name="583"><span class="lineNum">     583 </span><span class="lineNoCov">          0 :                 lock.unlockTime = CONTINUOUS_LOCK_VALUE;</span></a>
-<a name="584"><span class="lineNum">     584 </span><span class="lineNoCov">          0 :                 _incrementPoints(msg.sender, _getCLPoints(amount));</span></a>
+<a name="583"><span class="lineNum">     583 </span><span class="lineCov">        256 :                 locks[lockIndex].unlockTime = CONTINUOUS_LOCK_VALUE;</span></a>
+<a name="584"><span class="lineNum">     584 </span><span class="lineCov">        256 :                 _incrementPoints(msg.sender, _getCLPoints(amount));</span></a>
 <a name="585"><span class="lineNum">     585 </span>            :             } else {</a>
 <a name="586"><span class="lineNum">     586 </span>            :                 // If the relocked lock is a standard lock `unlockTime`</a>
 <a name="587"><span class="lineNum">     587 </span>            :                 // to a fresh lock timestamp and increase points</a>
 <a name="588"><span class="lineNum">     588 </span>            :                 // and set unlock schedule.</a>
-<a name="589"><span class="lineNum">     589 </span><span class="lineNoCov">          0 :                 lock.unlockTime = freshLockTimestamp();</span></a>
-<a name="590"><span class="lineNum">     590 </span><span class="lineNoCov">          0 :                 _incrementPoints(msg.sender, amount);</span></a>
-<a name="591"><span class="lineNum">     591 </span><span class="lineNoCov">          0 :                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);</span></a>
+<a name="589"><span class="lineNum">     589 </span><span class="lineCov">        256 :                 locks[lockIndex].unlockTime = freshLockTimestamp();</span></a>
+<a name="590"><span class="lineNum">     590 </span><span class="lineCov">        256 :                 _incrementPoints(msg.sender, amount);</span></a>
+<a name="591"><span class="lineNum">     591 </span><span class="lineCov">        256 :                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);</span></a>
 <a name="592"><span class="lineNum">     592 </span>            :             }</a>
 <a name="593"><span class="lineNum">     593 </span>            :         } else {</a>
 <a name="594"><span class="lineNum">     594 </span><span class="lineCov">        769 :             _burn(msg.sender, amount);</span></a>
@@ -907,35 +907,35 @@
 <a name="845"><span class="lineNum">     845 </span>            :     /// @param time The timestamp for which to calculate the epoch.</a>
 <a name="846"><span class="lineNum">     846 </span>            :     /// @return The current epoch.</a>
 <a name="847"><span class="lineNum">     847 </span>            :     function currentEpoch(uint256 time) public view returns (uint256) {</a>
-<a name="848"><span class="lineNum">     848 </span><span class="lineCov">      21147 :         if (time &lt; genesisEpoch) {</span></a>
+<a name="848"><span class="lineNum">     848 </span><span class="lineCov">      21942 :         if (time &lt; genesisEpoch) {</span></a>
 <a name="849"><span class="lineNum">     849 </span><span class="lineNoCov">          0 :             return 0;</span></a>
 <a name="850"><span class="lineNum">     850 </span>            :         }</a>
 <a name="851"><span class="lineNum">     851 </span>            : </a>
 <a name="852"><span class="lineNum">     852 </span>            :         // Rounds down intentionally.</a>
-<a name="853"><span class="lineNum">     853 </span><span class="lineCov">      21147 :         return ((time - genesisEpoch) / EPOCH_DURATION);</span></a>
+<a name="853"><span class="lineNum">     853 </span><span class="lineCov">      21942 :         return ((time - genesisEpoch) / EPOCH_DURATION);</span></a>
 <a name="854"><span class="lineNum">     854 </span>            :     }</a>
 <a name="855"><span class="lineNum">     855 </span>            : </a>
 <a name="856"><span class="lineNum">     856 </span>            :     /// @notice Returns the current epoch for the given time.</a>
 <a name="857"><span class="lineNum">     857 </span>            :     /// @return The calculated next epoch start timestamp.</a>
 <a name="858"><span class="lineNum">     858 </span>            :     function nextEpochStartTime() public view returns (uint256) {</a>
-<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        246 :         uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *</span></a>
+<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        270 :         uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *</span></a>
 <a name="860"><span class="lineNum">     860 </span>            :             EPOCH_DURATION;</a>
-<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        246 :         return (genesisEpoch + timestampOffset);</span></a>
+<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        270 :         return (genesisEpoch + timestampOffset);</span></a>
 <a name="862"><span class="lineNum">     862 </span>            :     }</a>
 <a name="863"><span class="lineNum">     863 </span>            : </a>
 <a name="864"><span class="lineNum">     864 </span>            :     /// @notice Returns the epoch to lock until for a lock executed</a>
 <a name="865"><span class="lineNum">     865 </span>            :     ///         at this moment.</a>
 <a name="866"><span class="lineNum">     866 </span>            :     /// @return The calculated epoch.</a>
 <a name="867"><span class="lineNum">     867 </span>            :     function freshLockEpoch() public view returns (uint256) {</a>
-<a name="868"><span class="lineNum">     868 </span><span class="lineCov">       4406 :         return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;</span></a>
+<a name="868"><span class="lineNum">     868 </span><span class="lineCov">       4663 :         return currentEpoch(block.timestamp) + LOCK_DURATION_EPOCHS;</span></a>
 <a name="869"><span class="lineNum">     869 </span>            :     }</a>
 <a name="870"><span class="lineNum">     870 </span>            : </a>
 <a name="871"><span class="lineNum">     871 </span>            :     /// @notice Returns the timestamp to lock until for a lock executed</a>
 <a name="872"><span class="lineNum">     872 </span>            :     ///         at this moment.</a>
 <a name="873"><span class="lineNum">     873 </span>            :     /// @return The calculated timestamp.</a>
 <a name="874"><span class="lineNum">     874 </span>            :     function freshLockTimestamp() public view returns (uint40) {</a>
-<a name="875"><span class="lineNum">     875 </span><span class="lineCov">       5173 :         return</span></a>
-<a name="876"><span class="lineNum">     876 </span><span class="lineCov">       5173 :             uint40(</span></a>
+<a name="875"><span class="lineNum">     875 </span><span class="lineCov">       5686 :         return</span></a>
+<a name="876"><span class="lineNum">     876 </span><span class="lineCov">       5686 :             uint40(</span></a>
 <a name="877"><span class="lineNum">     877 </span>            :                 genesisEpoch +</a>
 <a name="878"><span class="lineNum">     878 </span>            :                     (currentEpoch(block.timestamp) * EPOCH_DURATION) +</a>
 <a name="879"><span class="lineNum">     879 </span>            :                     LOCK_DURATION</a>
@@ -1039,8 +1039,8 @@
 <a name="977"><span class="lineNum">     977 </span>            :         bytes memory params,</a>
 <a name="978"><span class="lineNum">     978 </span>            :         uint256 aux</a>
 <a name="979"><span class="lineNum">     979 </span>            :     ) internal {</a>
-<a name="980"><span class="lineNum">     980 </span><span class="lineCov">      10303 :         uint256 epochs = cveLocker.epochsToClaim(user);</span></a>
-<a name="981"><span class="lineNum">     981 </span><span class="lineCov">      10303 :         if (epochs &gt; 0) {</span></a>
+<a name="980"><span class="lineNum">     980 </span><span class="lineCov">      10816 :         uint256 epochs = cveLocker.epochsToClaim(user);</span></a>
+<a name="981"><span class="lineNum">     981 </span><span class="lineCov">      10816 :         if (epochs &gt; 0) {</span></a>
 <a name="982"><span class="lineNum">     982 </span><span class="lineCov">        512 :             cveLocker.claimRewardsFor(user, epochs, rewardsData, params, aux);</span></a>
 <a name="983"><span class="lineNum">     983 </span>            :         }</a>
 <a name="984"><span class="lineNum">     984 </span>            :     }</a>
@@ -1054,14 +1054,14 @@
 <a name="992"><span class="lineNum">     992 </span>            :         uint256 amount,</a>
 <a name="993"><span class="lineNum">     993 </span>            :         bool continuousLock</a>
 <a name="994"><span class="lineNum">     994 </span>            :     ) internal {</a>
-<a name="995"><span class="lineNum">     995 </span><span class="lineCov">       4666 :         if (userLocks[recipient].length == 0) {</span></a>
-<a name="996"><span class="lineNum">     996 </span><span class="lineCov">       2616 :             cveLocker.updateUserClaimIndex(</span></a>
+<a name="995"><span class="lineNum">     995 </span><span class="lineCov">       4667 :         if (userLocks[recipient].length == 0) {</span></a>
+<a name="996"><span class="lineNum">     996 </span><span class="lineCov">       2617 :             cveLocker.updateUserClaimIndex(</span></a>
 <a name="997"><span class="lineNum">     997 </span>            :                 recipient,</a>
 <a name="998"><span class="lineNum">     998 </span>            :                 currentEpoch(block.timestamp)</a>
 <a name="999"><span class="lineNum">     999 </span>            :             );</a>
 <a name="1000"><span class="lineNum">    1000 </span>            :         }</a>
 <a name="1001"><span class="lineNum">    1001 </span>            : </a>
-<a name="1002"><span class="lineNum">    1002 </span><span class="lineCov">       4666 :         if (continuousLock) {</span></a>
+<a name="1002"><span class="lineNum">    1002 </span><span class="lineCov">       4667 :         if (continuousLock) {</span></a>
 <a name="1003"><span class="lineNum">    1003 </span><span class="lineCov">       2054 :             userLocks[recipient].push(</span></a>
 <a name="1004"><span class="lineNum">    1004 </span>            :                 Lock({</a>
 <a name="1005"><span class="lineNum">    1005 </span>            :                     amount: uint216(amount),</a>
@@ -1071,18 +1071,18 @@
 <a name="1009"><span class="lineNum">    1009 </span>            :             // Increment `recipient` data.</a>
 <a name="1010"><span class="lineNum">    1010 </span><span class="lineCov">       2054 :             _incrementPoints(recipient, _getCLPoints(amount));</span></a>
 <a name="1011"><span class="lineNum">    1011 </span>            :         } else {</a>
-<a name="1012"><span class="lineNum">    1012 </span><span class="lineCov">       2612 :             userLocks[recipient].push(</span></a>
+<a name="1012"><span class="lineNum">    1012 </span><span class="lineCov">       2613 :             userLocks[recipient].push(</span></a>
 <a name="1013"><span class="lineNum">    1013 </span>            :                 Lock({</a>
 <a name="1014"><span class="lineNum">    1014 </span>            :                     amount: uint216(amount),</a>
 <a name="1015"><span class="lineNum">    1015 </span>            :                     unlockTime: freshLockTimestamp()</a>
 <a name="1016"><span class="lineNum">    1016 </span>            :                 })</a>
 <a name="1017"><span class="lineNum">    1017 </span>            :             );</a>
 <a name="1018"><span class="lineNum">    1018 </span>            :             // Increment `recipient` data.</a>
-<a name="1019"><span class="lineNum">    1019 </span><span class="lineCov">       2612 :             _incrementPoints(recipient, amount);</span></a>
-<a name="1020"><span class="lineNum">    1020 </span><span class="lineCov">       2612 :             _incrementTokenUnlocks(recipient, freshLockEpoch(), amount);</span></a>
+<a name="1019"><span class="lineNum">    1019 </span><span class="lineCov">       2613 :             _incrementPoints(recipient, amount);</span></a>
+<a name="1020"><span class="lineNum">    1020 </span><span class="lineCov">       2613 :             _incrementTokenUnlocks(recipient, freshLockEpoch(), amount);</span></a>
 <a name="1021"><span class="lineNum">    1021 </span>            :         }</a>
 <a name="1022"><span class="lineNum">    1022 </span>            : </a>
-<a name="1023"><span class="lineNum">    1023 </span><span class="lineCov">       4666 :         _mint(recipient, amount);</span></a>
+<a name="1023"><span class="lineNum">    1023 </span><span class="lineCov">       4667 :         _mint(recipient, amount);</span></a>
 <a name="1024"><span class="lineNum">    1024 </span>            :     }</a>
 <a name="1025"><span class="lineNum">    1025 </span>            : </a>
 <a name="1026"><span class="lineNum">    1026 </span>            :     /// @notice Internal function to handle whenever a user needs an increase</a>
@@ -1186,8 +1186,8 @@
 <a name="1124"><span class="lineNum">    1124 </span>            :         // We know theres never more than 420m</a>
 <a name="1125"><span class="lineNum">    1125 </span>            :         // so this should never over/underflow.</a>
 <a name="1126"><span class="lineNum">    1126 </span>            :         unchecked {</a>
-<a name="1127"><span class="lineNum">    1127 </span><span class="lineCov">       5692 :             chainPoints = chainPoints + points;</span></a>
-<a name="1128"><span class="lineNum">    1128 </span><span class="lineCov">       5692 :             userPoints[user] = userPoints[user] + points;</span></a>
+<a name="1127"><span class="lineNum">    1127 </span><span class="lineCov">       6205 :             chainPoints = chainPoints + points;</span></a>
+<a name="1128"><span class="lineNum">    1128 </span><span class="lineCov">       6205 :             userPoints[user] = userPoints[user] + points;</span></a>
 <a name="1129"><span class="lineNum">    1129 </span>            :         }</a>
 <a name="1130"><span class="lineNum">    1130 </span>            :     }</a>
 <a name="1131"><span class="lineNum">    1131 </span>            : </a>
@@ -1218,8 +1218,8 @@
 <a name="1156"><span class="lineNum">    1156 </span>            :         // We know theres never more than 420m</a>
 <a name="1157"><span class="lineNum">    1157 </span>            :         // so this should never over/underflow.</a>
 <a name="1158"><span class="lineNum">    1158 </span>            :         unchecked {</a>
-<a name="1159"><span class="lineNum">    1159 </span><span class="lineCov">       3124 :             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;</span></a>
-<a name="1160"><span class="lineNum">    1160 </span><span class="lineCov">       3124 :             userUnlocksByEpoch[user][epoch] =</span></a>
+<a name="1159"><span class="lineNum">    1159 </span><span class="lineCov">       3381 :             chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;</span></a>
+<a name="1160"><span class="lineNum">    1160 </span><span class="lineCov">       3381 :             userUnlocksByEpoch[user][epoch] =</span></a>
 <a name="1161"><span class="lineNum">    1161 </span>            :                 userUnlocksByEpoch[user][epoch] +</a>
 <a name="1162"><span class="lineNum">    1162 </span>            :                 points;</a>
 <a name="1163"><span class="lineNum">    1163 </span>            :         }</a>
@@ -1327,7 +1327,7 @@
 <a name="1265"><span class="lineNum">    1265 </span>            :     /// @param basePoints The token points to be used in the calculation.</a>
 <a name="1266"><span class="lineNum">    1266 </span>            :     /// @return The calculated continuous lock token point value.</a>
 <a name="1267"><span class="lineNum">    1267 </span>            :     function _getCLPoints(uint256 basePoints) internal pure returns (uint256) {</a>
-<a name="1268"><span class="lineNum">    1268 </span><span class="lineCov">       3336 :         return CL_POINT_MULTIPLIER * basePoints;</span></a>
+<a name="1268"><span class="lineNum">    1268 </span><span class="lineCov">       3592 :         return CL_POINT_MULTIPLIER * basePoints;</span></a>
 <a name="1269"><span class="lineNum">    1269 </span>            :     }</a>
 <a name="1270"><span class="lineNum">    1270 </span>            : </a>
 <a name="1271"><span class="lineNum">    1271 </span>            :     /// @notice Calculates the current unlock penalty for early unlocking</a>
@@ -1365,14 +1365,14 @@
 <a name="1303"><span class="lineNum">    1303 </span>            :     ///      Requires a minimum lock size of 1 CVE, in `WAD`.</a>
 <a name="1304"><span class="lineNum">    1304 </span>            :     function _canLock(uint256 amount) internal view {</a>
 <a name="1305"><span class="lineNum">    1305 </span>            :         assembly {</a>
-<a name="1306"><span class="lineNum">    1306 </span><span class="lineCov">       9537 :             if lt(amount, WAD) {</span></a>
+<a name="1306"><span class="lineNum">    1306 </span><span class="lineCov">       9538 :             if lt(amount, WAD) {</span></a>
 <a name="1307"><span class="lineNum">    1307 </span>            :                 mstore(0x0, _INVALID_LOCK_SELECTOR)</a>
 <a name="1308"><span class="lineNum">    1308 </span>            :                 // return bytes 29-32 for the selector</a>
 <a name="1309"><span class="lineNum">    1309 </span>            :                 revert(0x1c, 0x04)</a>
 <a name="1310"><span class="lineNum">    1310 </span>            :             }</a>
 <a name="1311"><span class="lineNum">    1311 </span>            :         }</a>
 <a name="1312"><span class="lineNum">    1312 </span>            : </a>
-<a name="1313"><span class="lineNum">    1313 </span><span class="lineCov">       8768 :         if (isShutdown == 2) {</span></a>
+<a name="1313"><span class="lineNum">    1313 </span><span class="lineCov">       8769 :         if (isShutdown == 2) {</span></a>
 <a name="1314"><span class="lineNum">    1314 </span><span class="lineCov">        769 :             _revert(_VECVE_SHUTDOWN_SELECTOR);</span></a>
 <a name="1315"><span class="lineNum">    1315 </span>            :         }</a>
 <a name="1316"><span class="lineNum">    1316 </span>            :     }</a>

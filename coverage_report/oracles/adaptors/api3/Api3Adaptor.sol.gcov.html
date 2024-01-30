@@ -31,18 +31,18 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">35</td>
             <td class="headerCovTableEntry">50</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntryLo">70.0 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">6</td>
             <td class="headerCovTableEntry">7</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntryMed">85.7 %</td>
           </tr>
           <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -132,192 +132,197 @@
 <a name="70"><span class="lineNum">      70 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
 <a name="71"><span class="lineNum">      71 </span>            :     /// @param inUSD A boolean to determine if the price should be returned in</a>
 <a name="72"><span class="lineNum">      72 </span>            :     ///              USD or not.</a>
-<a name="73"><span class="lineNum">      73 </span>            :     /// @return PriceReturnData A structure containing the price, error status,</a>
-<a name="74"><span class="lineNum">      74 </span>            :     ///                         and the quote format of the price.</a>
+<a name="73"><span class="lineNum">      73 </span>            :     /// @return A structure containing the price, error status,</a>
+<a name="74"><span class="lineNum">      74 </span>            :     ///         and the quote format of the price.</a>
 <a name="75"><span class="lineNum">      75 </span>            :     function getPrice(</a>
 <a name="76"><span class="lineNum">      76 </span>            :         address asset,</a>
 <a name="77"><span class="lineNum">      77 </span>            :         bool inUSD,</a>
-<a name="78"><span class="lineNum">      78 </span>            :         bool</a>
+<a name="78"><span class="lineNum">      78 </span>            :         bool /* getLower */</a>
 <a name="79"><span class="lineNum">      79 </span>            :     ) external view override returns (PriceReturnData memory) {</a>
-<a name="80"><span class="lineNum">      80 </span><span class="lineNoCov">          0 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="81"><span class="lineNum">      81 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__AssetIsNotSupported();</span></a>
-<a name="82"><span class="lineNum">      82 </span>            :         }</a>
-<a name="83"><span class="lineNum">      83 </span>            : </a>
-<a name="84"><span class="lineNum">      84 </span><span class="lineNoCov">          0 :         if (inUSD) {</span></a>
-<a name="85"><span class="lineNum">      85 </span><span class="lineNoCov">          0 :             return _getPriceInUSD(asset);</span></a>
-<a name="86"><span class="lineNum">      86 </span>            :         }</a>
-<a name="87"><span class="lineNum">      87 </span>            : </a>
-<a name="88"><span class="lineNum">      88 </span><span class="lineNoCov">          0 :         return _getPriceInETH(asset);</span></a>
-<a name="89"><span class="lineNum">      89 </span>            :     }</a>
-<a name="90"><span class="lineNum">      90 </span>            : </a>
-<a name="91"><span class="lineNum">      91 </span>            :     /// @notice Add a Api3 Price Feed as an asset.</a>
-<a name="92"><span class="lineNum">      92 </span>            :     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.</a>
-<a name="93"><span class="lineNum">      93 </span>            :     /// @param asset The address of the token to add pricing for.</a>
-<a name="94"><span class="lineNum">      94 </span>            :     /// @param ticker The ticker of  the token to add pricing for.</a>
-<a name="95"><span class="lineNum">      95 </span>            :     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.</a>
-<a name="96"><span class="lineNum">      96 </span>            :     /// @param heartbeat Api3 heartbeat to use when validating prices</a>
-<a name="97"><span class="lineNum">      97 </span>            :     ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.</a>
-<a name="98"><span class="lineNum">      98 </span>            :     /// @param inUSD Whether the price feed is in USD (inUSD = true)</a>
-<a name="99"><span class="lineNum">      99 </span>            :     ///              or ETH (inUSD = false).</a>
-<a name="100"><span class="lineNum">     100 </span>            :     function addAsset(</a>
-<a name="101"><span class="lineNum">     101 </span>            :         address asset,</a>
-<a name="102"><span class="lineNum">     102 </span>            :         string memory ticker, </a>
-<a name="103"><span class="lineNum">     103 </span>            :         address proxyFeed, </a>
-<a name="104"><span class="lineNum">     104 </span>            :         uint256 heartbeat, </a>
-<a name="105"><span class="lineNum">     105 </span>            :         bool inUSD</a>
-<a name="106"><span class="lineNum">     106 </span>            :     ) external {</a>
-<a name="107"><span class="lineNum">     107 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
-<a name="108"><span class="lineNum">     108 </span>            : </a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineNoCov">          0 :         if (heartbeat != 0) {</span></a>
-<a name="110"><span class="lineNum">     110 </span><span class="lineNoCov">          0 :             if (heartbeat &gt; DEFAULT_HEART_BEAT) {</span></a>
-<a name="111"><span class="lineNum">     111 </span><span class="lineNoCov">          0 :                 revert Api3Adaptor__InvalidHeartbeat();</span></a>
-<a name="112"><span class="lineNum">     112 </span>            :             }</a>
-<a name="113"><span class="lineNum">     113 </span>            :         }</a>
-<a name="114"><span class="lineNum">     114 </span>            : </a>
-<a name="115"><span class="lineNum">     115 </span><span class="lineNoCov">          0 :         bytes32 dapiName = Bytes32Helper._stringToBytes32(ticker);</span></a>
-<a name="116"><span class="lineNum">     116 </span><span class="lineNoCov">          0 :         bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));</span></a>
-<a name="117"><span class="lineNum">     117 </span>            : </a>
-<a name="118"><span class="lineNum">     118 </span>            :         // Validate that the dAPI name and corresponding hash generated off</a>
-<a name="119"><span class="lineNum">     119 </span>            :         // the symbol and denomation match the proxyFeed documented form.</a>
-<a name="120"><span class="lineNum">     120 </span><span class="lineNoCov">          0 :         if (dapiNameHash != IProxy(proxyFeed).dapiNameHash()) {</span></a>
-<a name="121"><span class="lineNum">     121 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__DAPINameHashError();</span></a>
-<a name="122"><span class="lineNum">     122 </span>            :         }</a>
-<a name="123"><span class="lineNum">     123 </span>            : </a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineNoCov">          0 :         AdaptorData storage data;</span></a>
+<a name="80"><span class="lineNum">      80 </span>            :         // Validate we support pricing `asset`.</a>
+<a name="81"><span class="lineNum">      81 </span><span class="lineCov">          4 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="82"><span class="lineNum">      82 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__AssetIsNotSupported();</span></a>
+<a name="83"><span class="lineNum">      83 </span>            :         }</a>
+<a name="84"><span class="lineNum">      84 </span>            : </a>
+<a name="85"><span class="lineNum">      85 </span><span class="lineCov">          4 :         if (inUSD) {</span></a>
+<a name="86"><span class="lineNum">      86 </span><span class="lineCov">          4 :             return _getPriceInUSD(asset);</span></a>
+<a name="87"><span class="lineNum">      87 </span>            :         }</a>
+<a name="88"><span class="lineNum">      88 </span>            : </a>
+<a name="89"><span class="lineNum">      89 </span><span class="lineNoCov">          0 :         return _getPriceInETH(asset);</span></a>
+<a name="90"><span class="lineNum">      90 </span>            :     }</a>
+<a name="91"><span class="lineNum">      91 </span>            : </a>
+<a name="92"><span class="lineNum">      92 </span>            :     /// @notice Add a Api3 Price Feed as an asset.</a>
+<a name="93"><span class="lineNum">      93 </span>            :     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`</a>
+<a name="94"><span class="lineNum">      94 </span>            :     ///      is called.</a>
+<a name="95"><span class="lineNum">      95 </span>            :     /// @param asset The address of the token to add pricing support for.</a>
+<a name="96"><span class="lineNum">      96 </span>            :     /// @param ticker The ticker of the token to add pricing for.</a>
+<a name="97"><span class="lineNum">      97 </span>            :     /// @param proxyFeed Api3 proxy feed to use for pricing `asset`.</a>
+<a name="98"><span class="lineNum">      98 </span>            :     /// @param heartbeat Api3 heartbeat to use when validating prices</a>
+<a name="99"><span class="lineNum">      99 </span>            :     ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.</a>
+<a name="100"><span class="lineNum">     100 </span>            :     /// @param inUSD Whether the price feed is in USD (inUSD = true)</a>
+<a name="101"><span class="lineNum">     101 </span>            :     ///              or ETH (inUSD = false).</a>
+<a name="102"><span class="lineNum">     102 </span>            :     function addAsset(</a>
+<a name="103"><span class="lineNum">     103 </span>            :         address asset,</a>
+<a name="104"><span class="lineNum">     104 </span>            :         string memory ticker, </a>
+<a name="105"><span class="lineNum">     105 </span>            :         address proxyFeed, </a>
+<a name="106"><span class="lineNum">     106 </span>            :         uint256 heartbeat, </a>
+<a name="107"><span class="lineNum">     107 </span>            :         bool inUSD</a>
+<a name="108"><span class="lineNum">     108 </span>            :     ) external {</a>
+<a name="109"><span class="lineNum">     109 </span><span class="lineCov">          2 :         _checkElevatedPermissions();</span></a>
+<a name="110"><span class="lineNum">     110 </span>            : </a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineCov">          2 :         if (heartbeat != 0) {</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineNoCov">          0 :             if (heartbeat &gt; DEFAULT_HEART_BEAT) {</span></a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineNoCov">          0 :                 revert Api3Adaptor__InvalidHeartbeat();</span></a>
+<a name="114"><span class="lineNum">     114 </span>            :             }</a>
+<a name="115"><span class="lineNum">     115 </span>            :         }</a>
+<a name="116"><span class="lineNum">     116 </span>            : </a>
+<a name="117"><span class="lineNum">     117 </span><span class="lineCov">          2 :         bytes32 dapiName = Bytes32Helper._stringToBytes32(ticker);</span></a>
+<a name="118"><span class="lineNum">     118 </span><span class="lineCov">          2 :         bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));</span></a>
+<a name="119"><span class="lineNum">     119 </span>            : </a>
+<a name="120"><span class="lineNum">     120 </span>            :         // Validate that the dAPI name and corresponding hash generated off</a>
+<a name="121"><span class="lineNum">     121 </span>            :         // the symbol and denomation match the proxyFeed documented form.</a>
+<a name="122"><span class="lineNum">     122 </span><span class="lineCov">          2 :         if (dapiNameHash != IProxy(proxyFeed).dapiNameHash()) {</span></a>
+<a name="123"><span class="lineNum">     123 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__DAPINameHashError();</span></a>
+<a name="124"><span class="lineNum">     124 </span>            :         }</a>
 <a name="125"><span class="lineNum">     125 </span>            : </a>
-<a name="126"><span class="lineNum">     126 </span><span class="lineNoCov">          0 :         if (inUSD) {</span></a>
-<a name="127"><span class="lineNum">     127 </span><span class="lineNoCov">          0 :             data = adaptorDataUSD[asset];</span></a>
-<a name="128"><span class="lineNum">     128 </span>            :         } else {</a>
-<a name="129"><span class="lineNum">     129 </span><span class="lineNoCov">          0 :             data = adaptorDataNonUSD[asset];</span></a>
-<a name="130"><span class="lineNum">     130 </span>            :         }</a>
-<a name="131"><span class="lineNum">     131 </span>            : </a>
-<a name="132"><span class="lineNum">     132 </span><span class="lineNoCov">          0 :         data.heartbeat = heartbeat != 0</span></a>
-<a name="133"><span class="lineNum">     133 </span>            :             ? heartbeat</a>
-<a name="134"><span class="lineNum">     134 </span>            :             : DEFAULT_HEART_BEAT;</a>
-<a name="135"><span class="lineNum">     135 </span>            : </a>
-<a name="136"><span class="lineNum">     136 </span>            :         // Add a ~10% buffer to maximum price allowed from Api3 can stop </a>
-<a name="137"><span class="lineNum">     137 </span>            :         // updating its price before/above the min/max price. We use a maximum</a>
-<a name="138"><span class="lineNum">     138 </span>            :         // buffered price of 2^224 - 1, which could overflow when trying to</a>
-<a name="139"><span class="lineNum">     139 </span>            :         // save the final value into an uint240.</a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineNoCov">          0 :         data.max = (uint256(int256(type(int224).max)) * 9) / 10;</span></a>
-<a name="141"><span class="lineNum">     141 </span><span class="lineNoCov">          0 :         data.dapiNameHash = dapiNameHash;</span></a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :         data.proxyFeed = IProxy(proxyFeed);</span></a>
-<a name="143"><span class="lineNum">     143 </span><span class="lineNoCov">          0 :         data.isConfigured = true;</span></a>
-<a name="144"><span class="lineNum">     144 </span><span class="lineNoCov">          0 :         isSupportedAsset[asset] = true;</span></a>
-<a name="145"><span class="lineNum">     145 </span>            : </a>
-<a name="146"><span class="lineNum">     146 </span><span class="lineNoCov">          0 :         emit Api3AssetAdded(asset, data);</span></a>
-<a name="147"><span class="lineNum">     147 </span>            :     }</a>
+<a name="126"><span class="lineNum">     126 </span><span class="lineCov">          2 :         AdaptorData storage data;</span></a>
+<a name="127"><span class="lineNum">     127 </span>            : </a>
+<a name="128"><span class="lineNum">     128 </span><span class="lineCov">          2 :         if (inUSD) {</span></a>
+<a name="129"><span class="lineNum">     129 </span><span class="lineCov">          2 :             data = adaptorDataUSD[asset];</span></a>
+<a name="130"><span class="lineNum">     130 </span>            :         } else {</a>
+<a name="131"><span class="lineNum">     131 </span><span class="lineNoCov">          0 :             data = adaptorDataNonUSD[asset];</span></a>
+<a name="132"><span class="lineNum">     132 </span>            :         }</a>
+<a name="133"><span class="lineNum">     133 </span>            : </a>
+<a name="134"><span class="lineNum">     134 </span><span class="lineCov">          2 :         data.heartbeat = heartbeat != 0</span></a>
+<a name="135"><span class="lineNum">     135 </span>            :             ? heartbeat</a>
+<a name="136"><span class="lineNum">     136 </span>            :             : DEFAULT_HEART_BEAT;</a>
+<a name="137"><span class="lineNum">     137 </span>            : </a>
+<a name="138"><span class="lineNum">     138 </span>            :         // Save adaptor data and update mapping that we support `asset` now.</a>
+<a name="139"><span class="lineNum">     139 </span>            :         // Add a ~10% buffer to maximum price allowed from Api3 can stop </a>
+<a name="140"><span class="lineNum">     140 </span>            :         // updating its price before/above the min/max price. We use a maximum</a>
+<a name="141"><span class="lineNum">     141 </span>            :         // buffered price of 2^224 - 1, which could overflow when trying to</a>
+<a name="142"><span class="lineNum">     142 </span>            :         // save the final value into an uint240.</a>
+<a name="143"><span class="lineNum">     143 </span><span class="lineCov">          2 :         data.max = (uint256(int256(type(int224).max)) * 9) / 10;</span></a>
+<a name="144"><span class="lineNum">     144 </span><span class="lineCov">          2 :         data.dapiNameHash = dapiNameHash;</span></a>
+<a name="145"><span class="lineNum">     145 </span><span class="lineCov">          2 :         data.proxyFeed = IProxy(proxyFeed);</span></a>
+<a name="146"><span class="lineNum">     146 </span><span class="lineCov">          2 :         data.isConfigured = true;</span></a>
+<a name="147"><span class="lineNum">     147 </span><span class="lineCov">          2 :         isSupportedAsset[asset] = true;</span></a>
 <a name="148"><span class="lineNum">     148 </span>            : </a>
-<a name="149"><span class="lineNum">     149 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
-<a name="150"><span class="lineNum">     150 </span>            :     /// @dev Calls back into oracle router to notify it of its removal.</a>
-<a name="151"><span class="lineNum">     151 </span>            :     /// @param asset The address of the supported asset to remove from</a>
-<a name="152"><span class="lineNum">     152 </span>            :     ///              the adaptor.</a>
-<a name="153"><span class="lineNum">     153 </span>            :     function removeAsset(address asset) external override {</a>
-<a name="154"><span class="lineNum">     154 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
-<a name="155"><span class="lineNum">     155 </span>            : </a>
-<a name="156"><span class="lineNum">     156 </span><span class="lineNoCov">          0 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="157"><span class="lineNum">     157 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__AssetIsNotSupported();</span></a>
-<a name="158"><span class="lineNum">     158 </span>            :         }</a>
+<a name="149"><span class="lineNum">     149 </span><span class="lineCov">          2 :         emit Api3AssetAdded(asset, data);</span></a>
+<a name="150"><span class="lineNum">     150 </span>            :     }</a>
+<a name="151"><span class="lineNum">     151 </span>            : </a>
+<a name="152"><span class="lineNum">     152 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
+<a name="153"><span class="lineNum">     153 </span>            :     /// @dev Calls back into Oracle Router to notify it of its removal.</a>
+<a name="154"><span class="lineNum">     154 </span>            :     ///      Requires that `asset` is currently supported.</a>
+<a name="155"><span class="lineNum">     155 </span>            :     /// @param asset The address of the supported asset to remove from</a>
+<a name="156"><span class="lineNum">     156 </span>            :     ///              the adaptor.</a>
+<a name="157"><span class="lineNum">     157 </span>            :     function removeAsset(address asset) external override {</a>
+<a name="158"><span class="lineNum">     158 </span><span class="lineCov">          1 :         _checkElevatedPermissions();</span></a>
 <a name="159"><span class="lineNum">     159 </span>            : </a>
-<a name="160"><span class="lineNum">     160 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
-<a name="161"><span class="lineNum">     161 </span><span class="lineNoCov">          0 :         delete isSupportedAsset[asset];</span></a>
-<a name="162"><span class="lineNum">     162 </span>            : </a>
-<a name="163"><span class="lineNum">     163 </span>            :         // Wipe config mapping entries for a gas refund.</a>
-<a name="164"><span class="lineNum">     164 </span><span class="lineNoCov">          0 :         delete adaptorDataUSD[asset];</span></a>
-<a name="165"><span class="lineNum">     165 </span><span class="lineNoCov">          0 :         delete adaptorDataNonUSD[asset];</span></a>
-<a name="166"><span class="lineNum">     166 </span>            : </a>
-<a name="167"><span class="lineNum">     167 </span>            :         // Notify the oracle router that we are going to stop supporting the asset.</a>
-<a name="168"><span class="lineNum">     168 </span><span class="lineNoCov">          0 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
-<a name="169"><span class="lineNum">     169 </span>            :         </a>
-<a name="170"><span class="lineNum">     170 </span><span class="lineNoCov">          0 :         emit Api3AssetRemoved(asset);</span></a>
-<a name="171"><span class="lineNum">     171 </span>            :     }</a>
-<a name="172"><span class="lineNum">     172 </span>            : </a>
-<a name="173"><span class="lineNum">     173 </span>            :     /// INTERNAL FUNCTIONS ///</a>
-<a name="174"><span class="lineNum">     174 </span>            : </a>
-<a name="175"><span class="lineNum">     175 </span>            :     /// @notice Retrieves the price of a given asset in USD.</a>
-<a name="176"><span class="lineNum">     176 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
-<a name="177"><span class="lineNum">     177 </span>            :     /// @return A structure containing the price, error status,</a>
-<a name="178"><span class="lineNum">     178 </span>            :     ///         and the quote format of the price (USD).</a>
-<a name="179"><span class="lineNum">     179 </span>            :     function _getPriceInUSD(</a>
-<a name="180"><span class="lineNum">     180 </span>            :         address asset</a>
-<a name="181"><span class="lineNum">     181 </span>            :     ) internal view returns (PriceReturnData memory) {</a>
-<a name="182"><span class="lineNum">     182 </span><span class="lineNoCov">          0 :         if (adaptorDataUSD[asset].isConfigured) {</span></a>
-<a name="183"><span class="lineNum">     183 </span><span class="lineNoCov">          0 :             return _parseData(adaptorDataUSD[asset], true);</span></a>
-<a name="184"><span class="lineNum">     184 </span>            :         }</a>
-<a name="185"><span class="lineNum">     185 </span>            : </a>
-<a name="186"><span class="lineNum">     186 </span><span class="lineNoCov">          0 :         return _parseData(adaptorDataNonUSD[asset], false);</span></a>
-<a name="187"><span class="lineNum">     187 </span>            :     }</a>
-<a name="188"><span class="lineNum">     188 </span>            : </a>
-<a name="189"><span class="lineNum">     189 </span>            :     /// @notice Retrieves the price of a given asset in ETH.</a>
-<a name="190"><span class="lineNum">     190 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
-<a name="191"><span class="lineNum">     191 </span>            :     /// @return A structure containing the price, error status,</a>
-<a name="192"><span class="lineNum">     192 </span>            :     ///         and the quote format of the price (ETH).</a>
-<a name="193"><span class="lineNum">     193 </span>            :     function _getPriceInETH(</a>
-<a name="194"><span class="lineNum">     194 </span>            :         address asset</a>
-<a name="195"><span class="lineNum">     195 </span>            :     ) internal view returns (PriceReturnData memory) {</a>
-<a name="196"><span class="lineNum">     196 </span><span class="lineNoCov">          0 :         if (adaptorDataNonUSD[asset].isConfigured) {</span></a>
-<a name="197"><span class="lineNum">     197 </span><span class="lineNoCov">          0 :             return _parseData(adaptorDataNonUSD[asset], false);</span></a>
-<a name="198"><span class="lineNum">     198 </span>            :         }</a>
-<a name="199"><span class="lineNum">     199 </span>            : </a>
-<a name="200"><span class="lineNum">     200 </span><span class="lineNoCov">          0 :         return _parseData(adaptorDataUSD[asset], true);</span></a>
-<a name="201"><span class="lineNum">     201 </span>            :     }</a>
-<a name="202"><span class="lineNum">     202 </span>            : </a>
-<a name="203"><span class="lineNum">     203 </span>            :     /// @notice Parses the api3 feed data for pricing of an asset.</a>
-<a name="204"><span class="lineNum">     204 </span>            :     /// @dev Calls read() from Api3 to get the latest data</a>
-<a name="205"><span class="lineNum">     205 </span>            :     ///      for pricing and staleness.</a>
-<a name="206"><span class="lineNum">     206 </span>            :     /// @param data Api3 feed details.</a>
-<a name="207"><span class="lineNum">     207 </span>            :     /// @param inUSD A boolean to denote if the price is in USD.</a>
-<a name="208"><span class="lineNum">     208 </span>            :     /// @return pData A structure containing the price, error status,</a>
-<a name="209"><span class="lineNum">     209 </span>            :     ///               and the currency of the price.</a>
-<a name="210"><span class="lineNum">     210 </span>            :     function _parseData(</a>
-<a name="211"><span class="lineNum">     211 </span>            :         AdaptorData memory data,</a>
-<a name="212"><span class="lineNum">     212 </span>            :         bool inUSD</a>
-<a name="213"><span class="lineNum">     213 </span>            :     ) internal view returns (PriceReturnData memory pData) {</a>
-<a name="214"><span class="lineNum">     214 </span><span class="lineNoCov">          0 :         (int256 price, uint256 updatedAt) = data.proxyFeed.read();</span></a>
-<a name="215"><span class="lineNum">     215 </span>            : </a>
-<a name="216"><span class="lineNum">     216 </span>            :         // If we got a price of 0 or less, bubble up an error immediately.</a>
-<a name="217"><span class="lineNum">     217 </span><span class="lineNoCov">          0 :         if (price &lt;= 0) {</span></a>
-<a name="218"><span class="lineNum">     218 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
-<a name="219"><span class="lineNum">     219 </span><span class="lineNoCov">          0 :             return pData;</span></a>
-<a name="220"><span class="lineNum">     220 </span>            :         }</a>
-<a name="221"><span class="lineNum">     221 </span>            : </a>
-<a name="222"><span class="lineNum">     222 </span><span class="lineNoCov">          0 :         pData.price = uint240(uint256(price));</span></a>
-<a name="223"><span class="lineNum">     223 </span><span class="lineNoCov">          0 :         pData.hadError = _verifyData(</span></a>
-<a name="224"><span class="lineNum">     224 </span>            :                         uint256(price),</a>
-<a name="225"><span class="lineNum">     225 </span>            :                         updatedAt,</a>
-<a name="226"><span class="lineNum">     226 </span>            :                         data.max,</a>
-<a name="227"><span class="lineNum">     227 </span>            :                         data.heartbeat</a>
-<a name="228"><span class="lineNum">     228 </span>            :                     );</a>
-<a name="229"><span class="lineNum">     229 </span><span class="lineNoCov">          0 :         pData.inUSD = inUSD;</span></a>
-<a name="230"><span class="lineNum">     230 </span>            :     }</a>
-<a name="231"><span class="lineNum">     231 </span>            : </a>
-<a name="232"><span class="lineNum">     232 </span>            :     /// @notice Validates the feed data based on various constraints.</a>
-<a name="233"><span class="lineNum">     233 </span>            :     /// @dev Checks if the value is within a specific range</a>
-<a name="234"><span class="lineNum">     234 </span>            :     ///      and if the data is not outdated.</a>
-<a name="235"><span class="lineNum">     235 </span>            :     /// @param value The value that is retrieved from the feed data.</a>
-<a name="236"><span class="lineNum">     236 </span>            :     /// @param timestamp The time at which the value was last updated.</a>
-<a name="237"><span class="lineNum">     237 </span>            :     /// @param max The maximum limit of the value.</a>
-<a name="238"><span class="lineNum">     238 </span>            :     /// @param heartbeat The maximum allowed time difference between</a>
-<a name="239"><span class="lineNum">     239 </span>            :     ///                  current time and 'timestamp'.</a>
-<a name="240"><span class="lineNum">     240 </span>            :     /// @return A boolean indicating whether the feed data had an error</a>
-<a name="241"><span class="lineNum">     241 </span>            :     ///         (true = error, false = no error).</a>
-<a name="242"><span class="lineNum">     242 </span>            :     function _verifyData(</a>
-<a name="243"><span class="lineNum">     243 </span>            :         uint256 value,</a>
-<a name="244"><span class="lineNum">     244 </span>            :         uint256 timestamp,</a>
-<a name="245"><span class="lineNum">     245 </span>            :         uint256 max,</a>
-<a name="246"><span class="lineNum">     246 </span>            :         uint256 heartbeat</a>
-<a name="247"><span class="lineNum">     247 </span>            :     ) internal view returns (bool) {</a>
-<a name="248"><span class="lineNum">     248 </span><span class="lineNoCov">          0 :         if (value &gt; max) {</span></a>
-<a name="249"><span class="lineNum">     249 </span><span class="lineNoCov">          0 :             return true;</span></a>
-<a name="250"><span class="lineNum">     250 </span>            :         }</a>
-<a name="251"><span class="lineNum">     251 </span>            : </a>
-<a name="252"><span class="lineNum">     252 </span><span class="lineNoCov">          0 :         if (block.timestamp - timestamp &gt; heartbeat) {</span></a>
-<a name="253"><span class="lineNum">     253 </span><span class="lineNoCov">          0 :             return true;</span></a>
-<a name="254"><span class="lineNum">     254 </span>            :         }</a>
-<a name="255"><span class="lineNum">     255 </span>            : </a>
-<a name="256"><span class="lineNum">     256 </span><span class="lineNoCov">          0 :         return false;</span></a>
-<a name="257"><span class="lineNum">     257 </span>            :     }</a>
-<a name="258"><span class="lineNum">     258 </span>            : }</a>
+<a name="160"><span class="lineNum">     160 </span>            :         // Validate that `asset` is currently supported.</a>
+<a name="161"><span class="lineNum">     161 </span><span class="lineCov">          1 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="162"><span class="lineNum">     162 </span><span class="lineNoCov">          0 :             revert Api3Adaptor__AssetIsNotSupported();</span></a>
+<a name="163"><span class="lineNum">     163 </span>            :         }</a>
+<a name="164"><span class="lineNum">     164 </span>            : </a>
+<a name="165"><span class="lineNum">     165 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
+<a name="166"><span class="lineNum">     166 </span><span class="lineCov">          1 :         delete isSupportedAsset[asset];</span></a>
+<a name="167"><span class="lineNum">     167 </span>            : </a>
+<a name="168"><span class="lineNum">     168 </span>            :         // Wipe config mapping entries for a gas refund.</a>
+<a name="169"><span class="lineNum">     169 </span><span class="lineCov">          1 :         delete adaptorDataUSD[asset];</span></a>
+<a name="170"><span class="lineNum">     170 </span><span class="lineCov">          1 :         delete adaptorDataNonUSD[asset];</span></a>
+<a name="171"><span class="lineNum">     171 </span>            : </a>
+<a name="172"><span class="lineNum">     172 </span>            :         // Notify the Oracle Router that we are going to stop supporting the asset.</a>
+<a name="173"><span class="lineNum">     173 </span><span class="lineCov">          1 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
+<a name="174"><span class="lineNum">     174 </span>            :         </a>
+<a name="175"><span class="lineNum">     175 </span><span class="lineCov">          1 :         emit Api3AssetRemoved(asset);</span></a>
+<a name="176"><span class="lineNum">     176 </span>            :     }</a>
+<a name="177"><span class="lineNum">     177 </span>            : </a>
+<a name="178"><span class="lineNum">     178 </span>            :     /// INTERNAL FUNCTIONS ///</a>
+<a name="179"><span class="lineNum">     179 </span>            : </a>
+<a name="180"><span class="lineNum">     180 </span>            :     /// @notice Retrieves the price of a given asset in USD.</a>
+<a name="181"><span class="lineNum">     181 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
+<a name="182"><span class="lineNum">     182 </span>            :     /// @return A structure containing the price, error status,</a>
+<a name="183"><span class="lineNum">     183 </span>            :     ///         and the quote format of the price (USD).</a>
+<a name="184"><span class="lineNum">     184 </span>            :     function _getPriceInUSD(</a>
+<a name="185"><span class="lineNum">     185 </span>            :         address asset</a>
+<a name="186"><span class="lineNum">     186 </span>            :     ) internal view returns (PriceReturnData memory) {</a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">          4 :         if (adaptorDataUSD[asset].isConfigured) {</span></a>
+<a name="188"><span class="lineNum">     188 </span><span class="lineCov">          4 :             return _parseData(adaptorDataUSD[asset], true);</span></a>
+<a name="189"><span class="lineNum">     189 </span>            :         }</a>
+<a name="190"><span class="lineNum">     190 </span>            : </a>
+<a name="191"><span class="lineNum">     191 </span><span class="lineNoCov">          0 :         return _parseData(adaptorDataNonUSD[asset], false);</span></a>
+<a name="192"><span class="lineNum">     192 </span>            :     }</a>
+<a name="193"><span class="lineNum">     193 </span>            : </a>
+<a name="194"><span class="lineNum">     194 </span>            :     /// @notice Retrieves the price of a given asset in ETH.</a>
+<a name="195"><span class="lineNum">     195 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
+<a name="196"><span class="lineNum">     196 </span>            :     /// @return A structure containing the price, error status,</a>
+<a name="197"><span class="lineNum">     197 </span>            :     ///         and the quote format of the price (ETH).</a>
+<a name="198"><span class="lineNum">     198 </span>            :     function _getPriceInETH(</a>
+<a name="199"><span class="lineNum">     199 </span>            :         address asset</a>
+<a name="200"><span class="lineNum">     200 </span>            :     ) internal view returns (PriceReturnData memory) {</a>
+<a name="201"><span class="lineNum">     201 </span><span class="lineNoCov">          0 :         if (adaptorDataNonUSD[asset].isConfigured) {</span></a>
+<a name="202"><span class="lineNum">     202 </span><span class="lineNoCov">          0 :             return _parseData(adaptorDataNonUSD[asset], false);</span></a>
+<a name="203"><span class="lineNum">     203 </span>            :         }</a>
+<a name="204"><span class="lineNum">     204 </span>            : </a>
+<a name="205"><span class="lineNum">     205 </span><span class="lineNoCov">          0 :         return _parseData(adaptorDataUSD[asset], true);</span></a>
+<a name="206"><span class="lineNum">     206 </span>            :     }</a>
+<a name="207"><span class="lineNum">     207 </span>            : </a>
+<a name="208"><span class="lineNum">     208 </span>            :     /// @notice Parses the api3 feed data for pricing of an asset.</a>
+<a name="209"><span class="lineNum">     209 </span>            :     /// @dev Calls read() from Api3 to get the latest data</a>
+<a name="210"><span class="lineNum">     210 </span>            :     ///      for pricing and staleness.</a>
+<a name="211"><span class="lineNum">     211 </span>            :     /// @param data Api3 feed details.</a>
+<a name="212"><span class="lineNum">     212 </span>            :     /// @param inUSD A boolean to denote if the price is in USD.</a>
+<a name="213"><span class="lineNum">     213 </span>            :     /// @return pData A structure containing the price, error status,</a>
+<a name="214"><span class="lineNum">     214 </span>            :     ///               and the currency of the price.</a>
+<a name="215"><span class="lineNum">     215 </span>            :     function _parseData(</a>
+<a name="216"><span class="lineNum">     216 </span>            :         AdaptorData memory data,</a>
+<a name="217"><span class="lineNum">     217 </span>            :         bool inUSD</a>
+<a name="218"><span class="lineNum">     218 </span>            :     ) internal view returns (PriceReturnData memory pData) {</a>
+<a name="219"><span class="lineNum">     219 </span><span class="lineCov">          4 :         (int256 price, uint256 updatedAt) = data.proxyFeed.read();</span></a>
+<a name="220"><span class="lineNum">     220 </span>            : </a>
+<a name="221"><span class="lineNum">     221 </span>            :         // If we got a price of 0 or less, bubble up an error immediately.</a>
+<a name="222"><span class="lineNum">     222 </span><span class="lineCov">          4 :         if (price &lt;= 0) {</span></a>
+<a name="223"><span class="lineNum">     223 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
+<a name="224"><span class="lineNum">     224 </span><span class="lineNoCov">          0 :             return pData;</span></a>
+<a name="225"><span class="lineNum">     225 </span>            :         }</a>
+<a name="226"><span class="lineNum">     226 </span>            : </a>
+<a name="227"><span class="lineNum">     227 </span><span class="lineCov">          4 :         pData.price = uint240(uint256(price));</span></a>
+<a name="228"><span class="lineNum">     228 </span><span class="lineCov">          4 :         pData.hadError = _verifyData(</span></a>
+<a name="229"><span class="lineNum">     229 </span>            :                         uint256(price),</a>
+<a name="230"><span class="lineNum">     230 </span>            :                         updatedAt,</a>
+<a name="231"><span class="lineNum">     231 </span>            :                         data.max,</a>
+<a name="232"><span class="lineNum">     232 </span>            :                         data.heartbeat</a>
+<a name="233"><span class="lineNum">     233 </span>            :                     );</a>
+<a name="234"><span class="lineNum">     234 </span><span class="lineCov">          4 :         pData.inUSD = inUSD;</span></a>
+<a name="235"><span class="lineNum">     235 </span>            :     }</a>
+<a name="236"><span class="lineNum">     236 </span>            : </a>
+<a name="237"><span class="lineNum">     237 </span>            :     /// @notice Validates the feed data based on various constraints.</a>
+<a name="238"><span class="lineNum">     238 </span>            :     /// @dev Checks if the value is within a specific range</a>
+<a name="239"><span class="lineNum">     239 </span>            :     ///      and if the data is not outdated.</a>
+<a name="240"><span class="lineNum">     240 </span>            :     /// @param value The value that is retrieved from the feed data.</a>
+<a name="241"><span class="lineNum">     241 </span>            :     /// @param timestamp The time at which the value was last updated.</a>
+<a name="242"><span class="lineNum">     242 </span>            :     /// @param max The maximum limit of the value.</a>
+<a name="243"><span class="lineNum">     243 </span>            :     /// @param heartbeat The maximum allowed time difference between</a>
+<a name="244"><span class="lineNum">     244 </span>            :     ///                  current time and 'timestamp'.</a>
+<a name="245"><span class="lineNum">     245 </span>            :     /// @return A boolean indicating whether the feed data had an error</a>
+<a name="246"><span class="lineNum">     246 </span>            :     ///         (true = error, false = no error).</a>
+<a name="247"><span class="lineNum">     247 </span>            :     function _verifyData(</a>
+<a name="248"><span class="lineNum">     248 </span>            :         uint256 value,</a>
+<a name="249"><span class="lineNum">     249 </span>            :         uint256 timestamp,</a>
+<a name="250"><span class="lineNum">     250 </span>            :         uint256 max,</a>
+<a name="251"><span class="lineNum">     251 </span>            :         uint256 heartbeat</a>
+<a name="252"><span class="lineNum">     252 </span>            :     ) internal view returns (bool) {</a>
+<a name="253"><span class="lineNum">     253 </span><span class="lineCov">          4 :         if (value &gt; max) {</span></a>
+<a name="254"><span class="lineNum">     254 </span><span class="lineNoCov">          0 :             return true;</span></a>
+<a name="255"><span class="lineNum">     255 </span>            :         }</a>
+<a name="256"><span class="lineNum">     256 </span>            : </a>
+<a name="257"><span class="lineNum">     257 </span><span class="lineCov">          4 :         if (block.timestamp - timestamp &gt; heartbeat) {</span></a>
+<a name="258"><span class="lineNum">     258 </span><span class="lineNoCov">          0 :             return true;</span></a>
+<a name="259"><span class="lineNum">     259 </span>            :         }</a>
+<a name="260"><span class="lineNum">     260 </span>            : </a>
+<a name="261"><span class="lineNum">     261 </span><span class="lineCov">          4 :         return false;</span></a>
+<a name="262"><span class="lineNum">     262 </span>            :     }</a>
+<a name="263"><span class="lineNum">     263 </span>            : }</a>
 </pre>
       </td>
     </tr>

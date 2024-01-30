@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">72</td>
-            <td class="headerCovTableEntry">93</td>
-            <td class="headerCovTableEntryMed">77.4 %</td>
+            <td class="headerCovTableEntry">73</td>
+            <td class="headerCovTableEntry">94</td>
+            <td class="headerCovTableEntryMed">77.7 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">8</td>
@@ -66,12 +66,12 @@
 <a name="4"><span class="lineNum">       4 </span>            : import { CTokenPrimitive } from &quot;contracts/market/collateral/CTokenPrimitive.sol&quot;;</a>
 <a name="5"><span class="lineNum">       5 </span>            : import { DToken } from &quot;contracts/market/collateral/DToken.sol&quot;;</a>
 <a name="6"><span class="lineNum">       6 </span>            : </a>
-<a name="7"><span class="lineNum">       7 </span>            : import { SwapperLib } from &quot;contracts/libraries/SwapperLib.sol&quot;;</a>
-<a name="8"><span class="lineNum">       8 </span>            : import { DENOMINATOR, WAD } from &quot;contracts/libraries/Constants.sol&quot;;</a>
-<a name="9"><span class="lineNum">       9 </span>            : import { ERC165 } from &quot;contracts/libraries/external/ERC165.sol&quot;;</a>
-<a name="10"><span class="lineNum">      10 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
-<a name="11"><span class="lineNum">      11 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
-<a name="12"><span class="lineNum">      12 </span>            : import { ReentrancyGuard } from &quot;contracts/libraries/external/ReentrancyGuard.sol&quot;;</a>
+<a name="7"><span class="lineNum">       7 </span>            : import { DENOMINATOR, WAD } from &quot;contracts/libraries/Constants.sol&quot;;</a>
+<a name="8"><span class="lineNum">       8 </span>            : import { SwapperLib } from &quot;contracts/libraries/SwapperLib.sol&quot;;</a>
+<a name="9"><span class="lineNum">       9 </span>            : import { ReentrancyGuard } from &quot;contracts/libraries/ReentrancyGuard.sol&quot;;</a>
+<a name="10"><span class="lineNum">      10 </span>            : import { ERC165 } from &quot;contracts/libraries/external/ERC165.sol&quot;;</a>
+<a name="11"><span class="lineNum">      11 </span>            : import { ERC165Checker } from &quot;contracts/libraries/external/ERC165Checker.sol&quot;;</a>
+<a name="12"><span class="lineNum">      12 </span>            : import { SafeTransferLib } from &quot;contracts/libraries/external/SafeTransferLib.sol&quot;;</a>
 <a name="13"><span class="lineNum">      13 </span>            : </a>
 <a name="14"><span class="lineNum">      14 </span>            : import { ICentralRegistry } from &quot;contracts/interfaces/ICentralRegistry.sol&quot;;</a>
 <a name="15"><span class="lineNum">      15 </span>            : import { IERC20 } from &quot;contracts/interfaces/IERC20.sol&quot;;</a>
@@ -200,293 +200,298 @@
 <a name="138"><span class="lineNum">     138 </span>            :         uint256 borrowAmount,</a>
 <a name="139"><span class="lineNum">     139 </span>            :         bytes calldata params</a>
 <a name="140"><span class="lineNum">     140 </span>            :     ) external override {</a>
-<a name="141"><span class="lineNum">     141 </span><span class="lineCov">          2 :         if (!marketManager.isListed(borrowToken) || msg.sender != borrowToken) {</span></a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
-<a name="143"><span class="lineNum">     143 </span>            :         }</a>
-<a name="144"><span class="lineNum">     144 </span>            : </a>
-<a name="145"><span class="lineNum">     145 </span><span class="lineCov">          2 :         LeverageStruct memory leverageData = abi.decode(</span></a>
-<a name="146"><span class="lineNum">     146 </span>            :             params,</a>
-<a name="147"><span class="lineNum">     147 </span>            :             (LeverageStruct)</a>
-<a name="148"><span class="lineNum">     148 </span>            :         );</a>
-<a name="149"><span class="lineNum">     149 </span>            : </a>
-<a name="150"><span class="lineNum">     150 </span>            :         if (</a>
-<a name="151"><span class="lineNum">     151 </span><span class="lineCov">          2 :             borrowToken != address(leverageData.borrowToken) ||</span></a>
-<a name="152"><span class="lineNum">     152 </span><span class="lineCov">          2 :             borrowAmount != leverageData.borrowAmount</span></a>
-<a name="153"><span class="lineNum">     153 </span>            :         ) {</a>
-<a name="154"><span class="lineNum">     154 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidParam();</span></a>
-<a name="155"><span class="lineNum">     155 </span>            :         }</a>
-<a name="156"><span class="lineNum">     156 </span>            : </a>
-<a name="157"><span class="lineNum">     157 </span><span class="lineCov">          2 :         address borrowUnderlying = CTokenPrimitive(borrowToken).underlying();</span></a>
+<a name="141"><span class="lineNum">     141 </span>            :         if (</a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineCov">          2 :             !marketManager.isListed(borrowToken) || msg.sender != borrowToken</span></a>
+<a name="143"><span class="lineNum">     143 </span>            :         ) {</a>
+<a name="144"><span class="lineNum">     144 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
+<a name="145"><span class="lineNum">     145 </span>            :         }</a>
+<a name="146"><span class="lineNum">     146 </span>            : </a>
+<a name="147"><span class="lineNum">     147 </span><span class="lineCov">          2 :         LeverageStruct memory leverageData = abi.decode(</span></a>
+<a name="148"><span class="lineNum">     148 </span>            :             params,</a>
+<a name="149"><span class="lineNum">     149 </span>            :             (LeverageStruct)</a>
+<a name="150"><span class="lineNum">     150 </span>            :         );</a>
+<a name="151"><span class="lineNum">     151 </span>            : </a>
+<a name="152"><span class="lineNum">     152 </span>            :         if (</a>
+<a name="153"><span class="lineNum">     153 </span><span class="lineCov">          2 :             borrowToken != address(leverageData.borrowToken) ||</span></a>
+<a name="154"><span class="lineNum">     154 </span><span class="lineCov">          2 :             borrowAmount != leverageData.borrowAmount</span></a>
+<a name="155"><span class="lineNum">     155 </span>            :         ) {</a>
+<a name="156"><span class="lineNum">     156 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidParam();</span></a>
+<a name="157"><span class="lineNum">     157 </span>            :         }</a>
 <a name="158"><span class="lineNum">     158 </span>            : </a>
-<a name="159"><span class="lineNum">     159 </span><span class="lineCov">          2 :         if (IERC20(borrowUnderlying).balanceOf(address(this)) &lt; borrowAmount) {</span></a>
-<a name="160"><span class="lineNum">     160 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidAmount();</span></a>
-<a name="161"><span class="lineNum">     161 </span>            :         }</a>
-<a name="162"><span class="lineNum">     162 </span>            : </a>
-<a name="163"><span class="lineNum">     163 </span>            :         // take protocol fee</a>
-<a name="164"><span class="lineNum">     164 </span><span class="lineCov">          2 :         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / WAD;</span></a>
-<a name="165"><span class="lineNum">     165 </span><span class="lineCov">          2 :         if (fee &gt; 0) {</span></a>
-<a name="166"><span class="lineNum">     166 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="167"><span class="lineNum">     167 </span>            :                 borrowUnderlying,</a>
-<a name="168"><span class="lineNum">     168 </span>            :                 centralRegistry.daoAddress(),</a>
-<a name="169"><span class="lineNum">     169 </span>            :                 fee</a>
-<a name="170"><span class="lineNum">     170 </span>            :             );</a>
-<a name="171"><span class="lineNum">     171 </span>            :         }</a>
-<a name="172"><span class="lineNum">     172 </span>            : </a>
-<a name="173"><span class="lineNum">     173 </span><span class="lineCov">          2 :         if (leverageData.swapData.call.length &gt; 0) {</span></a>
-<a name="174"><span class="lineNum">     174 </span>            :             // swap borrow underlying to zapper input token</a>
-<a name="175"><span class="lineNum">     175 </span><span class="lineCov">          2 :             if (!centralRegistry.isSwapper(leverageData.swapData.target)) {</span></a>
-<a name="176"><span class="lineNum">     176 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidSwapper(</span></a>
-<a name="177"><span class="lineNum">     177 </span>            :                     leverageData.swapData.target</a>
-<a name="178"><span class="lineNum">     178 </span>            :                 );</a>
-<a name="179"><span class="lineNum">     179 </span>            :             }</a>
-<a name="180"><span class="lineNum">     180 </span>            : </a>
-<a name="181"><span class="lineNum">     181 </span><span class="lineCov">          2 :             SwapperLib.swap(leverageData.swapData);</span></a>
-<a name="182"><span class="lineNum">     182 </span>            :         }</a>
-<a name="183"><span class="lineNum">     183 </span>            : </a>
-<a name="184"><span class="lineNum">     184 </span>            :         // prepare LP</a>
-<a name="185"><span class="lineNum">     185 </span><span class="lineCov">          2 :         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;</span></a>
-<a name="186"><span class="lineNum">     186 </span>            : </a>
-<a name="187"><span class="lineNum">     187 </span><span class="lineCov">          2 :         if (zapperCall.call.length &gt; 0) {</span></a>
-<a name="188"><span class="lineNum">     188 </span><span class="lineCov">          2 :             if (!centralRegistry.isZapper(leverageData.zapperCall.target)) {</span></a>
-<a name="189"><span class="lineNum">     189 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapper(</span></a>
-<a name="190"><span class="lineNum">     190 </span>            :                     leverageData.zapperCall.target</a>
-<a name="191"><span class="lineNum">     191 </span>            :                 );</a>
-<a name="192"><span class="lineNum">     192 </span>            :             }</a>
-<a name="193"><span class="lineNum">     193 </span>            : </a>
-<a name="194"><span class="lineNum">     194 </span><span class="lineCov">          2 :             SwapperLib.zap(zapperCall);</span></a>
-<a name="195"><span class="lineNum">     195 </span>            :         }</a>
-<a name="196"><span class="lineNum">     196 </span>            : </a>
-<a name="197"><span class="lineNum">     197 </span>            :         // enter curvance</a>
-<a name="198"><span class="lineNum">     198 </span><span class="lineCov">          2 :         address collateralUnderlying = leverageData</span></a>
-<a name="199"><span class="lineNum">     199 </span>            :             .collateralToken</a>
-<a name="200"><span class="lineNum">     200 </span>            :             .underlying();</a>
-<a name="201"><span class="lineNum">     201 </span><span class="lineCov">          2 :         uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));</span></a>
-<a name="202"><span class="lineNum">     202 </span><span class="lineCov">          2 :         SwapperLib._approveTokenIfNeeded(</span></a>
-<a name="203"><span class="lineNum">     203 </span>            :             collateralUnderlying,</a>
-<a name="204"><span class="lineNum">     204 </span>            :             address(leverageData.collateralToken),</a>
-<a name="205"><span class="lineNum">     205 </span>            :             amount</a>
-<a name="206"><span class="lineNum">     206 </span>            :         );</a>
-<a name="207"><span class="lineNum">     207 </span><span class="lineCov">          2 :         leverageData.collateralToken.depositAsCollateral(amount, borrower);</span></a>
-<a name="208"><span class="lineNum">     208 </span>            : </a>
-<a name="209"><span class="lineNum">     209 </span>            :         // transfer remaining zapper input token back to the user</a>
-<a name="210"><span class="lineNum">     210 </span><span class="lineCov">          2 :         uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(</span></a>
-<a name="211"><span class="lineNum">     211 </span>            :             address(this)</a>
-<a name="212"><span class="lineNum">     212 </span>            :         );</a>
-<a name="213"><span class="lineNum">     213 </span>            : </a>
-<a name="214"><span class="lineNum">     214 </span><span class="lineCov">          2 :         if (remaining &gt; 0) {</span></a>
-<a name="215"><span class="lineNum">     215 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="216"><span class="lineNum">     216 </span>            :                 zapperCall.inputToken,</a>
-<a name="217"><span class="lineNum">     217 </span>            :                 borrower,</a>
-<a name="218"><span class="lineNum">     218 </span>            :                 remaining</a>
-<a name="219"><span class="lineNum">     219 </span>            :             );</a>
-<a name="220"><span class="lineNum">     220 </span>            :         }</a>
-<a name="221"><span class="lineNum">     221 </span>            : </a>
-<a name="222"><span class="lineNum">     222 </span>            :         // transfer remaining borrow underlying back to the user</a>
-<a name="223"><span class="lineNum">     223 </span><span class="lineCov">          2 :         remaining = IERC20(borrowUnderlying).balanceOf(address(this));</span></a>
-<a name="224"><span class="lineNum">     224 </span>            : </a>
-<a name="225"><span class="lineNum">     225 </span><span class="lineCov">          2 :         if (remaining &gt; 0) {</span></a>
-<a name="226"><span class="lineNum">     226 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="227"><span class="lineNum">     227 </span>            :                 borrowUnderlying,</a>
-<a name="228"><span class="lineNum">     228 </span>            :                 borrower,</a>
-<a name="229"><span class="lineNum">     229 </span>            :                 remaining</a>
-<a name="230"><span class="lineNum">     230 </span>            :             );</a>
-<a name="231"><span class="lineNum">     231 </span>            :         }</a>
-<a name="232"><span class="lineNum">     232 </span>            : </a>
-<a name="233"><span class="lineNum">     233 </span><span class="lineCov">          2 :         SwapperLib._removeApprovalIfNeeded(</span></a>
-<a name="234"><span class="lineNum">     234 </span>            :             borrowUnderlying,</a>
-<a name="235"><span class="lineNum">     235 </span>            :             address(borrowToken)</a>
-<a name="236"><span class="lineNum">     236 </span>            :         );</a>
-<a name="237"><span class="lineNum">     237 </span>            :     }</a>
-<a name="238"><span class="lineNum">     238 </span>            : </a>
-<a name="239"><span class="lineNum">     239 </span>            :     function onRedeem(</a>
-<a name="240"><span class="lineNum">     240 </span>            :         address collateralToken,</a>
-<a name="241"><span class="lineNum">     241 </span>            :         address redeemer,</a>
-<a name="242"><span class="lineNum">     242 </span>            :         uint256 collateralAmount,</a>
-<a name="243"><span class="lineNum">     243 </span>            :         bytes calldata params</a>
-<a name="244"><span class="lineNum">     244 </span>            :     ) external override {</a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineCov">          1 :         if (msg.sender != collateralToken) {</span></a>
-<a name="246"><span class="lineNum">     246 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
-<a name="247"><span class="lineNum">     247 </span>            :         }</a>
-<a name="248"><span class="lineNum">     248 </span>            : </a>
-<a name="249"><span class="lineNum">     249 </span><span class="lineCov">          1 :         if (!marketManager.isListed(collateralToken)) {</span></a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
-<a name="251"><span class="lineNum">     251 </span>            :         }</a>
-<a name="252"><span class="lineNum">     252 </span>            : </a>
-<a name="253"><span class="lineNum">     253 </span><span class="lineCov">          1 :         DeleverageStruct memory deleverageData = abi.decode(</span></a>
-<a name="254"><span class="lineNum">     254 </span>            :             params,</a>
-<a name="255"><span class="lineNum">     255 </span>            :             (DeleverageStruct)</a>
-<a name="256"><span class="lineNum">     256 </span>            :         );</a>
-<a name="257"><span class="lineNum">     257 </span>            : </a>
-<a name="258"><span class="lineNum">     258 </span>            :         if (</a>
-<a name="259"><span class="lineNum">     259 </span><span class="lineCov">          1 :             collateralToken != address(deleverageData.collateralToken) ||</span></a>
-<a name="260"><span class="lineNum">     260 </span><span class="lineCov">          1 :             collateralAmount != deleverageData.collateralAmount</span></a>
-<a name="261"><span class="lineNum">     261 </span>            :         ) {</a>
-<a name="262"><span class="lineNum">     262 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidParam();</span></a>
-<a name="263"><span class="lineNum">     263 </span>            :         }</a>
-<a name="264"><span class="lineNum">     264 </span>            : </a>
-<a name="265"><span class="lineNum">     265 </span>            :         // swap collateral token to borrow token</a>
-<a name="266"><span class="lineNum">     266 </span><span class="lineCov">          1 :         address collateralUnderlying = CTokenPrimitive(collateralToken)</span></a>
-<a name="267"><span class="lineNum">     267 </span>            :             .underlying();</a>
-<a name="268"><span class="lineNum">     268 </span>            : </a>
-<a name="269"><span class="lineNum">     269 </span>            :         if (</a>
-<a name="270"><span class="lineNum">     270 </span><span class="lineCov">          1 :             IERC20(collateralUnderlying).balanceOf(address(this)) &lt;</span></a>
-<a name="271"><span class="lineNum">     271 </span>            :             collateralAmount</a>
-<a name="272"><span class="lineNum">     272 </span>            :         ) {</a>
-<a name="273"><span class="lineNum">     273 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidAmount();</span></a>
-<a name="274"><span class="lineNum">     274 </span>            :         }</a>
-<a name="275"><span class="lineNum">     275 </span>            : </a>
-<a name="276"><span class="lineNum">     276 </span>            :         // take protocol fee</a>
-<a name="277"><span class="lineNum">     277 </span><span class="lineCov">          1 :         uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;</span></a>
-<a name="278"><span class="lineNum">     278 </span><span class="lineCov">          1 :         if (fee &gt; 0) {</span></a>
-<a name="279"><span class="lineNum">     279 </span><span class="lineNoCov">          0 :             collateralAmount -= fee;</span></a>
-<a name="280"><span class="lineNum">     280 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="281"><span class="lineNum">     281 </span>            :                 collateralUnderlying,</a>
-<a name="282"><span class="lineNum">     282 </span>            :                 centralRegistry.daoAddress(),</a>
-<a name="283"><span class="lineNum">     283 </span>            :                 fee</a>
-<a name="284"><span class="lineNum">     284 </span>            :             );</a>
-<a name="285"><span class="lineNum">     285 </span>            :         }</a>
-<a name="286"><span class="lineNum">     286 </span>            : </a>
-<a name="287"><span class="lineNum">     287 </span><span class="lineCov">          1 :         SwapperLib.ZapperCall memory zapperCall = deleverageData.zapperCall;</span></a>
+<a name="159"><span class="lineNum">     159 </span><span class="lineCov">          2 :         address borrowUnderlying = CTokenPrimitive(borrowToken).underlying();</span></a>
+<a name="160"><span class="lineNum">     160 </span>            : </a>
+<a name="161"><span class="lineNum">     161 </span><span class="lineCov">          2 :         if (IERC20(borrowUnderlying).balanceOf(address(this)) &lt; borrowAmount) {</span></a>
+<a name="162"><span class="lineNum">     162 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidAmount();</span></a>
+<a name="163"><span class="lineNum">     163 </span>            :         }</a>
+<a name="164"><span class="lineNum">     164 </span>            : </a>
+<a name="165"><span class="lineNum">     165 </span>            :         // take protocol fee</a>
+<a name="166"><span class="lineNum">     166 </span><span class="lineCov">          2 :         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / WAD;</span></a>
+<a name="167"><span class="lineNum">     167 </span><span class="lineCov">          2 :         if (fee &gt; 0) {</span></a>
+<a name="168"><span class="lineNum">     168 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="169"><span class="lineNum">     169 </span>            :                 borrowUnderlying,</a>
+<a name="170"><span class="lineNum">     170 </span>            :                 centralRegistry.daoAddress(),</a>
+<a name="171"><span class="lineNum">     171 </span>            :                 fee</a>
+<a name="172"><span class="lineNum">     172 </span>            :             );</a>
+<a name="173"><span class="lineNum">     173 </span>            :         }</a>
+<a name="174"><span class="lineNum">     174 </span>            : </a>
+<a name="175"><span class="lineNum">     175 </span><span class="lineCov">          2 :         if (leverageData.swapData.call.length &gt; 0) {</span></a>
+<a name="176"><span class="lineNum">     176 </span>            :             // swap borrow underlying to zapper input token</a>
+<a name="177"><span class="lineNum">     177 </span><span class="lineCov">          2 :             if (!centralRegistry.isSwapper(leverageData.swapData.target)) {</span></a>
+<a name="178"><span class="lineNum">     178 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidSwapper(</span></a>
+<a name="179"><span class="lineNum">     179 </span>            :                     leverageData.swapData.target</a>
+<a name="180"><span class="lineNum">     180 </span>            :                 );</a>
+<a name="181"><span class="lineNum">     181 </span>            :             }</a>
+<a name="182"><span class="lineNum">     182 </span>            : </a>
+<a name="183"><span class="lineNum">     183 </span><span class="lineCov">          2 :             SwapperLib.swap(centralRegistry, leverageData.swapData);</span></a>
+<a name="184"><span class="lineNum">     184 </span>            :         }</a>
+<a name="185"><span class="lineNum">     185 </span>            : </a>
+<a name="186"><span class="lineNum">     186 </span>            :         // prepare LP</a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">          2 :         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;</span></a>
+<a name="188"><span class="lineNum">     188 </span>            : </a>
+<a name="189"><span class="lineNum">     189 </span><span class="lineCov">          2 :         if (zapperCall.call.length &gt; 0) {</span></a>
+<a name="190"><span class="lineNum">     190 </span><span class="lineCov">          2 :             if (!centralRegistry.isZapper(leverageData.zapperCall.target)) {</span></a>
+<a name="191"><span class="lineNum">     191 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapper(</span></a>
+<a name="192"><span class="lineNum">     192 </span>            :                     leverageData.zapperCall.target</a>
+<a name="193"><span class="lineNum">     193 </span>            :                 );</a>
+<a name="194"><span class="lineNum">     194 </span>            :             }</a>
+<a name="195"><span class="lineNum">     195 </span>            : </a>
+<a name="196"><span class="lineNum">     196 </span><span class="lineCov">          2 :             SwapperLib.zap(zapperCall);</span></a>
+<a name="197"><span class="lineNum">     197 </span>            :         }</a>
+<a name="198"><span class="lineNum">     198 </span>            : </a>
+<a name="199"><span class="lineNum">     199 </span>            :         // enter curvance</a>
+<a name="200"><span class="lineNum">     200 </span><span class="lineCov">          2 :         address collateralUnderlying = leverageData</span></a>
+<a name="201"><span class="lineNum">     201 </span>            :             .collateralToken</a>
+<a name="202"><span class="lineNum">     202 </span>            :             .underlying();</a>
+<a name="203"><span class="lineNum">     203 </span><span class="lineCov">          2 :         uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));</span></a>
+<a name="204"><span class="lineNum">     204 </span><span class="lineCov">          2 :         SwapperLib._approveTokenIfNeeded(</span></a>
+<a name="205"><span class="lineNum">     205 </span>            :             collateralUnderlying,</a>
+<a name="206"><span class="lineNum">     206 </span>            :             address(leverageData.collateralToken),</a>
+<a name="207"><span class="lineNum">     207 </span>            :             amount</a>
+<a name="208"><span class="lineNum">     208 </span>            :         );</a>
+<a name="209"><span class="lineNum">     209 </span><span class="lineCov">          2 :         leverageData.collateralToken.depositAsCollateral(amount, borrower);</span></a>
+<a name="210"><span class="lineNum">     210 </span>            : </a>
+<a name="211"><span class="lineNum">     211 </span>            :         // transfer remaining zapper input token back to the user</a>
+<a name="212"><span class="lineNum">     212 </span><span class="lineCov">          2 :         uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(</span></a>
+<a name="213"><span class="lineNum">     213 </span>            :             address(this)</a>
+<a name="214"><span class="lineNum">     214 </span>            :         );</a>
+<a name="215"><span class="lineNum">     215 </span>            : </a>
+<a name="216"><span class="lineNum">     216 </span><span class="lineCov">          2 :         if (remaining &gt; 0) {</span></a>
+<a name="217"><span class="lineNum">     217 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="218"><span class="lineNum">     218 </span>            :                 zapperCall.inputToken,</a>
+<a name="219"><span class="lineNum">     219 </span>            :                 borrower,</a>
+<a name="220"><span class="lineNum">     220 </span>            :                 remaining</a>
+<a name="221"><span class="lineNum">     221 </span>            :             );</a>
+<a name="222"><span class="lineNum">     222 </span>            :         }</a>
+<a name="223"><span class="lineNum">     223 </span>            : </a>
+<a name="224"><span class="lineNum">     224 </span>            :         // transfer remaining borrow underlying back to the user</a>
+<a name="225"><span class="lineNum">     225 </span><span class="lineCov">          2 :         remaining = IERC20(borrowUnderlying).balanceOf(address(this));</span></a>
+<a name="226"><span class="lineNum">     226 </span>            : </a>
+<a name="227"><span class="lineNum">     227 </span><span class="lineCov">          2 :         if (remaining &gt; 0) {</span></a>
+<a name="228"><span class="lineNum">     228 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="229"><span class="lineNum">     229 </span>            :                 borrowUnderlying,</a>
+<a name="230"><span class="lineNum">     230 </span>            :                 borrower,</a>
+<a name="231"><span class="lineNum">     231 </span>            :                 remaining</a>
+<a name="232"><span class="lineNum">     232 </span>            :             );</a>
+<a name="233"><span class="lineNum">     233 </span>            :         }</a>
+<a name="234"><span class="lineNum">     234 </span>            : </a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineCov">          2 :         SwapperLib._removeApprovalIfNeeded(</span></a>
+<a name="236"><span class="lineNum">     236 </span>            :             borrowUnderlying,</a>
+<a name="237"><span class="lineNum">     237 </span>            :             address(borrowToken)</a>
+<a name="238"><span class="lineNum">     238 </span>            :         );</a>
+<a name="239"><span class="lineNum">     239 </span>            :     }</a>
+<a name="240"><span class="lineNum">     240 </span>            : </a>
+<a name="241"><span class="lineNum">     241 </span>            :     function onRedeem(</a>
+<a name="242"><span class="lineNum">     242 </span>            :         address collateralToken,</a>
+<a name="243"><span class="lineNum">     243 </span>            :         address redeemer,</a>
+<a name="244"><span class="lineNum">     244 </span>            :         uint256 collateralAmount,</a>
+<a name="245"><span class="lineNum">     245 </span>            :         bytes calldata params</a>
+<a name="246"><span class="lineNum">     246 </span>            :     ) external override {</a>
+<a name="247"><span class="lineNum">     247 </span><span class="lineCov">          1 :         if (msg.sender != collateralToken) {</span></a>
+<a name="248"><span class="lineNum">     248 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
+<a name="249"><span class="lineNum">     249 </span>            :         }</a>
+<a name="250"><span class="lineNum">     250 </span>            : </a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">          1 :         if (!marketManager.isListed(collateralToken)) {</span></a>
+<a name="252"><span class="lineNum">     252 </span><span class="lineNoCov">          0 :             revert PositionFolding__Unauthorized();</span></a>
+<a name="253"><span class="lineNum">     253 </span>            :         }</a>
+<a name="254"><span class="lineNum">     254 </span>            : </a>
+<a name="255"><span class="lineNum">     255 </span><span class="lineCov">          1 :         DeleverageStruct memory deleverageData = abi.decode(</span></a>
+<a name="256"><span class="lineNum">     256 </span>            :             params,</a>
+<a name="257"><span class="lineNum">     257 </span>            :             (DeleverageStruct)</a>
+<a name="258"><span class="lineNum">     258 </span>            :         );</a>
+<a name="259"><span class="lineNum">     259 </span>            : </a>
+<a name="260"><span class="lineNum">     260 </span>            :         if (</a>
+<a name="261"><span class="lineNum">     261 </span><span class="lineCov">          1 :             collateralToken != address(deleverageData.collateralToken) ||</span></a>
+<a name="262"><span class="lineNum">     262 </span><span class="lineCov">          1 :             collateralAmount != deleverageData.collateralAmount</span></a>
+<a name="263"><span class="lineNum">     263 </span>            :         ) {</a>
+<a name="264"><span class="lineNum">     264 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidParam();</span></a>
+<a name="265"><span class="lineNum">     265 </span>            :         }</a>
+<a name="266"><span class="lineNum">     266 </span>            : </a>
+<a name="267"><span class="lineNum">     267 </span>            :         // swap collateral token to borrow token</a>
+<a name="268"><span class="lineNum">     268 </span><span class="lineCov">          1 :         address collateralUnderlying = CTokenPrimitive(collateralToken)</span></a>
+<a name="269"><span class="lineNum">     269 </span>            :             .underlying();</a>
+<a name="270"><span class="lineNum">     270 </span>            : </a>
+<a name="271"><span class="lineNum">     271 </span>            :         if (</a>
+<a name="272"><span class="lineNum">     272 </span><span class="lineCov">          1 :             IERC20(collateralUnderlying).balanceOf(address(this)) &lt;</span></a>
+<a name="273"><span class="lineNum">     273 </span>            :             collateralAmount</a>
+<a name="274"><span class="lineNum">     274 </span>            :         ) {</a>
+<a name="275"><span class="lineNum">     275 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidAmount();</span></a>
+<a name="276"><span class="lineNum">     276 </span>            :         }</a>
+<a name="277"><span class="lineNum">     277 </span>            : </a>
+<a name="278"><span class="lineNum">     278 </span>            :         // take protocol fee</a>
+<a name="279"><span class="lineNum">     279 </span><span class="lineCov">          1 :         uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;</span></a>
+<a name="280"><span class="lineNum">     280 </span><span class="lineCov">          1 :         if (fee &gt; 0) {</span></a>
+<a name="281"><span class="lineNum">     281 </span><span class="lineNoCov">          0 :             collateralAmount -= fee;</span></a>
+<a name="282"><span class="lineNum">     282 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="283"><span class="lineNum">     283 </span>            :                 collateralUnderlying,</a>
+<a name="284"><span class="lineNum">     284 </span>            :                 centralRegistry.daoAddress(),</a>
+<a name="285"><span class="lineNum">     285 </span>            :                 fee</a>
+<a name="286"><span class="lineNum">     286 </span>            :             );</a>
+<a name="287"><span class="lineNum">     287 </span>            :         }</a>
 <a name="288"><span class="lineNum">     288 </span>            : </a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">          1 :         if (zapperCall.call.length &gt; 0) {</span></a>
-<a name="290"><span class="lineNum">     290 </span><span class="lineCov">          1 :             if (collateralUnderlying != zapperCall.inputToken) {</span></a>
-<a name="291"><span class="lineNum">     291 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapperParam();</span></a>
-<a name="292"><span class="lineNum">     292 </span>            :             }</a>
-<a name="293"><span class="lineNum">     293 </span><span class="lineCov">          1 :             if (!centralRegistry.isZapper(deleverageData.zapperCall.target)) {</span></a>
-<a name="294"><span class="lineNum">     294 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapper(</span></a>
-<a name="295"><span class="lineNum">     295 </span>            :                     deleverageData.zapperCall.target</a>
-<a name="296"><span class="lineNum">     296 </span>            :                 );</a>
-<a name="297"><span class="lineNum">     297 </span>            :             }</a>
-<a name="298"><span class="lineNum">     298 </span>            : </a>
-<a name="299"><span class="lineNum">     299 </span><span class="lineCov">          1 :             SwapperLib.zap(zapperCall);</span></a>
-<a name="300"><span class="lineNum">     300 </span>            :         }</a>
-<a name="301"><span class="lineNum">     301 </span>            : </a>
-<a name="302"><span class="lineNum">     302 </span><span class="lineCov">          1 :         if (deleverageData.swapData.call.length &gt; 0) {</span></a>
-<a name="303"><span class="lineNum">     303 </span>            :             // swap for borrow underlying</a>
-<a name="304"><span class="lineNum">     304 </span><span class="lineCov">          1 :             if (!centralRegistry.isSwapper(deleverageData.swapData.target)) {</span></a>
-<a name="305"><span class="lineNum">     305 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidSwapper(</span></a>
-<a name="306"><span class="lineNum">     306 </span>            :                     deleverageData.swapData.target</a>
-<a name="307"><span class="lineNum">     307 </span>            :                 );</a>
-<a name="308"><span class="lineNum">     308 </span>            :             }</a>
-<a name="309"><span class="lineNum">     309 </span>            : </a>
-<a name="310"><span class="lineNum">     310 </span><span class="lineCov">          1 :             SwapperLib.swap(deleverageData.swapData);</span></a>
-<a name="311"><span class="lineNum">     311 </span>            :         }</a>
-<a name="312"><span class="lineNum">     312 </span>            : </a>
-<a name="313"><span class="lineNum">     313 </span>            :         // repay debt</a>
-<a name="314"><span class="lineNum">     314 </span><span class="lineCov">          1 :         uint256 repayAmount = deleverageData.repayAmount;</span></a>
-<a name="315"><span class="lineNum">     315 </span><span class="lineCov">          1 :         DToken borrowToken = deleverageData.borrowToken;</span></a>
-<a name="316"><span class="lineNum">     316 </span>            : </a>
-<a name="317"><span class="lineNum">     317 </span><span class="lineCov">          1 :         address borrowUnderlying = borrowToken.underlying();</span></a>
-<a name="318"><span class="lineNum">     318 </span><span class="lineCov">          1 :         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -</span></a>
-<a name="319"><span class="lineNum">     319 </span>            :             repayAmount;</a>
-<a name="320"><span class="lineNum">     320 </span>            : </a>
-<a name="321"><span class="lineNum">     321 </span><span class="lineCov">          1 :         SwapperLib._approveTokenIfNeeded(</span></a>
-<a name="322"><span class="lineNum">     322 </span>            :             borrowUnderlying,</a>
-<a name="323"><span class="lineNum">     323 </span>            :             address(borrowToken),</a>
-<a name="324"><span class="lineNum">     324 </span>            :             repayAmount</a>
-<a name="325"><span class="lineNum">     325 </span>            :         );</a>
-<a name="326"><span class="lineNum">     326 </span>            : </a>
-<a name="327"><span class="lineNum">     327 </span><span class="lineCov">          1 :         DToken(address(borrowToken)).repayFor(redeemer, repayAmount);</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineCov">          1 :         SwapperLib.ZapperCall memory zapperCall = deleverageData.zapperCall;</span></a>
+<a name="290"><span class="lineNum">     290 </span>            : </a>
+<a name="291"><span class="lineNum">     291 </span><span class="lineCov">          1 :         if (zapperCall.call.length &gt; 0) {</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">          1 :             if (collateralUnderlying != zapperCall.inputToken) {</span></a>
+<a name="293"><span class="lineNum">     293 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapperParam();</span></a>
+<a name="294"><span class="lineNum">     294 </span>            :             }</a>
+<a name="295"><span class="lineNum">     295 </span><span class="lineCov">          1 :             if (!centralRegistry.isZapper(deleverageData.zapperCall.target)) {</span></a>
+<a name="296"><span class="lineNum">     296 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidZapper(</span></a>
+<a name="297"><span class="lineNum">     297 </span>            :                     deleverageData.zapperCall.target</a>
+<a name="298"><span class="lineNum">     298 </span>            :                 );</a>
+<a name="299"><span class="lineNum">     299 </span>            :             }</a>
+<a name="300"><span class="lineNum">     300 </span>            : </a>
+<a name="301"><span class="lineNum">     301 </span><span class="lineCov">          1 :             SwapperLib.zap(zapperCall);</span></a>
+<a name="302"><span class="lineNum">     302 </span>            :         }</a>
+<a name="303"><span class="lineNum">     303 </span>            : </a>
+<a name="304"><span class="lineNum">     304 </span><span class="lineCov">          1 :         if (deleverageData.swapData.call.length &gt; 0) {</span></a>
+<a name="305"><span class="lineNum">     305 </span>            :             // swap for borrow underlying</a>
+<a name="306"><span class="lineNum">     306 </span><span class="lineCov">          1 :             if (!centralRegistry.isSwapper(deleverageData.swapData.target)) {</span></a>
+<a name="307"><span class="lineNum">     307 </span><span class="lineNoCov">          0 :                 revert PositionFolding__InvalidSwapper(</span></a>
+<a name="308"><span class="lineNum">     308 </span>            :                     deleverageData.swapData.target</a>
+<a name="309"><span class="lineNum">     309 </span>            :                 );</a>
+<a name="310"><span class="lineNum">     310 </span>            :             }</a>
+<a name="311"><span class="lineNum">     311 </span>            : </a>
+<a name="312"><span class="lineNum">     312 </span><span class="lineCov">          1 :             SwapperLib.swap(centralRegistry, deleverageData.swapData);</span></a>
+<a name="313"><span class="lineNum">     313 </span>            :         }</a>
+<a name="314"><span class="lineNum">     314 </span>            : </a>
+<a name="315"><span class="lineNum">     315 </span>            :         // repay debt</a>
+<a name="316"><span class="lineNum">     316 </span><span class="lineCov">          1 :         uint256 repayAmount = deleverageData.repayAmount;</span></a>
+<a name="317"><span class="lineNum">     317 </span><span class="lineCov">          1 :         DToken borrowToken = deleverageData.borrowToken;</span></a>
+<a name="318"><span class="lineNum">     318 </span>            : </a>
+<a name="319"><span class="lineNum">     319 </span><span class="lineCov">          1 :         address borrowUnderlying = borrowToken.underlying();</span></a>
+<a name="320"><span class="lineNum">     320 </span><span class="lineCov">          1 :         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -</span></a>
+<a name="321"><span class="lineNum">     321 </span>            :             repayAmount;</a>
+<a name="322"><span class="lineNum">     322 </span>            : </a>
+<a name="323"><span class="lineNum">     323 </span><span class="lineCov">          1 :         SwapperLib._approveTokenIfNeeded(</span></a>
+<a name="324"><span class="lineNum">     324 </span>            :             borrowUnderlying,</a>
+<a name="325"><span class="lineNum">     325 </span>            :             address(borrowToken),</a>
+<a name="326"><span class="lineNum">     326 </span>            :             repayAmount</a>
+<a name="327"><span class="lineNum">     327 </span>            :         );</a>
 <a name="328"><span class="lineNum">     328 </span>            : </a>
-<a name="329"><span class="lineNum">     329 </span><span class="lineCov">          1 :         if (remaining &gt; 0) {</span></a>
-<a name="330"><span class="lineNum">     330 </span>            :             // remaining borrow underlying back to user</a>
-<a name="331"><span class="lineNum">     331 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="332"><span class="lineNum">     332 </span>            :                 borrowUnderlying,</a>
-<a name="333"><span class="lineNum">     333 </span>            :                 redeemer,</a>
-<a name="334"><span class="lineNum">     334 </span>            :                 remaining</a>
-<a name="335"><span class="lineNum">     335 </span>            :             );</a>
-<a name="336"><span class="lineNum">     336 </span>            :         }</a>
-<a name="337"><span class="lineNum">     337 </span>            : </a>
-<a name="338"><span class="lineNum">     338 </span>            :         // transfer remaining collateral underlying back to the user</a>
-<a name="339"><span class="lineNum">     339 </span><span class="lineCov">          1 :         remaining = IERC20(collateralUnderlying).balanceOf(address(this));</span></a>
-<a name="340"><span class="lineNum">     340 </span>            : </a>
-<a name="341"><span class="lineNum">     341 </span><span class="lineCov">          1 :         if (remaining &gt; 0) {</span></a>
-<a name="342"><span class="lineNum">     342 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
-<a name="343"><span class="lineNum">     343 </span>            :                 collateralUnderlying,</a>
-<a name="344"><span class="lineNum">     344 </span>            :                 redeemer,</a>
-<a name="345"><span class="lineNum">     345 </span>            :                 remaining</a>
-<a name="346"><span class="lineNum">     346 </span>            :             );</a>
-<a name="347"><span class="lineNum">     347 </span>            :         }</a>
-<a name="348"><span class="lineNum">     348 </span>            : </a>
-<a name="349"><span class="lineNum">     349 </span><span class="lineCov">          1 :         SwapperLib._removeApprovalIfNeeded(</span></a>
-<a name="350"><span class="lineNum">     350 </span>            :             borrowUnderlying,</a>
-<a name="351"><span class="lineNum">     351 </span>            :             address(borrowToken)</a>
-<a name="352"><span class="lineNum">     352 </span>            :         );</a>
-<a name="353"><span class="lineNum">     353 </span>            :     }</a>
-<a name="354"><span class="lineNum">     354 </span>            : </a>
-<a name="355"><span class="lineNum">     355 </span>            :     /// PUBLIC FUNCTIONS ///</a>
+<a name="329"><span class="lineNum">     329 </span><span class="lineCov">          1 :         DToken(address(borrowToken)).repayFor(redeemer, repayAmount);</span></a>
+<a name="330"><span class="lineNum">     330 </span>            : </a>
+<a name="331"><span class="lineNum">     331 </span><span class="lineCov">          1 :         if (remaining &gt; 0) {</span></a>
+<a name="332"><span class="lineNum">     332 </span>            :             // remaining borrow underlying back to user</a>
+<a name="333"><span class="lineNum">     333 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="334"><span class="lineNum">     334 </span>            :                 borrowUnderlying,</a>
+<a name="335"><span class="lineNum">     335 </span>            :                 redeemer,</a>
+<a name="336"><span class="lineNum">     336 </span>            :                 remaining</a>
+<a name="337"><span class="lineNum">     337 </span>            :             );</a>
+<a name="338"><span class="lineNum">     338 </span>            :         }</a>
+<a name="339"><span class="lineNum">     339 </span>            : </a>
+<a name="340"><span class="lineNum">     340 </span>            :         // transfer remaining collateral underlying back to the user</a>
+<a name="341"><span class="lineNum">     341 </span><span class="lineCov">          1 :         remaining = IERC20(collateralUnderlying).balanceOf(address(this));</span></a>
+<a name="342"><span class="lineNum">     342 </span>            : </a>
+<a name="343"><span class="lineNum">     343 </span><span class="lineCov">          1 :         if (remaining &gt; 0) {</span></a>
+<a name="344"><span class="lineNum">     344 </span><span class="lineNoCov">          0 :             SafeTransferLib.safeTransfer(</span></a>
+<a name="345"><span class="lineNum">     345 </span>            :                 collateralUnderlying,</a>
+<a name="346"><span class="lineNum">     346 </span>            :                 redeemer,</a>
+<a name="347"><span class="lineNum">     347 </span>            :                 remaining</a>
+<a name="348"><span class="lineNum">     348 </span>            :             );</a>
+<a name="349"><span class="lineNum">     349 </span>            :         }</a>
+<a name="350"><span class="lineNum">     350 </span>            : </a>
+<a name="351"><span class="lineNum">     351 </span><span class="lineCov">          1 :         SwapperLib._removeApprovalIfNeeded(</span></a>
+<a name="352"><span class="lineNum">     352 </span>            :             borrowUnderlying,</a>
+<a name="353"><span class="lineNum">     353 </span>            :             address(borrowToken)</a>
+<a name="354"><span class="lineNum">     354 </span>            :         );</a>
+<a name="355"><span class="lineNum">     355 </span>            :     }</a>
 <a name="356"><span class="lineNum">     356 </span>            : </a>
-<a name="357"><span class="lineNum">     357 </span>            :     function queryAmountToBorrowForLeverageMax(</a>
-<a name="358"><span class="lineNum">     358 </span>            :         address user,</a>
-<a name="359"><span class="lineNum">     359 </span>            :         address borrowToken</a>
-<a name="360"><span class="lineNum">     360 </span>            :     ) public view returns (uint256) {</a>
-<a name="361"><span class="lineNum">     361 </span><span class="lineCov">          4 :         (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = marketManager</span></a>
-<a name="362"><span class="lineNum">     362 </span>            :             .statusOf(user);</a>
-<a name="363"><span class="lineNum">     363 </span><span class="lineCov">          4 :         uint256 maxLeverage = ((sumCollateral - sumDebt) *</span></a>
-<a name="364"><span class="lineNum">     364 </span>            :             MAX_LEVERAGE *</a>
-<a name="365"><span class="lineNum">     365 </span>            :             sumCollateral) /</a>
-<a name="366"><span class="lineNum">     366 </span>            :             (sumCollateral - maxDebt) /</a>
-<a name="367"><span class="lineNum">     367 </span>            :             DENOMINATOR -</a>
-<a name="368"><span class="lineNum">     368 </span>            :             sumCollateral;</a>
-<a name="369"><span class="lineNum">     369 </span>            : </a>
-<a name="370"><span class="lineNum">     370 </span><span class="lineCov">          4 :         (uint256 price, uint256 errorCode) = IOracleRouter(</span></a>
-<a name="371"><span class="lineNum">     371 </span>            :             ICentralRegistry(centralRegistry).oracleRouter()</a>
-<a name="372"><span class="lineNum">     372 </span>            :         ).getPrice(address(borrowToken), true, false);</a>
-<a name="373"><span class="lineNum">     373 </span>            : </a>
-<a name="374"><span class="lineNum">     374 </span><span class="lineCov">          4 :         if (errorCode != 0) {</span></a>
-<a name="375"><span class="lineNum">     375 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidTokenPrice();</span></a>
-<a name="376"><span class="lineNum">     376 </span>            :         }</a>
-<a name="377"><span class="lineNum">     377 </span>            : </a>
-<a name="378"><span class="lineNum">     378 </span><span class="lineCov">          4 :         return ((maxLeverage - sumDebt) * 1e18) / price;</span></a>
-<a name="379"><span class="lineNum">     379 </span>            :     }</a>
-<a name="380"><span class="lineNum">     380 </span>            : </a>
-<a name="381"><span class="lineNum">     381 </span>            :     /// @inheritdoc ERC165</a>
-<a name="382"><span class="lineNum">     382 </span>            :     function supportsInterface(</a>
-<a name="383"><span class="lineNum">     383 </span>            :         bytes4 interfaceId</a>
-<a name="384"><span class="lineNum">     384 </span>            :     ) public view override returns (bool) {</a>
-<a name="385"><span class="lineNum">     385 </span><span class="lineCov">         12 :         return</span></a>
-<a name="386"><span class="lineNum">     386 </span><span class="lineCov">         12 :             interfaceId == type(IPositionFolding).interfaceId ||</span></a>
-<a name="387"><span class="lineNum">     387 </span><span class="lineCov">          8 :             super.supportsInterface(interfaceId);</span></a>
-<a name="388"><span class="lineNum">     388 </span>            :     }</a>
-<a name="389"><span class="lineNum">     389 </span>            : </a>
-<a name="390"><span class="lineNum">     390 </span>            :     /// INTERNAL FUNCTIONS ///</a>
-<a name="391"><span class="lineNum">     391 </span>            : </a>
-<a name="392"><span class="lineNum">     392 </span>            :     function _leverage(LeverageStruct memory leverageData) internal {</a>
-<a name="393"><span class="lineNum">     393 </span><span class="lineCov">          2 :         DToken borrowToken = leverageData.borrowToken;</span></a>
-<a name="394"><span class="lineNum">     394 </span><span class="lineCov">          2 :         uint256 borrowAmount = leverageData.borrowAmount;</span></a>
-<a name="395"><span class="lineNum">     395 </span><span class="lineCov">          2 :         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(</span></a>
-<a name="396"><span class="lineNum">     396 </span>            :             msg.sender,</a>
-<a name="397"><span class="lineNum">     397 </span>            :             address(borrowToken)</a>
-<a name="398"><span class="lineNum">     398 </span>            :         );</a>
-<a name="399"><span class="lineNum">     399 </span>            : </a>
-<a name="400"><span class="lineNum">     400 </span><span class="lineCov">          2 :         if (borrowAmount &gt; maxBorrowAmount) {</span></a>
-<a name="401"><span class="lineNum">     401 </span><span class="lineNoCov">          0 :             revert PositionFolding__ExceedsMaximumBorrowAmount(</span></a>
-<a name="402"><span class="lineNum">     402 </span>            :                 borrowAmount,</a>
-<a name="403"><span class="lineNum">     403 </span>            :                 maxBorrowAmount</a>
-<a name="404"><span class="lineNum">     404 </span>            :             );</a>
-<a name="405"><span class="lineNum">     405 </span>            :         }</a>
-<a name="406"><span class="lineNum">     406 </span>            : </a>
-<a name="407"><span class="lineNum">     407 </span><span class="lineCov">          2 :         bytes memory params = abi.encode(leverageData);</span></a>
-<a name="408"><span class="lineNum">     408 </span>            : </a>
-<a name="409"><span class="lineNum">     409 </span><span class="lineCov">          2 :         DToken(address(borrowToken)).borrowForPositionFolding(</span></a>
-<a name="410"><span class="lineNum">     410 </span>            :             payable(msg.sender),</a>
-<a name="411"><span class="lineNum">     411 </span>            :             borrowAmount,</a>
-<a name="412"><span class="lineNum">     412 </span>            :             params</a>
-<a name="413"><span class="lineNum">     413 </span>            :         );</a>
-<a name="414"><span class="lineNum">     414 </span>            :     }</a>
-<a name="415"><span class="lineNum">     415 </span>            : </a>
-<a name="416"><span class="lineNum">     416 </span>            :     function _deleverage(DeleverageStruct memory deleverageData) internal {</a>
-<a name="417"><span class="lineNum">     417 </span><span class="lineCov">          1 :         bytes memory params = abi.encode(deleverageData);</span></a>
-<a name="418"><span class="lineNum">     418 </span><span class="lineCov">          1 :         CTokenPrimitive collateralToken = deleverageData.collateralToken;</span></a>
-<a name="419"><span class="lineNum">     419 </span><span class="lineCov">          1 :         uint256 collateralAmount = deleverageData.collateralAmount;</span></a>
+<a name="357"><span class="lineNum">     357 </span>            :     /// PUBLIC FUNCTIONS ///</a>
+<a name="358"><span class="lineNum">     358 </span>            : </a>
+<a name="359"><span class="lineNum">     359 </span>            :     function queryAmountToBorrowForLeverageMax(</a>
+<a name="360"><span class="lineNum">     360 </span>            :         address user,</a>
+<a name="361"><span class="lineNum">     361 </span>            :         address borrowToken</a>
+<a name="362"><span class="lineNum">     362 </span>            :     ) public view returns (uint256) {</a>
+<a name="363"><span class="lineNum">     363 </span><span class="lineCov">          4 :         (</span></a>
+<a name="364"><span class="lineNum">     364 </span>            :             uint256 sumCollateral,</a>
+<a name="365"><span class="lineNum">     365 </span>            :             uint256 maxDebt,</a>
+<a name="366"><span class="lineNum">     366 </span>            :             uint256 sumDebt</a>
+<a name="367"><span class="lineNum">     367 </span><span class="lineCov">          4 :         ) = marketManager.statusOf(user);</span></a>
+<a name="368"><span class="lineNum">     368 </span><span class="lineCov">          4 :         uint256 maxLeverage = ((sumCollateral - sumDebt) *</span></a>
+<a name="369"><span class="lineNum">     369 </span>            :             MAX_LEVERAGE *</a>
+<a name="370"><span class="lineNum">     370 </span>            :             sumCollateral) /</a>
+<a name="371"><span class="lineNum">     371 </span>            :             (sumCollateral - maxDebt) /</a>
+<a name="372"><span class="lineNum">     372 </span>            :             DENOMINATOR -</a>
+<a name="373"><span class="lineNum">     373 </span>            :             sumCollateral;</a>
+<a name="374"><span class="lineNum">     374 </span>            : </a>
+<a name="375"><span class="lineNum">     375 </span><span class="lineCov">          4 :         (uint256 price, uint256 errorCode) = IOracleRouter(</span></a>
+<a name="376"><span class="lineNum">     376 </span>            :             ICentralRegistry(centralRegistry).oracleRouter()</a>
+<a name="377"><span class="lineNum">     377 </span>            :         ).getPrice(address(borrowToken), true, false);</a>
+<a name="378"><span class="lineNum">     378 </span>            : </a>
+<a name="379"><span class="lineNum">     379 </span><span class="lineCov">          4 :         if (errorCode != 0) {</span></a>
+<a name="380"><span class="lineNum">     380 </span><span class="lineNoCov">          0 :             revert PositionFolding__InvalidTokenPrice();</span></a>
+<a name="381"><span class="lineNum">     381 </span>            :         }</a>
+<a name="382"><span class="lineNum">     382 </span>            : </a>
+<a name="383"><span class="lineNum">     383 </span><span class="lineCov">          4 :         return ((maxLeverage - sumDebt) * 1e18) / price;</span></a>
+<a name="384"><span class="lineNum">     384 </span>            :     }</a>
+<a name="385"><span class="lineNum">     385 </span>            : </a>
+<a name="386"><span class="lineNum">     386 </span>            :     /// @inheritdoc ERC165</a>
+<a name="387"><span class="lineNum">     387 </span>            :     function supportsInterface(</a>
+<a name="388"><span class="lineNum">     388 </span>            :         bytes4 interfaceId</a>
+<a name="389"><span class="lineNum">     389 </span>            :     ) public view override returns (bool) {</a>
+<a name="390"><span class="lineNum">     390 </span><span class="lineCov">         12 :         return</span></a>
+<a name="391"><span class="lineNum">     391 </span><span class="lineCov">         12 :             interfaceId == type(IPositionFolding).interfaceId ||</span></a>
+<a name="392"><span class="lineNum">     392 </span><span class="lineCov">          8 :             super.supportsInterface(interfaceId);</span></a>
+<a name="393"><span class="lineNum">     393 </span>            :     }</a>
+<a name="394"><span class="lineNum">     394 </span>            : </a>
+<a name="395"><span class="lineNum">     395 </span>            :     /// INTERNAL FUNCTIONS ///</a>
+<a name="396"><span class="lineNum">     396 </span>            : </a>
+<a name="397"><span class="lineNum">     397 </span>            :     function _leverage(LeverageStruct memory leverageData) internal {</a>
+<a name="398"><span class="lineNum">     398 </span><span class="lineCov">          2 :         DToken borrowToken = leverageData.borrowToken;</span></a>
+<a name="399"><span class="lineNum">     399 </span><span class="lineCov">          2 :         uint256 borrowAmount = leverageData.borrowAmount;</span></a>
+<a name="400"><span class="lineNum">     400 </span><span class="lineCov">          2 :         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(</span></a>
+<a name="401"><span class="lineNum">     401 </span>            :             msg.sender,</a>
+<a name="402"><span class="lineNum">     402 </span>            :             address(borrowToken)</a>
+<a name="403"><span class="lineNum">     403 </span>            :         );</a>
+<a name="404"><span class="lineNum">     404 </span>            : </a>
+<a name="405"><span class="lineNum">     405 </span><span class="lineCov">          2 :         if (borrowAmount &gt; maxBorrowAmount) {</span></a>
+<a name="406"><span class="lineNum">     406 </span><span class="lineNoCov">          0 :             revert PositionFolding__ExceedsMaximumBorrowAmount(</span></a>
+<a name="407"><span class="lineNum">     407 </span>            :                 borrowAmount,</a>
+<a name="408"><span class="lineNum">     408 </span>            :                 maxBorrowAmount</a>
+<a name="409"><span class="lineNum">     409 </span>            :             );</a>
+<a name="410"><span class="lineNum">     410 </span>            :         }</a>
+<a name="411"><span class="lineNum">     411 </span>            : </a>
+<a name="412"><span class="lineNum">     412 </span><span class="lineCov">          2 :         bytes memory params = abi.encode(leverageData);</span></a>
+<a name="413"><span class="lineNum">     413 </span>            : </a>
+<a name="414"><span class="lineNum">     414 </span><span class="lineCov">          2 :         DToken(address(borrowToken)).borrowForPositionFolding(</span></a>
+<a name="415"><span class="lineNum">     415 </span>            :             payable(msg.sender),</a>
+<a name="416"><span class="lineNum">     416 </span>            :             borrowAmount,</a>
+<a name="417"><span class="lineNum">     417 </span>            :             params</a>
+<a name="418"><span class="lineNum">     418 </span>            :         );</a>
+<a name="419"><span class="lineNum">     419 </span>            :     }</a>
 <a name="420"><span class="lineNum">     420 </span>            : </a>
-<a name="421"><span class="lineNum">     421 </span><span class="lineCov">          1 :         CTokenPrimitive(address(collateralToken)).withdrawByPositionFolding(</span></a>
-<a name="422"><span class="lineNum">     422 </span>            :             payable(msg.sender),</a>
-<a name="423"><span class="lineNum">     423 </span>            :             collateralAmount,</a>
-<a name="424"><span class="lineNum">     424 </span>            :             params</a>
-<a name="425"><span class="lineNum">     425 </span>            :         );</a>
-<a name="426"><span class="lineNum">     426 </span>            :     }</a>
-<a name="427"><span class="lineNum">     427 </span>            : }</a>
+<a name="421"><span class="lineNum">     421 </span>            :     function _deleverage(DeleverageStruct memory deleverageData) internal {</a>
+<a name="422"><span class="lineNum">     422 </span><span class="lineCov">          1 :         bytes memory params = abi.encode(deleverageData);</span></a>
+<a name="423"><span class="lineNum">     423 </span><span class="lineCov">          1 :         CTokenPrimitive collateralToken = deleverageData.collateralToken;</span></a>
+<a name="424"><span class="lineNum">     424 </span><span class="lineCov">          1 :         uint256 collateralAmount = deleverageData.collateralAmount;</span></a>
+<a name="425"><span class="lineNum">     425 </span>            : </a>
+<a name="426"><span class="lineNum">     426 </span><span class="lineCov">          1 :         CTokenPrimitive(address(collateralToken)).withdrawByPositionFolding(</span></a>
+<a name="427"><span class="lineNum">     427 </span>            :             payable(msg.sender),</a>
+<a name="428"><span class="lineNum">     428 </span>            :             collateralAmount,</a>
+<a name="429"><span class="lineNum">     429 </span>            :             params</a>
+<a name="430"><span class="lineNum">     430 </span>            :         );</a>
+<a name="431"><span class="lineNum">     431 </span>            :     }</a>
+<a name="432"><span class="lineNum">     432 </span>            : }</a>
 </pre>
       </td>
     </tr>

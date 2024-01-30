@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">3</td>
@@ -84,7 +84,7 @@
 <a name="22"><span class="lineNum">      22 </span>            : </a>
 <a name="23"><span class="lineNum">      23 </span>            :     /// CONSTANTS ///</a>
 <a name="24"><span class="lineNum">      24 </span>            : </a>
-<a name="25"><span class="lineNum">      25 </span>            :     /// keccak256(abi.encode(&quot;MAX_PNL_FACTOR_FOR_TRADERS&quot;));</a>
+<a name="25"><span class="lineNum">      25 </span>            :     /// @dev keccak256(abi.encode(&quot;MAX_PNL_FACTOR_FOR_TRADERS&quot;));</a>
 <a name="26"><span class="lineNum">      26 </span>            :     bytes32 public constant PNL_FACTOR_TYPE =</a>
 <a name="27"><span class="lineNum">      27 </span>            :         0xab15365d3aa743e766355e2557c230d8f943e195dc84d9b2b05928a07b635ee1;</a>
 <a name="28"><span class="lineNum">      28 </span>            : </a>
@@ -102,220 +102,244 @@
 <a name="40"><span class="lineNum">      40 </span>            :     ///      e.g. WBTC address for BTC.</a>
 <a name="41"><span class="lineNum">      41 </span>            :     mapping(address =&gt; address[]) public marketData;</a>
 <a name="42"><span class="lineNum">      42 </span>            : </a>
-<a name="43"><span class="lineNum">      43 </span>            :     /// @notice Price unit for token on GMX Reader.</a>
-<a name="44"><span class="lineNum">      44 </span>            :     mapping(address =&gt; uint256) internal _priceUnit;</a>
-<a name="45"><span class="lineNum">      45 </span>            : </a>
-<a name="46"><span class="lineNum">      46 </span>            :     /// ERRORS ///</a>
-<a name="47"><span class="lineNum">      47 </span>            : </a>
-<a name="48"><span class="lineNum">      48 </span>            :     error GMAdaptor__ChainIsNotSupported();</a>
-<a name="49"><span class="lineNum">      49 </span>            :     error GMAdaptor__GMXReaderIsZeroAddress();</a>
-<a name="50"><span class="lineNum">      50 </span>            :     error GMAdaptor__GMXDataStoreIsZeroAddress();</a>
-<a name="51"><span class="lineNum">      51 </span>            :     error GMAdaptor__MarketIsInvalid();</a>
-<a name="52"><span class="lineNum">      52 </span>            :     error GMAdaptor__AlteredTokenIsInvalid();</a>
-<a name="53"><span class="lineNum">      53 </span>            :     error GMAdaptor__AssetIsAlreadySupported();</a>
-<a name="54"><span class="lineNum">      54 </span>            :     error GMAdaptor__AssetIsNotSupported();</a>
-<a name="55"><span class="lineNum">      55 </span>            :     error GMAdaptor__MarketTokenIsNotSupported(address token);</a>
-<a name="56"><span class="lineNum">      56 </span>            : </a>
-<a name="57"><span class="lineNum">      57 </span>            :     /// CONSTRUCTOR ///</a>
-<a name="58"><span class="lineNum">      58 </span>            : </a>
-<a name="59"><span class="lineNum">      59 </span>            :     /// @param centralRegistry_ The address of central registry.</a>
-<a name="60"><span class="lineNum">      60 </span>            :     /// @param gmxReader_ The address of GMX Reader.</a>
-<a name="61"><span class="lineNum">      61 </span>            :     /// @param gmxDataStore_ The address of GMX DataStore.</a>
-<a name="62"><span class="lineNum">      62 </span>            :     constructor(</a>
-<a name="63"><span class="lineNum">      63 </span>            :         ICentralRegistry centralRegistry_,</a>
-<a name="64"><span class="lineNum">      64 </span>            :         address gmxReader_,</a>
-<a name="65"><span class="lineNum">      65 </span>            :         address gmxDataStore_</a>
-<a name="66"><span class="lineNum">      66 </span>            :     ) BaseOracleAdaptor(centralRegistry_) {</a>
-<a name="67"><span class="lineNum">      67 </span>            :         if (block.chainid != 42161) {</a>
-<a name="68"><span class="lineNum">      68 </span>            :             revert GMAdaptor__ChainIsNotSupported();</a>
-<a name="69"><span class="lineNum">      69 </span>            :         }</a>
-<a name="70"><span class="lineNum">      70 </span>            : </a>
-<a name="71"><span class="lineNum">      71 </span>            :         _setGMXReader(gmxReader_);</a>
-<a name="72"><span class="lineNum">      72 </span>            :         _setGMXDataStore(gmxDataStore_);</a>
-<a name="73"><span class="lineNum">      73 </span>            :     }</a>
-<a name="74"><span class="lineNum">      74 </span>            : </a>
-<a name="75"><span class="lineNum">      75 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
+<a name="43"><span class="lineNum">      43 </span>            :     /// @notice Underlying token address =&gt; Denomination for token</a>
+<a name="44"><span class="lineNum">      44 </span>            :     ///         inside the GMX Reader.</a>
+<a name="45"><span class="lineNum">      45 </span>            :     mapping(address =&gt; uint256) internal _priceUnit;</a>
+<a name="46"><span class="lineNum">      46 </span>            : </a>
+<a name="47"><span class="lineNum">      47 </span>            :     /// ERRORS ///</a>
+<a name="48"><span class="lineNum">      48 </span>            : </a>
+<a name="49"><span class="lineNum">      49 </span>            :     error GMAdaptor__ChainIsNotSupported();</a>
+<a name="50"><span class="lineNum">      50 </span>            :     error GMAdaptor__GMXReaderIsZeroAddress();</a>
+<a name="51"><span class="lineNum">      51 </span>            :     error GMAdaptor__GMXDataStoreIsZeroAddress();</a>
+<a name="52"><span class="lineNum">      52 </span>            :     error GMAdaptor__MarketIsInvalid();</a>
+<a name="53"><span class="lineNum">      53 </span>            :     error GMAdaptor__AlteredTokenIsInvalid();</a>
+<a name="54"><span class="lineNum">      54 </span>            :     error GMAdaptor__AssetIsAlreadySupported();</a>
+<a name="55"><span class="lineNum">      55 </span>            :     error GMAdaptor__AssetIsNotSupported();</a>
+<a name="56"><span class="lineNum">      56 </span>            :     error GMAdaptor__MarketTokenIsNotSupported(address token);</a>
+<a name="57"><span class="lineNum">      57 </span>            : </a>
+<a name="58"><span class="lineNum">      58 </span>            :     /// CONSTRUCTOR ///</a>
+<a name="59"><span class="lineNum">      59 </span>            : </a>
+<a name="60"><span class="lineNum">      60 </span>            :     /// @dev Only deployable on Arbitrum.</a>
+<a name="61"><span class="lineNum">      61 </span>            :     /// @param centralRegistry_ The address of central registry.</a>
+<a name="62"><span class="lineNum">      62 </span>            :     /// @param gmxReader_ The address of GMX Reader.</a>
+<a name="63"><span class="lineNum">      63 </span>            :     /// @param gmxDataStore_ The address of GMX DataStore.</a>
+<a name="64"><span class="lineNum">      64 </span>            :     constructor(</a>
+<a name="65"><span class="lineNum">      65 </span>            :         ICentralRegistry centralRegistry_,</a>
+<a name="66"><span class="lineNum">      66 </span>            :         address gmxReader_,</a>
+<a name="67"><span class="lineNum">      67 </span>            :         address gmxDataStore_</a>
+<a name="68"><span class="lineNum">      68 </span>            :     ) BaseOracleAdaptor(centralRegistry_) {</a>
+<a name="69"><span class="lineNum">      69 </span>            :         if (block.chainid != 42161) {</a>
+<a name="70"><span class="lineNum">      70 </span>            :             revert GMAdaptor__ChainIsNotSupported();</a>
+<a name="71"><span class="lineNum">      71 </span>            :         }</a>
+<a name="72"><span class="lineNum">      72 </span>            : </a>
+<a name="73"><span class="lineNum">      73 </span>            :         _setGMXReader(gmxReader_);</a>
+<a name="74"><span class="lineNum">      74 </span>            :         _setGMXDataStore(gmxDataStore_);</a>
+<a name="75"><span class="lineNum">      75 </span>            :     }</a>
 <a name="76"><span class="lineNum">      76 </span>            : </a>
-<a name="77"><span class="lineNum">      77 </span>            :     /// @notice Retrieves the price of a given asset.</a>
-<a name="78"><span class="lineNum">      78 </span>            :     /// @dev Uses Chainlink oracles to fetch the price data.</a>
-<a name="79"><span class="lineNum">      79 </span>            :     ///      Price is returned in USD or ETH depending on 'inUSD' parameter.</a>
-<a name="80"><span class="lineNum">      80 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
-<a name="81"><span class="lineNum">      81 </span>            :     /// @return pData A structure containing the price, error status,</a>
-<a name="82"><span class="lineNum">      82 </span>            :     ///               and the quote format of the price.</a>
-<a name="83"><span class="lineNum">      83 </span>            :     function getPrice(</a>
-<a name="84"><span class="lineNum">      84 </span>            :         address asset,</a>
-<a name="85"><span class="lineNum">      85 </span>            :         bool,</a>
-<a name="86"><span class="lineNum">      86 </span>            :         bool</a>
-<a name="87"><span class="lineNum">      87 </span>            :     ) external view override returns (PriceReturnData memory pData) {</a>
-<a name="88"><span class="lineNum">      88 </span><span class="lineCov">         12 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="89"><span class="lineNum">      89 </span><span class="lineNoCov">          0 :             revert GMAdaptor__AssetIsNotSupported();</span></a>
-<a name="90"><span class="lineNum">      90 </span>            :         }</a>
-<a name="91"><span class="lineNum">      91 </span>            : </a>
-<a name="92"><span class="lineNum">      92 </span><span class="lineCov">         12 :         IOracleRouter oracleRouter = IOracleRouter(</span></a>
-<a name="93"><span class="lineNum">      93 </span>            :             centralRegistry.oracleRouter()</a>
-<a name="94"><span class="lineNum">      94 </span>            :         );</a>
-<a name="95"><span class="lineNum">      95 </span>            : </a>
-<a name="96"><span class="lineNum">      96 </span><span class="lineCov">         12 :         uint256[] memory prices = new uint256[](3);</span></a>
-<a name="97"><span class="lineNum">      97 </span><span class="lineCov">         12 :         address[] memory tokens = marketData[asset];</span></a>
-<a name="98"><span class="lineNum">      98 </span><span class="lineCov">         12 :         uint256 errorCode;</span></a>
-<a name="99"><span class="lineNum">      99 </span><span class="lineCov">         12 :         address token;</span></a>
-<a name="100"><span class="lineNum">     100 </span>            : </a>
-<a name="101"><span class="lineNum">     101 </span><span class="lineCov">         12 :         for (uint256 i = 0; i &lt; 3; ++i) {</span></a>
-<a name="102"><span class="lineNum">     102 </span><span class="lineCov">         36 :             token = tokens[i];</span></a>
-<a name="103"><span class="lineNum">     103 </span>            : </a>
-<a name="104"><span class="lineNum">     104 </span><span class="lineCov">         36 :             (prices[i], errorCode) = oracleRouter.getPrice(token, true, false);</span></a>
-<a name="105"><span class="lineNum">     105 </span><span class="lineCov">         36 :             if (errorCode &gt; 0) {</span></a>
-<a name="106"><span class="lineNum">     106 </span><span class="lineNoCov">          0 :                 pData.hadError = true;</span></a>
-<a name="107"><span class="lineNum">     107 </span><span class="lineNoCov">          0 :                 return pData;</span></a>
-<a name="108"><span class="lineNum">     108 </span>            :             }</a>
+<a name="77"><span class="lineNum">      77 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
+<a name="78"><span class="lineNum">      78 </span>            : </a>
+<a name="79"><span class="lineNum">      79 </span>            :     /// @notice Retrieves the price of a given GMX GM token.</a>
+<a name="80"><span class="lineNum">      80 </span>            :     /// @dev Uses oracles (mostly Chainlink), can price both direct</a>
+<a name="81"><span class="lineNum">      81 </span>            :     ///      and synthetic GM Tokens.</a>
+<a name="82"><span class="lineNum">      82 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
+<a name="83"><span class="lineNum">      83 </span>            :     /// @return pData A structure containing the price, error status,</a>
+<a name="84"><span class="lineNum">      84 </span>            :     ///               and the quote format of the price.</a>
+<a name="85"><span class="lineNum">      85 </span>            :     function getPrice(</a>
+<a name="86"><span class="lineNum">      86 </span>            :         address asset,</a>
+<a name="87"><span class="lineNum">      87 </span>            :         bool, /* inUSD */</a>
+<a name="88"><span class="lineNum">      88 </span>            :         bool /* getLower */</a>
+<a name="89"><span class="lineNum">      89 </span>            :     ) external view override returns (PriceReturnData memory pData) {</a>
+<a name="90"><span class="lineNum">      90 </span>            :         // Validate we support pricing `asset`.</a>
+<a name="91"><span class="lineNum">      91 </span><span class="lineCov">         12 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="92"><span class="lineNum">      92 </span><span class="lineNoCov">          0 :             revert GMAdaptor__AssetIsNotSupported();</span></a>
+<a name="93"><span class="lineNum">      93 </span>            :         }</a>
+<a name="94"><span class="lineNum">      94 </span>            : </a>
+<a name="95"><span class="lineNum">      95 </span>            :         // Cache the Oracle Router.</a>
+<a name="96"><span class="lineNum">      96 </span><span class="lineCov">         12 :         IOracleRouter oracleRouter = IOracleRouter(</span></a>
+<a name="97"><span class="lineNum">      97 </span>            :             centralRegistry.oracleRouter()</a>
+<a name="98"><span class="lineNum">      98 </span>            :         );</a>
+<a name="99"><span class="lineNum">      99 </span>            : </a>
+<a name="100"><span class="lineNum">     100 </span><span class="lineCov">         12 :         uint256[] memory prices = new uint256[](3);</span></a>
+<a name="101"><span class="lineNum">     101 </span><span class="lineCov">         12 :         address[] memory tokens = marketData[asset];</span></a>
+<a name="102"><span class="lineNum">     102 </span><span class="lineCov">         12 :         uint256 errorCode;</span></a>
+<a name="103"><span class="lineNum">     103 </span><span class="lineCov">         12 :         address token;</span></a>
+<a name="104"><span class="lineNum">     104 </span>            : </a>
+<a name="105"><span class="lineNum">     105 </span>            :         // Pull the prices for each underlying (constituent) token</a>
+<a name="106"><span class="lineNum">     106 </span>            :         // making up the GMX GM token.</a>
+<a name="107"><span class="lineNum">     107 </span><span class="lineCov">         12 :         for (uint256 i; i &lt; 3; ++i) {</span></a>
+<a name="108"><span class="lineNum">     108 </span><span class="lineCov">         36 :             token = tokens[i];</span></a>
 <a name="109"><span class="lineNum">     109 </span>            : </a>
-<a name="110"><span class="lineNum">     110 </span><span class="lineCov">         36 :             prices[i] = (prices[i] * 1e30) / _priceUnit[token];</span></a>
-<a name="111"><span class="lineNum">     111 </span>            :         }</a>
-<a name="112"><span class="lineNum">     112 </span>            : </a>
-<a name="113"><span class="lineNum">     113 </span><span class="lineCov">         12 :         (int256 price, ) = gmxReader.getMarketTokenPrice(</span></a>
-<a name="114"><span class="lineNum">     114 </span>            :             gmxDataStore,</a>
-<a name="115"><span class="lineNum">     115 </span>            :             IReader.MarketProps(asset, tokens[3], tokens[1], tokens[2]),</a>
-<a name="116"><span class="lineNum">     116 </span>            :             IReader.PriceProps(prices[0], prices[0]),</a>
-<a name="117"><span class="lineNum">     117 </span>            :             IReader.PriceProps(prices[1], prices[1]),</a>
-<a name="118"><span class="lineNum">     118 </span>            :             IReader.PriceProps(prices[2], prices[2]),</a>
-<a name="119"><span class="lineNum">     119 </span>            :             PNL_FACTOR_TYPE,</a>
-<a name="120"><span class="lineNum">     120 </span>            :             true</a>
-<a name="121"><span class="lineNum">     121 </span>            :         );</a>
-<a name="122"><span class="lineNum">     122 </span>            : </a>
-<a name="123"><span class="lineNum">     123 </span><span class="lineCov">         12 :         if (price &lt;= 0) {</span></a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
-<a name="125"><span class="lineNum">     125 </span><span class="lineNoCov">          0 :             return pData;</span></a>
-<a name="126"><span class="lineNum">     126 </span>            :         }</a>
-<a name="127"><span class="lineNum">     127 </span>            : </a>
-<a name="128"><span class="lineNum">     128 </span><span class="lineCov">         12 :         uint256 newPrice = uint256(price) / 1e12;</span></a>
+<a name="110"><span class="lineNum">     110 </span><span class="lineCov">         36 :             (prices[i], errorCode) = oracleRouter.getPrice(token, true, false);</span></a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineCov">         36 :             if (errorCode &gt; 0) {</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineNoCov">          0 :                 pData.hadError = true;</span></a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineNoCov">          0 :                 return pData;</span></a>
+<a name="114"><span class="lineNum">     114 </span>            :             }</a>
+<a name="115"><span class="lineNum">     115 </span>            : </a>
+<a name="116"><span class="lineNum">     116 </span><span class="lineCov">         36 :             prices[i] = (prices[i] * 1e30) / _priceUnit[token];</span></a>
+<a name="117"><span class="lineNum">     117 </span>            :         }</a>
+<a name="118"><span class="lineNum">     118 </span>            : </a>
+<a name="119"><span class="lineNum">     119 </span>            :         // Pull token pricing data from gmxReader.</a>
+<a name="120"><span class="lineNum">     120 </span><span class="lineCov">         12 :         (int256 price, ) = gmxReader.getMarketTokenPrice(</span></a>
+<a name="121"><span class="lineNum">     121 </span>            :             gmxDataStore,</a>
+<a name="122"><span class="lineNum">     122 </span>            :             IReader.MarketProps(asset, tokens[3], tokens[1], tokens[2]),</a>
+<a name="123"><span class="lineNum">     123 </span>            :             IReader.PriceProps(prices[0], prices[0]),</a>
+<a name="124"><span class="lineNum">     124 </span>            :             IReader.PriceProps(prices[1], prices[1]),</a>
+<a name="125"><span class="lineNum">     125 </span>            :             IReader.PriceProps(prices[2], prices[2]),</a>
+<a name="126"><span class="lineNum">     126 </span>            :             PNL_FACTOR_TYPE,</a>
+<a name="127"><span class="lineNum">     127 </span>            :             true</a>
+<a name="128"><span class="lineNum">     128 </span>            :         );</a>
 <a name="129"><span class="lineNum">     129 </span>            : </a>
-<a name="130"><span class="lineNum">     130 </span><span class="lineCov">         12 :         if (_checkOracleOverflow(newPrice)) {</span></a>
-<a name="131"><span class="lineNum">     131 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
-<a name="132"><span class="lineNum">     132 </span><span class="lineNoCov">          0 :             return pData;</span></a>
-<a name="133"><span class="lineNum">     133 </span>            :         }</a>
-<a name="134"><span class="lineNum">     134 </span>            : </a>
-<a name="135"><span class="lineNum">     135 </span><span class="lineCov">         12 :         return</span></a>
-<a name="136"><span class="lineNum">     136 </span><span class="lineCov">         12 :             PriceReturnData({</span></a>
-<a name="137"><span class="lineNum">     137 </span>            :                 price: uint240(newPrice),</a>
-<a name="138"><span class="lineNum">     138 </span>            :                 hadError: false,</a>
-<a name="139"><span class="lineNum">     139 </span>            :                 inUSD: true</a>
-<a name="140"><span class="lineNum">     140 </span>            :             });</a>
-<a name="141"><span class="lineNum">     141 </span>            :     }</a>
-<a name="142"><span class="lineNum">     142 </span>            : </a>
-<a name="143"><span class="lineNum">     143 </span>            :     /// @notice Add a GMX GM Token as an asset.</a>
-<a name="144"><span class="lineNum">     144 </span>            :     /// @param asset The address of the token to add pricing for.</a>
-<a name="145"><span class="lineNum">     145 </span>            :     function addAsset(address asset, address alteredToken) external {</a>
-<a name="146"><span class="lineNum">     146 </span><span class="lineCov">         14 :         _checkElevatedPermissions();</span></a>
-<a name="147"><span class="lineNum">     147 </span>            : </a>
-<a name="148"><span class="lineNum">     148 </span><span class="lineCov">         14 :         if (isSupportedAsset[asset]) {</span></a>
-<a name="149"><span class="lineNum">     149 </span><span class="lineCov">          1 :             revert GMAdaptor__AssetIsAlreadySupported();</span></a>
-<a name="150"><span class="lineNum">     150 </span>            :         }</a>
-<a name="151"><span class="lineNum">     151 </span>            : </a>
-<a name="152"><span class="lineNum">     152 </span><span class="lineCov">         13 :         IReader.MarketProps memory market = gmxReader.getMarket(</span></a>
-<a name="153"><span class="lineNum">     153 </span>            :             gmxDataStore,</a>
-<a name="154"><span class="lineNum">     154 </span>            :             asset</a>
-<a name="155"><span class="lineNum">     155 </span>            :         );</a>
-<a name="156"><span class="lineNum">     156 </span><span class="lineCov">         13 :         bool isSynthetic = market.indexToken.code.length == 0;</span></a>
-<a name="157"><span class="lineNum">     157 </span>            : </a>
-<a name="158"><span class="lineNum">     158 </span>            :         if (</a>
-<a name="159"><span class="lineNum">     159 </span><span class="lineCov">         13 :             market.indexToken == address(0) ||</span></a>
-<a name="160"><span class="lineNum">     160 </span><span class="lineCov">         13 :             market.longToken == address(0) ||</span></a>
-<a name="161"><span class="lineNum">     161 </span><span class="lineCov">         13 :             market.shortToken == address(0)</span></a>
-<a name="162"><span class="lineNum">     162 </span>            :         ) {</a>
-<a name="163"><span class="lineNum">     163 </span><span class="lineNoCov">          0 :             revert GMAdaptor__MarketIsInvalid();</span></a>
-<a name="164"><span class="lineNum">     164 </span>            :         }</a>
-<a name="165"><span class="lineNum">     165 </span>            : </a>
-<a name="166"><span class="lineNum">     166 </span>            :         if (</a>
-<a name="167"><span class="lineNum">     167 </span><span class="lineCov">         13 :             (isSynthetic &amp;&amp; alteredToken == address(0)) ||</span></a>
-<a name="168"><span class="lineNum">     168 </span>            :             (!isSynthetic &amp;&amp; alteredToken != address(0))</a>
-<a name="169"><span class="lineNum">     169 </span>            :         ) {</a>
-<a name="170"><span class="lineNum">     170 </span><span class="lineCov">          1 :             revert GMAdaptor__AlteredTokenIsInvalid();</span></a>
-<a name="171"><span class="lineNum">     171 </span>            :         }</a>
-<a name="172"><span class="lineNum">     172 </span>            : </a>
-<a name="173"><span class="lineNum">     173 </span><span class="lineCov">         12 :         IOracleRouter oracleRouter = IOracleRouter(</span></a>
-<a name="174"><span class="lineNum">     174 </span>            :             centralRegistry.oracleRouter()</a>
-<a name="175"><span class="lineNum">     175 </span>            :         );</a>
-<a name="176"><span class="lineNum">     176 </span>            : </a>
-<a name="177"><span class="lineNum">     177 </span><span class="lineCov">         12 :         address[] memory tokens = new address[](4);</span></a>
-<a name="178"><span class="lineNum">     178 </span><span class="lineCov">         12 :         tokens[0] = isSynthetic ? alteredToken : market.indexToken;</span></a>
-<a name="179"><span class="lineNum">     179 </span><span class="lineCov">         12 :         tokens[1] = market.longToken;</span></a>
-<a name="180"><span class="lineNum">     180 </span><span class="lineCov">         12 :         tokens[2] = market.shortToken;</span></a>
-<a name="181"><span class="lineNum">     181 </span><span class="lineCov">         12 :         tokens[3] = market.indexToken;</span></a>
-<a name="182"><span class="lineNum">     182 </span>            : </a>
-<a name="183"><span class="lineNum">     183 </span><span class="lineCov">         12 :         address token;</span></a>
-<a name="184"><span class="lineNum">     184 </span>            : </a>
-<a name="185"><span class="lineNum">     185 </span><span class="lineCov">         12 :         for (uint256 i = 0; i &lt; 3; ++i) {</span></a>
-<a name="186"><span class="lineNum">     186 </span><span class="lineCov">         34 :             token = tokens[i];</span></a>
-<a name="187"><span class="lineNum">     187 </span>            : </a>
-<a name="188"><span class="lineNum">     188 </span><span class="lineCov">         34 :             if (!oracleRouter.isSupportedAsset(token)) {</span></a>
-<a name="189"><span class="lineNum">     189 </span><span class="lineCov">          2 :                 revert GMAdaptor__MarketTokenIsNotSupported(token);</span></a>
-<a name="190"><span class="lineNum">     190 </span>            :             }</a>
-<a name="191"><span class="lineNum">     191 </span>            : </a>
-<a name="192"><span class="lineNum">     192 </span><span class="lineCov">         32 :             if (_priceUnit[token] == 0) {</span></a>
-<a name="193"><span class="lineNum">     193 </span><span class="lineCov">         20 :                 _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();</span></a>
-<a name="194"><span class="lineNum">     194 </span>            :             }</a>
-<a name="195"><span class="lineNum">     195 </span>            :         }</a>
-<a name="196"><span class="lineNum">     196 </span>            : </a>
-<a name="197"><span class="lineNum">     197 </span><span class="lineCov">         10 :         marketData[asset] = tokens;</span></a>
-<a name="198"><span class="lineNum">     198 </span><span class="lineCov">         10 :         isSupportedAsset[asset] = true;</span></a>
-<a name="199"><span class="lineNum">     199 </span>            :     }</a>
-<a name="200"><span class="lineNum">     200 </span>            : </a>
-<a name="201"><span class="lineNum">     201 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
-<a name="202"><span class="lineNum">     202 </span>            :     /// @dev Calls back into oracle router to notify it of its removal.</a>
-<a name="203"><span class="lineNum">     203 </span>            :     /// @param asset The address of the supported asset to remove from</a>
-<a name="204"><span class="lineNum">     204 </span>            :     ///              the adaptor.</a>
-<a name="205"><span class="lineNum">     205 </span>            :     function removeAsset(address asset) external override {</a>
-<a name="206"><span class="lineNum">     206 </span><span class="lineCov">          5 :         _checkElevatedPermissions();</span></a>
-<a name="207"><span class="lineNum">     207 </span>            : </a>
-<a name="208"><span class="lineNum">     208 </span><span class="lineCov">          5 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="209"><span class="lineNum">     209 </span><span class="lineCov">          1 :             revert GMAdaptor__AssetIsNotSupported();</span></a>
-<a name="210"><span class="lineNum">     210 </span>            :         }</a>
-<a name="211"><span class="lineNum">     211 </span>            : </a>
-<a name="212"><span class="lineNum">     212 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
-<a name="213"><span class="lineNum">     213 </span><span class="lineCov">          4 :         delete isSupportedAsset[asset];</span></a>
+<a name="130"><span class="lineNum">     130 </span>            :         // Make sure we got a positive price, bubble up an error,</a>
+<a name="131"><span class="lineNum">     131 </span>            :         // if we got 0 or a negative number.</a>
+<a name="132"><span class="lineNum">     132 </span><span class="lineCov">         12 :         if (price &lt;= 0) {</span></a>
+<a name="133"><span class="lineNum">     133 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
+<a name="134"><span class="lineNum">     134 </span><span class="lineNoCov">          0 :             return pData;</span></a>
+<a name="135"><span class="lineNum">     135 </span>            :         }</a>
+<a name="136"><span class="lineNum">     136 </span>            : </a>
+<a name="137"><span class="lineNum">     137 </span>            :         // Convert from 30 decimals to standardized 18.</a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">         12 :         uint256 newPrice = uint256(price) / 1e12;</span></a>
+<a name="139"><span class="lineNum">     139 </span>            : </a>
+<a name="140"><span class="lineNum">     140 </span>            :         // Validate price will not overflow on conversion to uint240.</a>
+<a name="141"><span class="lineNum">     141 </span><span class="lineCov">         12 :         if (_checkOracleOverflow(newPrice)) {</span></a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
+<a name="143"><span class="lineNum">     143 </span><span class="lineNoCov">          0 :             return pData;</span></a>
+<a name="144"><span class="lineNum">     144 </span>            :         }</a>
+<a name="145"><span class="lineNum">     145 </span>            : </a>
+<a name="146"><span class="lineNum">     146 </span><span class="lineCov">         12 :         pData.inUSD = true;</span></a>
+<a name="147"><span class="lineNum">     147 </span><span class="lineCov">         12 :         pData.price = uint240(newPrice);</span></a>
+<a name="148"><span class="lineNum">     148 </span>            :     }</a>
+<a name="149"><span class="lineNum">     149 </span>            : </a>
+<a name="150"><span class="lineNum">     150 </span>            :     /// @notice Adds pricing support for `asset`, a GMX GM token.</a>
+<a name="151"><span class="lineNum">     151 </span>            :     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`</a>
+<a name="152"><span class="lineNum">     152 </span>            :     ///      is called.</a>
+<a name="153"><span class="lineNum">     153 </span>            :     /// @param asset The address of the GMX GM token to add pricing</a>
+<a name="154"><span class="lineNum">     154 </span>            :     ///              support for.</a>
+<a name="155"><span class="lineNum">     155 </span>            :     /// @param alteredToken The address of the token to use to price</a>
+<a name="156"><span class="lineNum">     156 </span>            :     ///                     a GM token synthetically.</a>
+<a name="157"><span class="lineNum">     157 </span>            :     function addAsset(address asset, address alteredToken) external {</a>
+<a name="158"><span class="lineNum">     158 </span><span class="lineCov">         14 :         _checkElevatedPermissions();</span></a>
+<a name="159"><span class="lineNum">     159 </span>            : </a>
+<a name="160"><span class="lineNum">     160 </span>            :         // Validate we do not currently support `asset`.</a>
+<a name="161"><span class="lineNum">     161 </span><span class="lineCov">         14 :         if (isSupportedAsset[asset]) {</span></a>
+<a name="162"><span class="lineNum">     162 </span><span class="lineCov">          1 :             revert GMAdaptor__AssetIsAlreadySupported();</span></a>
+<a name="163"><span class="lineNum">     163 </span>            :         }</a>
+<a name="164"><span class="lineNum">     164 </span>            : </a>
+<a name="165"><span class="lineNum">     165 </span><span class="lineCov">         13 :         IReader.MarketProps memory market = gmxReader.getMarket(</span></a>
+<a name="166"><span class="lineNum">     166 </span>            :             gmxDataStore,</a>
+<a name="167"><span class="lineNum">     167 </span>            :             asset</a>
+<a name="168"><span class="lineNum">     168 </span>            :         );</a>
+<a name="169"><span class="lineNum">     169 </span>            :         // Check whether the GM token needs to be synthetically priced.</a>
+<a name="170"><span class="lineNum">     170 </span><span class="lineCov">         13 :         bool isSynthetic = market.indexToken.code.length == 0;</span></a>
+<a name="171"><span class="lineNum">     171 </span>            : </a>
+<a name="172"><span class="lineNum">     172 </span>            :         // Validate the market is configured inside gmxReader.</a>
+<a name="173"><span class="lineNum">     173 </span>            :         if (</a>
+<a name="174"><span class="lineNum">     174 </span><span class="lineCov">         13 :             market.indexToken == address(0) ||</span></a>
+<a name="175"><span class="lineNum">     175 </span><span class="lineCov">         13 :             market.longToken == address(0) ||</span></a>
+<a name="176"><span class="lineNum">     176 </span><span class="lineCov">         13 :             market.shortToken == address(0)</span></a>
+<a name="177"><span class="lineNum">     177 </span>            :         ) {</a>
+<a name="178"><span class="lineNum">     178 </span><span class="lineNoCov">          0 :             revert GMAdaptor__MarketIsInvalid();</span></a>
+<a name="179"><span class="lineNum">     179 </span>            :         }</a>
+<a name="180"><span class="lineNum">     180 </span>            : </a>
+<a name="181"><span class="lineNum">     181 </span>            :         // Make sure both `asset` and `alteredToken` parameters</a>
+<a name="182"><span class="lineNum">     182 </span>            :         // are configured properly.</a>
+<a name="183"><span class="lineNum">     183 </span>            :         if (</a>
+<a name="184"><span class="lineNum">     184 </span><span class="lineCov">         13 :             (isSynthetic &amp;&amp; alteredToken == address(0)) ||</span></a>
+<a name="185"><span class="lineNum">     185 </span>            :             (!isSynthetic &amp;&amp; alteredToken != address(0))</a>
+<a name="186"><span class="lineNum">     186 </span>            :         ) {</a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">          1 :             revert GMAdaptor__AlteredTokenIsInvalid();</span></a>
+<a name="188"><span class="lineNum">     188 </span>            :         }</a>
+<a name="189"><span class="lineNum">     189 </span>            : </a>
+<a name="190"><span class="lineNum">     190 </span><span class="lineCov">         12 :         IOracleRouter oracleRouter = IOracleRouter(</span></a>
+<a name="191"><span class="lineNum">     191 </span>            :             centralRegistry.oracleRouter()</a>
+<a name="192"><span class="lineNum">     192 </span>            :         );</a>
+<a name="193"><span class="lineNum">     193 </span>            : </a>
+<a name="194"><span class="lineNum">     194 </span><span class="lineCov">         12 :         address[] memory tokens = new address[](4);</span></a>
+<a name="195"><span class="lineNum">     195 </span><span class="lineCov">         12 :         tokens[0] = isSynthetic ? alteredToken : market.indexToken;</span></a>
+<a name="196"><span class="lineNum">     196 </span><span class="lineCov">         12 :         tokens[1] = market.longToken;</span></a>
+<a name="197"><span class="lineNum">     197 </span><span class="lineCov">         12 :         tokens[2] = market.shortToken;</span></a>
+<a name="198"><span class="lineNum">     198 </span><span class="lineCov">         12 :         tokens[3] = market.indexToken;</span></a>
+<a name="199"><span class="lineNum">     199 </span>            : </a>
+<a name="200"><span class="lineNum">     200 </span><span class="lineCov">         12 :         address token;</span></a>
+<a name="201"><span class="lineNum">     201 </span>            : </a>
+<a name="202"><span class="lineNum">     202 </span>            :         // Configure pricing denomination based on underlying tokens decimals.</a>
+<a name="203"><span class="lineNum">     203 </span><span class="lineCov">         12 :         for (uint256 i; i &lt; 3; ++i) {</span></a>
+<a name="204"><span class="lineNum">     204 </span><span class="lineCov">         34 :             token = tokens[i];</span></a>
+<a name="205"><span class="lineNum">     205 </span>            : </a>
+<a name="206"><span class="lineNum">     206 </span><span class="lineCov">         34 :             if (!oracleRouter.isSupportedAsset(token)) {</span></a>
+<a name="207"><span class="lineNum">     207 </span><span class="lineCov">          2 :                 revert GMAdaptor__MarketTokenIsNotSupported(token);</span></a>
+<a name="208"><span class="lineNum">     208 </span>            :             }</a>
+<a name="209"><span class="lineNum">     209 </span>            : </a>
+<a name="210"><span class="lineNum">     210 </span><span class="lineCov">         32 :             if (_priceUnit[token] == 0) {</span></a>
+<a name="211"><span class="lineNum">     211 </span><span class="lineCov">         20 :                 _priceUnit[token] = WAD * 10 ** IERC20(token).decimals();</span></a>
+<a name="212"><span class="lineNum">     212 </span>            :             }</a>
+<a name="213"><span class="lineNum">     213 </span>            :         }</a>
 <a name="214"><span class="lineNum">     214 </span>            : </a>
-<a name="215"><span class="lineNum">     215 </span>            :         // Wipe config mapping entries for a gas refund.</a>
-<a name="216"><span class="lineNum">     216 </span><span class="lineCov">          4 :         delete marketData[asset];</span></a>
-<a name="217"><span class="lineNum">     217 </span>            : </a>
-<a name="218"><span class="lineNum">     218 </span>            :         // Notify the oracle router that we are going to</a>
-<a name="219"><span class="lineNum">     219 </span>            :         // stop supporting the asset.</a>
-<a name="220"><span class="lineNum">     220 </span><span class="lineCov">          4 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
-<a name="221"><span class="lineNum">     221 </span>            :     }</a>
-<a name="222"><span class="lineNum">     222 </span>            : </a>
-<a name="223"><span class="lineNum">     223 </span>            :     /// @notice Set GMX Reader address.</a>
-<a name="224"><span class="lineNum">     224 </span>            :     function setGMXReader(address newReader) external {</a>
-<a name="225"><span class="lineNum">     225 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
-<a name="226"><span class="lineNum">     226 </span>            : </a>
-<a name="227"><span class="lineNum">     227 </span><span class="lineNoCov">          0 :         _setGMXReader(newReader);</span></a>
-<a name="228"><span class="lineNum">     228 </span>            :     }</a>
-<a name="229"><span class="lineNum">     229 </span>            : </a>
-<a name="230"><span class="lineNum">     230 </span>            :     /// @notice Set GMX DataStore address.</a>
-<a name="231"><span class="lineNum">     231 </span>            :     function setGMXDataStore(address newDataStore) external {</a>
-<a name="232"><span class="lineNum">     232 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
-<a name="233"><span class="lineNum">     233 </span>            : </a>
-<a name="234"><span class="lineNum">     234 </span><span class="lineNoCov">          0 :         _setGMXDataStore(newDataStore);</span></a>
-<a name="235"><span class="lineNum">     235 </span>            :     }</a>
-<a name="236"><span class="lineNum">     236 </span>            : </a>
-<a name="237"><span class="lineNum">     237 </span>            :     /// INTERNAL FUNCTIONS ///</a>
-<a name="238"><span class="lineNum">     238 </span>            : </a>
-<a name="239"><span class="lineNum">     239 </span>            :     /// @notice Set GMX Reader address.</a>
-<a name="240"><span class="lineNum">     240 </span>            :     function _setGMXReader(address newReader) internal {</a>
-<a name="241"><span class="lineNum">     241 </span><span class="lineNoCov">          0 :         if (newReader == address(0)) {</span></a>
-<a name="242"><span class="lineNum">     242 </span><span class="lineNoCov">          0 :             revert GMAdaptor__GMXReaderIsZeroAddress();</span></a>
-<a name="243"><span class="lineNum">     243 </span>            :         }</a>
-<a name="244"><span class="lineNum">     244 </span>            : </a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineNoCov">          0 :         gmxReader = IReader(newReader);</span></a>
-<a name="246"><span class="lineNum">     246 </span>            :     }</a>
+<a name="215"><span class="lineNum">     215 </span>            :         // Save adaptor data and update mapping that we support `asset` now.</a>
+<a name="216"><span class="lineNum">     216 </span><span class="lineCov">         10 :         marketData[asset] = tokens;</span></a>
+<a name="217"><span class="lineNum">     217 </span><span class="lineCov">         10 :         isSupportedAsset[asset] = true;</span></a>
+<a name="218"><span class="lineNum">     218 </span>            :     }</a>
+<a name="219"><span class="lineNum">     219 </span>            : </a>
+<a name="220"><span class="lineNum">     220 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
+<a name="221"><span class="lineNum">     221 </span>            :     /// @dev Calls back into Oracle Router to notify it of its removal.</a>
+<a name="222"><span class="lineNum">     222 </span>            :     ///      Requires that `asset` is currently supported.</a>
+<a name="223"><span class="lineNum">     223 </span>            :     /// @param asset The address of the supported asset to remove from</a>
+<a name="224"><span class="lineNum">     224 </span>            :     ///              the adaptor.</a>
+<a name="225"><span class="lineNum">     225 </span>            :     function removeAsset(address asset) external override {</a>
+<a name="226"><span class="lineNum">     226 </span><span class="lineCov">          5 :         _checkElevatedPermissions();</span></a>
+<a name="227"><span class="lineNum">     227 </span>            : </a>
+<a name="228"><span class="lineNum">     228 </span>            :         // Validate that `asset` is currently supported.</a>
+<a name="229"><span class="lineNum">     229 </span><span class="lineCov">          5 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="230"><span class="lineNum">     230 </span><span class="lineCov">          1 :             revert GMAdaptor__AssetIsNotSupported();</span></a>
+<a name="231"><span class="lineNum">     231 </span>            :         }</a>
+<a name="232"><span class="lineNum">     232 </span>            : </a>
+<a name="233"><span class="lineNum">     233 </span>            :         // Wipe config mapping entries for a gas refund.</a>
+<a name="234"><span class="lineNum">     234 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineCov">          4 :         delete isSupportedAsset[asset];</span></a>
+<a name="236"><span class="lineNum">     236 </span><span class="lineCov">          4 :         delete marketData[asset];</span></a>
+<a name="237"><span class="lineNum">     237 </span>            : </a>
+<a name="238"><span class="lineNum">     238 </span>            :         // Notify the Oracle Router that we are going to</a>
+<a name="239"><span class="lineNum">     239 </span>            :         // stop supporting the asset.</a>
+<a name="240"><span class="lineNum">     240 </span><span class="lineCov">          4 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
+<a name="241"><span class="lineNum">     241 </span>            :     }</a>
+<a name="242"><span class="lineNum">     242 </span>            : </a>
+<a name="243"><span class="lineNum">     243 </span>            :     /// @notice Permissioned function to set a new GMX Reader address.</a>
+<a name="244"><span class="lineNum">     244 </span>            :     /// @param newReader The address to set as the new GMX Reader.</a>
+<a name="245"><span class="lineNum">     245 </span>            :     function setGMXReader(address newReader) external {</a>
+<a name="246"><span class="lineNum">     246 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
 <a name="247"><span class="lineNum">     247 </span>            : </a>
-<a name="248"><span class="lineNum">     248 </span>            :     /// @notice Set GMX DataStore address.</a>
-<a name="249"><span class="lineNum">     249 </span>            :     function _setGMXDataStore(address newDataStore) internal {</a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineNoCov">          0 :         if (newDataStore == address(0)) {</span></a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineNoCov">          0 :             revert GMAdaptor__GMXDataStoreIsZeroAddress();</span></a>
-<a name="252"><span class="lineNum">     252 </span>            :         }</a>
-<a name="253"><span class="lineNum">     253 </span>            : </a>
-<a name="254"><span class="lineNum">     254 </span><span class="lineNoCov">          0 :         gmxDataStore = newDataStore;</span></a>
-<a name="255"><span class="lineNum">     255 </span>            :     }</a>
-<a name="256"><span class="lineNum">     256 </span>            : }</a>
+<a name="248"><span class="lineNum">     248 </span><span class="lineNoCov">          0 :         _setGMXReader(newReader);</span></a>
+<a name="249"><span class="lineNum">     249 </span>            :     }</a>
+<a name="250"><span class="lineNum">     250 </span>            : </a>
+<a name="251"><span class="lineNum">     251 </span>            :     /// @notice Permissioned function to set a new GMX DataStore address.</a>
+<a name="252"><span class="lineNum">     252 </span>            :     /// @param newDataStore The address to set as the new GMX DataStore.</a>
+<a name="253"><span class="lineNum">     253 </span>            :     function setGMXDataStore(address newDataStore) external {</a>
+<a name="254"><span class="lineNum">     254 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
+<a name="255"><span class="lineNum">     255 </span>            : </a>
+<a name="256"><span class="lineNum">     256 </span><span class="lineNoCov">          0 :         _setGMXDataStore(newDataStore);</span></a>
+<a name="257"><span class="lineNum">     257 </span>            :     }</a>
+<a name="258"><span class="lineNum">     258 </span>            : </a>
+<a name="259"><span class="lineNum">     259 </span>            :     /// INTERNAL FUNCTIONS ///</a>
+<a name="260"><span class="lineNum">     260 </span>            : </a>
+<a name="261"><span class="lineNum">     261 </span>            :     /// @notice Helper function to set a new GMX Reader address.</a>
+<a name="262"><span class="lineNum">     262 </span>            :     /// @param newReader The address to set as the new GMX Reader.</a>
+<a name="263"><span class="lineNum">     263 </span>            :     function _setGMXReader(address newReader) internal {</a>
+<a name="264"><span class="lineNum">     264 </span><span class="lineNoCov">          0 :         if (newReader == address(0)) {</span></a>
+<a name="265"><span class="lineNum">     265 </span><span class="lineNoCov">          0 :             revert GMAdaptor__GMXReaderIsZeroAddress();</span></a>
+<a name="266"><span class="lineNum">     266 </span>            :         }</a>
+<a name="267"><span class="lineNum">     267 </span>            : </a>
+<a name="268"><span class="lineNum">     268 </span><span class="lineNoCov">          0 :         gmxReader = IReader(newReader);</span></a>
+<a name="269"><span class="lineNum">     269 </span>            :     }</a>
+<a name="270"><span class="lineNum">     270 </span>            : </a>
+<a name="271"><span class="lineNum">     271 </span>            :     /// @notice Helper function to set a new GMX DataStore address.</a>
+<a name="272"><span class="lineNum">     272 </span>            :     /// @param newDataStore The address to set as the new GMX DataStore.</a>
+<a name="273"><span class="lineNum">     273 </span>            :     function _setGMXDataStore(address newDataStore) internal {</a>
+<a name="274"><span class="lineNum">     274 </span><span class="lineNoCov">          0 :         if (newDataStore == address(0)) {</span></a>
+<a name="275"><span class="lineNum">     275 </span><span class="lineNoCov">          0 :             revert GMAdaptor__GMXDataStoreIsZeroAddress();</span></a>
+<a name="276"><span class="lineNum">     276 </span>            :         }</a>
+<a name="277"><span class="lineNum">     277 </span>            : </a>
+<a name="278"><span class="lineNum">     278 </span><span class="lineNoCov">          0 :         gmxDataStore = newDataStore;</span></a>
+<a name="279"><span class="lineNum">     279 </span>            :     }</a>
+<a name="280"><span class="lineNum">     280 </span>            : }</a>
 </pre>
       </td>
     </tr>
