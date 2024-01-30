@@ -11,16 +11,14 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// EVENTS ///
 
     event CamelotVolatileLPAssetAdded(
-        address asset,
-        AdaptorData assetConfig
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
     );
-
     event CamelotVolatileLPAssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error CamelotVolatileLPAdaptor__AssetIsNotSupported();
-    error CamelotVolatileLPAdaptor__AssetIsAlreadyAdded();
     error CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
 
     /// CONSTRUCTOR ///
@@ -31,28 +29,6 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of a given Camelot Volatile LP.
-    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
-    /// @param asset The address of the asset for which the price is needed.
-    /// @param inUSD A boolean to determine if the price should be returned in
-    ///              USD or not.
-    /// @param getLower A boolean to determine if lower of two oracle prices
-    ///                 should be retrieved.
-    /// @return A structure containing the price, error status,
-    ///         and the quote format of the price.
-    function getPrice(
-        address asset,
-        bool inUSD,
-        bool getLower
-    ) external view override returns (PriceReturnData memory) {
-        // Validate we support pricing `asset`.
-        if (!isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
-        }
-
-        return _getPrice(asset, inUSD, getLower);
-    }
-
     /// @notice Adds pricing support for `asset`, a new Camelot Volatile LP.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
@@ -62,15 +38,18 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     ) external override {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsAlreadyAdded();
-        }
         if (ICamelotPair(asset).stableSwap()) {
             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         AdaptorData memory data = _addAsset(asset);
-        emit CamelotVolatileLPAssetAdded(asset, data);
+        emit CamelotVolatileLPAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -80,11 +59,6 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     ///              the adaptor.
     function removeAsset(address asset) external virtual override {
         _checkElevatedPermissions();
-
-        // Validate that `asset` is currently supported.
-        if (!isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
-        }
 
         _removeAsset(asset);
         emit CamelotVolatileLPAssetRemoved(asset);

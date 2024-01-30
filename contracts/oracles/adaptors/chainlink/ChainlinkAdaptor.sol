@@ -50,7 +50,11 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event ChainlinkAssetAdded(address asset, AdaptorData assetConfig);
+    event ChainlinkAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event ChainlinkAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -137,6 +141,14 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;
         uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;
 
+        // If the buffered max price is above uint240 its theoretically
+        // possible to get a price which would lose precision on uint240
+        // conversion, which we need to protect against in getPrice() so
+        // we can add a second protective layer here.
+        if (bufferedMaxPrice > type(uint240).max) {
+            bufferedMaxPrice = type(uint240).max;
+        }
+
         if (bufferedMinPrice >= bufferedMaxPrice) {
             revert ChainlinkAdaptor__InvalidMinMaxConfig();
         }
@@ -158,8 +170,15 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             : DEFAULT_HEART_BEAT;
         data.aggregator = IChainlink(aggregator);
         data.isConfigured = true;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit ChainlinkAssetAdded(asset, data);
+        emit ChainlinkAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.

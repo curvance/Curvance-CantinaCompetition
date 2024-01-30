@@ -38,8 +38,11 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// EVENTS ///
 
-    event BalancerStablePoolAssetAdded(address asset, AdaptorData assetConfig);
-
+    event BalancerStablePoolAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event BalancerStablePoolAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -90,7 +93,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             .underlyingOrConstituent
             .length;
         uint256 averagePrice;
-        uint256 availablePriceCount;
+        uint256 numPrices;
 
         uint256 price;
         uint256 errorCode;
@@ -105,32 +108,35 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 inUSD,
                 getLower
             );
-            // If we receive a BAD_SOURCE error, bubble up an error.
-            if (errorCode == BAD_SOURCE) {
+
+            // Validate we did not run into any errors pricing the quote asset.
+            if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
-            // Otherwise add the price to the average and increment
-            // number of prices.
-            } else {
-                averagePrice += price;
-                ++availablePriceCount;
-            }
+            } 
+            
+            // We did not have an error, so we can add the price
+            // to the average, and increment number of prices.
+            averagePrice += price;
+            ++numPrices;
+            
         }
 
         // If we were not able to price anything, bubble up an error.
         if (averagePrice == 0) {
             pData.hadError = true;
             return pData;
-        } else {
-            averagePrice = ((averagePrice / availablePriceCount) * pool.getRate()) / WAD;
-            
-            if (_checkOracleOverflow(averagePrice)) {
-                pData.hadError = true;
-                return pData;
-            }
+        } 
 
-            pData.price = uint240(averagePrice);
+        averagePrice = ((averagePrice / numPrices) * pool.getRate()) / WAD;
+        
+        // Validate price will not overflow on conversion to uint240.
+        if (_checkOracleOverflow(averagePrice)) {
+            pData.hadError = true;
+            return pData;
         }
+
+        pData.price = uint240(averagePrice);
     }
 
     /// @notice Adds pricing support for `asset`, a new Balancer BPT.
@@ -140,10 +146,6 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
-
-        if (isSupportedAsset[asset]) {
-            revert BalancerStablePoolAdaptor__ConfigurationError();
-        }
 
         IBalancerPool pool = IBalancerPool(asset);
 
@@ -185,8 +187,15 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
         // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit BalancerStablePoolAssetAdded(asset, data);
+        emit BalancerStablePoolAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -202,12 +211,13 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Wipe config mapping entries for a gas refund.
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        // Notify the Oracle Router that we are going to stop supporting the asset
+        // Notify the Oracle Router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit BalancerStablePoolAssetRemoved(asset);
     }

@@ -37,7 +37,11 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event RedstoneCoreAssetAdded(address asset, AdaptorData assetConfig);
+    event RedstoneCoreAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event RedstoneCoreAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -130,9 +134,15 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         data.max = (type(uint192).max * 9) / 10;
         data.symbolHash = symbolHash;
         data.isConfigured = true;
-        isSupportedAsset[asset] = true;
 
-        emit RedstoneCoreAssetAdded(asset, data);
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
+        isSupportedAsset[asset] = true;
+        emit RedstoneCoreAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.

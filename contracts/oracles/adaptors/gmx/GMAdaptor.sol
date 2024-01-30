@@ -44,6 +44,15 @@ contract GMAdaptor is BaseOracleAdaptor {
     ///         inside the GMX Reader.
     mapping(address => uint256) internal _priceUnit;
 
+    /// EVENTS ///
+
+    event GMXGMAssetAdded(
+        address asset, 
+        address[] marketTokens, 
+        bool isUpdate
+    );
+    event GMXGMAssetRemoved(address asset);
+
     /// ERRORS ///
 
     error GMAdaptor__ChainIsNotSupported();
@@ -51,7 +60,6 @@ contract GMAdaptor is BaseOracleAdaptor {
     error GMAdaptor__GMXDataStoreIsZeroAddress();
     error GMAdaptor__MarketIsInvalid();
     error GMAdaptor__AlteredTokenIsInvalid();
-    error GMAdaptor__AssetIsAlreadySupported();
     error GMAdaptor__AssetIsNotSupported();
     error GMAdaptor__MarketTokenIsNotSupported(address token);
 
@@ -157,11 +165,6 @@ contract GMAdaptor is BaseOracleAdaptor {
     function addAsset(address asset, address alteredToken) external {
         _checkElevatedPermissions();
 
-        // Validate we do not currently support `asset`.
-        if (isSupportedAsset[asset]) {
-            revert GMAdaptor__AssetIsAlreadySupported();
-        }
-
         IReader.MarketProps memory market = gmxReader.getMarket(
             gmxDataStore,
             asset
@@ -214,7 +217,15 @@ contract GMAdaptor is BaseOracleAdaptor {
 
         // Save adaptor data and update mapping that we support `asset` now.
         marketData[asset] = tokens;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
+        emit GMXGMAssetAdded(asset, tokens, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -238,6 +249,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         // Notify the Oracle Router that we are going to
         // stop supporting the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
+        emit GMXGMAssetRemoved(asset);
     }
 
     /// @notice Permissioned function to set a new GMX Reader address.

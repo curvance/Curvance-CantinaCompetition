@@ -46,7 +46,11 @@ contract Api3Adaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event Api3AssetAdded(address asset, AdaptorData assetConfig);
+    event Api3AssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event Api3AssetRemoved(address asset);
 
     /// ERRORS ///
@@ -136,6 +140,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
             : DEFAULT_HEART_BEAT;
 
         // Save adaptor data and update mapping that we support `asset` now.
+
         // Add a ~10% buffer to maximum price allowed from Api3 can stop 
         // updating its price before/above the min/max price. We use a maximum
         // buffered price of 2^224 - 1, which could overflow when trying to
@@ -144,9 +149,15 @@ contract Api3Adaptor is BaseOracleAdaptor {
         data.dapiNameHash = dapiNameHash;
         data.proxyFeed = IProxy(proxyFeed);
         data.isConfigured = true;
-        isSupportedAsset[asset] = true;
 
-        emit Api3AssetAdded(asset, data);
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
+        isSupportedAsset[asset] = true;
+        emit Api3AssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.

@@ -51,7 +51,11 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
 
     /// EVENTS ///
 
-    event CurvePoolAssetAdded(address asset, AdaptorData assetConfig);
+    event CurvePoolAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        isUpdate
+    );
     event CurvePoolAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -59,7 +63,6 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     error Curve2PoolLPAdaptor__Reentrant();
     error Curve2PoolLPAdaptor__BoundsExceeded();
     error Curve2PoolLPAdaptor__UnsupportedPool();
-    error Curve2PoolLPAdaptor__AssetIsAlreadyAdded();
     error Curve2PoolLPAdaptor__AssetIsNotSupported();
     error Curve2PoolLPAdaptor__QuoteAssetIsNotSupported();
     error Curve2PoolLPAdaptor__InvalidBounds();
@@ -186,11 +189,6 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
-        // Validate we do not currently support `asset`.
-        if (isSupportedAsset[asset]) {
-            revert Curve2PoolLPAdaptor__AssetIsAlreadyAdded();
-        }
-
         // Make sure that the asset being added has the proper input
         // via this sanity check.
         if (isLocked(asset, 2)) {
@@ -289,8 +287,15 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
 
         // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit CurvePoolAssetAdded(asset, data);
+        emit CurvePoolAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.

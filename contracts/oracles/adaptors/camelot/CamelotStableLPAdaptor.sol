@@ -10,14 +10,15 @@ import { ICamelotPair } from "contracts/interfaces/external/camelot/ICamelotPair
 contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     /// EVENTS ///
 
-    event CamelotStableLPAssetAdded(address asset, AdaptorData assetConfig);
-
+    event CamelotStableLPAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event CamelotStableLPAssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error CamelotStableLPAdaptor__AssetIsNotSupported();
-    error CamelotStableLPAdaptor__AssetIsAlreadyAdded();
     error CamelotStableLPAdaptor__AssetIsNotStableLP();
 
     /// CONSTRUCTOR ///
@@ -28,28 +29,6 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of a given Camelot Stable LP.
-    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
-    /// @param asset The address of the asset for which the price is needed.
-    /// @param inUSD A boolean to determine if the price should be returned in
-    ///              USD or not.
-    /// @param getLower A boolean to determine if lower of two oracle prices
-    ///                 should be retrieved.
-    /// @return A structure containing the price, error status,
-    ///         and the quote format of the price.
-    function getPrice(
-        address asset,
-        bool inUSD,
-        bool getLower
-    ) external view override returns (PriceReturnData memory) {
-        // Validate we support pricing `asset`.
-        if (!isSupportedAsset[asset]) {
-            revert CamelotStableLPAdaptor__AssetIsNotSupported();
-        }
-
-        return _getPrice(asset, inUSD, getLower);
-    }
-
     /// @notice Adds pricing support for `asset`, new Camelot Stable LP.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
@@ -59,15 +38,18 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     ) external override {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert CamelotStableLPAdaptor__AssetIsAlreadyAdded();
-        }
         if (!ICamelotPair(asset).stableSwap()) {
             revert CamelotStableLPAdaptor__AssetIsNotStableLP();
         }
 
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         AdaptorData memory data = _addAsset(asset);
-        emit CamelotStableLPAssetAdded(asset, data);
+        emit CamelotStableLPAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -77,11 +59,6 @@ contract CamelotStableLPAdaptor is BaseStableLPAdaptor {
     ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
-
-        // Validate that `asset` is currently supported.
-        if (!isSupportedAsset[asset]) {
-            revert CamelotStableLPAdaptor__AssetIsNotSupported();
-        }
 
         _removeAsset(asset);
         emit CamelotStableLPAssetRemoved(asset);

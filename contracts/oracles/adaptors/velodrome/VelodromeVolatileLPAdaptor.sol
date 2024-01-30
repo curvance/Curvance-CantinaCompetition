@@ -12,9 +12,9 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
 
     event VelodromeVolatileLPAssetAdded(
         address asset,
-        AdaptorData assetConfig
+        AdaptorData assetConfig,
+        bool isUpdate
     );
-
     event VelodromeVolatileLPAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -31,25 +31,6 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset The bpt being priced
-    /// @param inUSD Indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
-    function getPrice(
-        address asset,
-        bool inUSD,
-        bool getLower
-    ) external view override returns (PriceReturnData memory) {
-        // Validate we support pricing `asset`.
-        if (!isSupportedAsset[asset]) {
-            revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
-        }
-
-        return _getPrice(asset, inUSD, getLower);
-    }
-
     /// @notice Add a Balancer Stable Pool Bpt as an asset.
     /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
     /// @param asset The address of the bpt to add
@@ -57,16 +38,19 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
         address asset
     ) external override {
         _checkElevatedPermissions();
-        
-        if (isSupportedAsset[asset]) {
-            revert VelodromeVolatileLPAdaptor__AssetIsAlreadyAdded();
-        }
+
         if (IVeloPool(asset).stable()) {
             revert VelodromeVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         AdaptorData memory data = _addAsset(asset);
-        emit VelodromeVolatileLPAssetAdded(asset, data);
+        emit VelodromeVolatileLPAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
@@ -79,11 +63,6 @@ contract VelodromeVolatileLPAdaptor is BaseVolatileLPAdaptor {
     ) external virtual override {
         _checkElevatedPermissions();
 
-        // Validate that `asset` is currently supported.
-        if (!isSupportedAsset[asset]) {
-            revert VelodromeVolatileLPAdaptor__AssetIsNotSupported();
-        }
-        
         _removeAsset(asset);
         emit VelodromeVolatileLPAssetRemoved(asset);
     }

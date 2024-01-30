@@ -46,9 +46,9 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     event PendlePTAssetAdded(
         address asset,
-        AdaptorData assetConfig
+        AdaptorData assetConfig,
+        bool isUpdate
     );
-
     event PendlePTAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -60,7 +60,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     error PendlePrincipalTokenAdaptor__CallIncreaseCardinality();
     error PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();
     error PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();
-    error PendlePrincipalTokenAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
 
@@ -131,10 +130,6 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     ) external {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert PendlePrincipalTokenAdaptor__ConfigurationError();
-        }
-
         // Make sure pt and market match.
         (IStandardizedYield sy, IPPrincipalToken pt, ) = data
             .market
@@ -170,8 +165,15 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
         // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit PendlePTAssetAdded(asset, data);
+        emit PendlePTAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.

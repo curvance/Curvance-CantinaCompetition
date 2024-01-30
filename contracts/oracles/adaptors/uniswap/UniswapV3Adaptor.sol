@@ -47,7 +47,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// EVENTS ///
 
-    event UniswapV3AssetAdded(address asset, AdaptorData assetConfig);
+    event UniswapV3AssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event UniswapV3AssetRemoved(address asset);
 
     /// ERRORS ///
@@ -136,9 +140,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, true, getLower);
 
-            // Make sure that if the Oracle Router had an error,
-            // it was not catastrophic
-            if (errorCode > 1) {
+            // Validate we did not run into any errors pricing the quote asset.
+            if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
             }
@@ -169,9 +172,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             (uint256 quoteTokenDenominator, uint256 errorCode) = OracleRouter
                 .getPrice(data.quoteToken, false, getLower);
 
-            // Make sure that if the Oracle Router had an error,
-            // it was not catastrophic.
-            if (errorCode > 1) {
+            // Validate we did not run into any errors pricing the quote asset.
+            if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
             }
@@ -200,6 +202,11 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         pData.price = uint240(twapPrice);
     }
 
+    /// @notice Adds pricing support for `asset`, a token inside a Univ3 lp.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the token.
+    /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
@@ -225,8 +232,15 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
         // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit UniswapV3AssetAdded(asset, data);
+        emit UniswapV3AssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
