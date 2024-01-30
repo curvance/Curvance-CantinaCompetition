@@ -84,7 +84,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @notice Add a Redstone Core Price Feed as an asset.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token to add pricing for.
+    /// @param asset The address of the token to add pricing support for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
     /// @param decimals The number of decimals the redstone core feed

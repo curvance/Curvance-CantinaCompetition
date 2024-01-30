@@ -205,7 +205,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// @notice Adds pricing support for `asset`, a token inside a Univ3 lp.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token.
+    /// @param asset The address of the token to add pricing support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();

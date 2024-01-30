@@ -29,9 +29,10 @@ contract VelodromeStableLPAdaptor is BaseStableLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset The address of the bpt to add
+    /// @notice Adds pricing support for `asset`, new Velodrome Stable LP.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the lp token to add pricing support for.
     function addAsset(
         address asset
     ) external override {

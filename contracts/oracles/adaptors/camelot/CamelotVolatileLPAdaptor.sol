@@ -32,7 +32,7 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// @notice Adds pricing support for `asset`, a new Camelot Volatile LP.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token to add pricing support for.
+    /// @param asset The address of the lp token to add pricing support for.
     function addAsset(
         address asset
     ) external override {

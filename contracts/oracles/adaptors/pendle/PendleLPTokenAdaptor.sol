@@ -121,7 +121,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @notice Adds pricing support for `asset`, a pendle lp token.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the Pendle lp token market.
+    /// @param asset The address of the Pendle lp token to add pricing
+    ///              support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(
         address asset,

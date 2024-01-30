@@ -65,7 +65,7 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     ///         a Univ2 style volatile liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token.
+    /// @param asset The address of the lp token to support pricing for.
     function addAsset(address asset) external virtual {
         _checkElevatedPermissions();
         _addAsset(asset);
@@ -166,7 +166,7 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     ///         an lp token for a Univ2 style volatile liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token.
+    /// @param asset The address of the lp token to add pricing support for.
     function _addAsset(
         address asset
     ) internal returns (AdaptorData memory data) {
