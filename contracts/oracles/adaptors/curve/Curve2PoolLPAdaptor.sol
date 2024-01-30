@@ -54,7 +54,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     event CurvePoolAssetAdded(
         address asset, 
         AdaptorData assetConfig, 
-        isUpdate
+        bool isUpdate
     );
     event CurvePoolAssetRemoved(address asset);
 
