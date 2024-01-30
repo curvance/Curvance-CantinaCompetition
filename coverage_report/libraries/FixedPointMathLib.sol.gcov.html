@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">3</td>
@@ -183,11 +183,11 @@
 <a name="121"><span class="lineNum">     121 </span>            :         /// @solidity memory-safe-assembly</a>
 <a name="122"><span class="lineNum">     122 </span>            :         assembly {</a>
 <a name="123"><span class="lineNum">     123 </span>            :             // Equivalent to require(d != 0 &amp;&amp; (y == 0 || x &lt;= type(uint256).max / y))</a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineCov">      87969 :             if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {</span></a>
+<a name="124"><span class="lineNum">     124 </span><span class="lineCov">      90386 :             if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {</span></a>
 <a name="125"><span class="lineNum">     125 </span>            :                 mstore(0x00, 0xad251c27) // `MulDivFailed()`.</a>
 <a name="126"><span class="lineNum">     126 </span>            :                 revert(0x1c, 0x04)</a>
 <a name="127"><span class="lineNum">     127 </span>            :             }</a>
-<a name="128"><span class="lineNum">     128 </span><span class="lineCov">      87963 :             z := div(mul(x, y), d)</span></a>
+<a name="128"><span class="lineNum">     128 </span><span class="lineCov">      90375 :             z := div(mul(x, y), d)</span></a>
 <a name="129"><span class="lineNum">     129 </span>            :         }</a>
 <a name="130"><span class="lineNum">     130 </span>            :     }</a>
 <a name="131"><span class="lineNum">     131 </span>            : </a>
@@ -197,11 +197,11 @@
 <a name="135"><span class="lineNum">     135 </span>            :         /// @solidity memory-safe-assembly</a>
 <a name="136"><span class="lineNum">     136 </span>            :         assembly {</a>
 <a name="137"><span class="lineNum">     137 </span>            :             // Equivalent to require(d != 0 &amp;&amp; (y == 0 || x &lt;= type(uint256).max / y))</a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       3519 :             if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">       3526 :             if iszero(mul(d, iszero(mul(y, gt(x, div(not(0), y)))))) {</span></a>
 <a name="139"><span class="lineNum">     139 </span>            :                 mstore(0x00, 0xad251c27) // `MulDivFailed()`.</a>
 <a name="140"><span class="lineNum">     140 </span>            :                 revert(0x1c, 0x04)</a>
 <a name="141"><span class="lineNum">     141 </span>            :             }</a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineCov">       3519 :             z := add(iszero(iszero(mod(mul(x, y), d))), div(mul(x, y), d))</span></a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineCov">       3526 :             z := add(iszero(iszero(mod(mul(x, y), d))), div(mul(x, y), d))</span></a>
 <a name="143"><span class="lineNum">     143 </span>            :         }</a>
 <a name="144"><span class="lineNum">     144 </span>            :     }</a>
 <a name="145"><span class="lineNum">     145 </span>            : </a>

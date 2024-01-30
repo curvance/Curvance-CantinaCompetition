@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">46</td>
@@ -338,20 +338,20 @@
 <a name="276"><span class="lineNum">     276 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="277"><span class="lineNum">     277 </span>            :     /// @param newCVE The new address of cve.</a>
 <a name="278"><span class="lineNum">     278 </span>            :     function setCVE(address newCVE) external {</a>
-<a name="279"><span class="lineNum">     279 </span><span class="lineCov">        572 :         _checkElevatedPermissions();</span></a>
+<a name="279"><span class="lineNum">     279 </span><span class="lineCov">        573 :         _checkElevatedPermissions();</span></a>
 <a name="280"><span class="lineNum">     280 </span>            : </a>
-<a name="281"><span class="lineNum">     281 </span><span class="lineCov">        571 :         cve = newCVE;</span></a>
-<a name="282"><span class="lineNum">     282 </span><span class="lineCov">        571 :         emit CoreContractSet(&quot;CVE&quot;, newCVE);</span></a>
+<a name="281"><span class="lineNum">     281 </span><span class="lineCov">        572 :         cve = newCVE;</span></a>
+<a name="282"><span class="lineNum">     282 </span><span class="lineCov">        572 :         emit CoreContractSet(&quot;CVE&quot;, newCVE);</span></a>
 <a name="283"><span class="lineNum">     283 </span>            :     }</a>
 <a name="284"><span class="lineNum">     284 </span>            : </a>
 <a name="285"><span class="lineNum">     285 </span>            :     /// @notice Sets a new veCVE contract address.</a>
 <a name="286"><span class="lineNum">     286 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="287"><span class="lineNum">     287 </span>            :     /// @param newVeCVE The new address of veCVE.</a>
 <a name="288"><span class="lineNum">     288 </span>            :     function setVeCVE(address newVeCVE) external {</a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">        564 :         _checkElevatedPermissions();</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
 <a name="290"><span class="lineNum">     290 </span>            : </a>
-<a name="291"><span class="lineNum">     291 </span><span class="lineCov">        563 :         veCVE = newVeCVE;</span></a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineCov">        563 :         emit CoreContractSet(&quot;VeCVE&quot;, newVeCVE);</span></a>
+<a name="291"><span class="lineNum">     291 </span><span class="lineCov">        564 :         veCVE = newVeCVE;</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">        564 :         emit CoreContractSet(&quot;VeCVE&quot;, newVeCVE);</span></a>
 <a name="293"><span class="lineNum">     293 </span>            :     }</a>
 <a name="294"><span class="lineNum">     294 </span>            : </a>
 <a name="295"><span class="lineNum">     295 </span>            :     /// @notice Sets a new oCVE contract address.</a>
@@ -370,10 +370,10 @@
 <a name="308"><span class="lineNum">     308 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="309"><span class="lineNum">     309 </span>            :     /// @param newCVELocker The new address of cveLocker.</a>
 <a name="310"><span class="lineNum">     310 </span>            :     function setCVELocker(address newCVELocker) external {</a>
-<a name="311"><span class="lineNum">     311 </span><span class="lineCov">        564 :         _checkElevatedPermissions();</span></a>
+<a name="311"><span class="lineNum">     311 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
 <a name="312"><span class="lineNum">     312 </span>            : </a>
-<a name="313"><span class="lineNum">     313 </span><span class="lineCov">        563 :         cveLocker = newCVELocker;</span></a>
-<a name="314"><span class="lineNum">     314 </span><span class="lineCov">        563 :         emit CoreContractSet(&quot;CVE Locker&quot;, newCVELocker);</span></a>
+<a name="313"><span class="lineNum">     313 </span><span class="lineCov">        564 :         cveLocker = newCVELocker;</span></a>
+<a name="314"><span class="lineNum">     314 </span><span class="lineCov">        564 :         emit CoreContractSet(&quot;CVE Locker&quot;, newCVELocker);</span></a>
 <a name="315"><span class="lineNum">     315 </span>            :     }</a>
 <a name="316"><span class="lineNum">     316 </span>            : </a>
 <a name="317"><span class="lineNum">     317 </span>            :     /// @notice Sets a new protocol messaging hub contract address.</a>
@@ -412,50 +412,50 @@
 <a name="350"><span class="lineNum">     350 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="351"><span class="lineNum">     351 </span>            :     /// @param newFeeAccumulator The new address of feeAccumulator.</a>
 <a name="352"><span class="lineNum">     352 </span>            :     function setFeeAccumulator(address newFeeAccumulator) external {</a>
-<a name="353"><span class="lineNum">     353 </span><span class="lineCov">        536 :         _checkElevatedPermissions();</span></a>
+<a name="353"><span class="lineNum">     353 </span><span class="lineCov">        537 :         _checkElevatedPermissions();</span></a>
 <a name="354"><span class="lineNum">     354 </span>            : </a>
-<a name="355"><span class="lineNum">     355 </span><span class="lineCov">        535 :         feeAccumulator = newFeeAccumulator;</span></a>
-<a name="356"><span class="lineNum">     356 </span><span class="lineCov">        535 :         emit CoreContractSet(&quot;Fee Accumulator&quot;, newFeeAccumulator);</span></a>
+<a name="355"><span class="lineNum">     355 </span><span class="lineCov">        536 :         feeAccumulator = newFeeAccumulator;</span></a>
+<a name="356"><span class="lineNum">     356 </span><span class="lineCov">        536 :         emit CoreContractSet(&quot;Fee Accumulator&quot;, newFeeAccumulator);</span></a>
 <a name="357"><span class="lineNum">     357 </span>            :     }</a>
 <a name="358"><span class="lineNum">     358 </span>            : </a>
 <a name="359"><span class="lineNum">     359 </span>            :     /// @notice Sets an address of WormholeCore contract.</a>
 <a name="360"><span class="lineNum">     360 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="361"><span class="lineNum">     361 </span>            :     /// @param newWormholeCore The new address of WormholeCore.</a>
 <a name="362"><span class="lineNum">     362 </span>            :     function setWormholeCore(address newWormholeCore) external {</a>
-<a name="363"><span class="lineNum">     363 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
+<a name="363"><span class="lineNum">     363 </span><span class="lineCov">        566 :         _checkElevatedPermissions();</span></a>
 <a name="364"><span class="lineNum">     364 </span>            : </a>
-<a name="365"><span class="lineNum">     365 </span><span class="lineCov">        565 :         wormholeCore = IWormhole(newWormholeCore);</span></a>
-<a name="366"><span class="lineNum">     366 </span><span class="lineCov">        565 :         emit WormholeCoreSet(newWormholeCore);</span></a>
+<a name="365"><span class="lineNum">     365 </span><span class="lineCov">        566 :         wormholeCore = IWormhole(newWormholeCore);</span></a>
+<a name="366"><span class="lineNum">     366 </span><span class="lineCov">        566 :         emit WormholeCoreSet(newWormholeCore);</span></a>
 <a name="367"><span class="lineNum">     367 </span>            :     }</a>
 <a name="368"><span class="lineNum">     368 </span>            : </a>
 <a name="369"><span class="lineNum">     369 </span>            :     /// @notice Sets an address of WormholeRelayer contract.</a>
 <a name="370"><span class="lineNum">     370 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="371"><span class="lineNum">     371 </span>            :     /// @param newWormholeRelayer The new address of wormholeRelayer.</a>
 <a name="372"><span class="lineNum">     372 </span>            :     function setWormholeRelayer(address newWormholeRelayer) external {</a>
-<a name="373"><span class="lineNum">     373 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
+<a name="373"><span class="lineNum">     373 </span><span class="lineCov">        566 :         _checkElevatedPermissions();</span></a>
 <a name="374"><span class="lineNum">     374 </span>            : </a>
-<a name="375"><span class="lineNum">     375 </span><span class="lineCov">        565 :         wormholeRelayer = IWormholeRelayer(newWormholeRelayer);</span></a>
-<a name="376"><span class="lineNum">     376 </span><span class="lineCov">        565 :         emit WormholeRelayerSet(newWormholeRelayer);</span></a>
+<a name="375"><span class="lineNum">     375 </span><span class="lineCov">        566 :         wormholeRelayer = IWormholeRelayer(newWormholeRelayer);</span></a>
+<a name="376"><span class="lineNum">     376 </span><span class="lineCov">        566 :         emit WormholeRelayerSet(newWormholeRelayer);</span></a>
 <a name="377"><span class="lineNum">     377 </span>            :     }</a>
 <a name="378"><span class="lineNum">     378 </span>            : </a>
 <a name="379"><span class="lineNum">     379 </span>            :     /// @notice Sets an address of Wormhole CircleRelayer contract.</a>
 <a name="380"><span class="lineNum">     380 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="381"><span class="lineNum">     381 </span>            :     /// @param newCircleRelayer The new address of Wormhole CircleRelayer.</a>
 <a name="382"><span class="lineNum">     382 </span>            :     function setCircleRelayer(address newCircleRelayer) external {</a>
-<a name="383"><span class="lineNum">     383 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
+<a name="383"><span class="lineNum">     383 </span><span class="lineCov">        566 :         _checkElevatedPermissions();</span></a>
 <a name="384"><span class="lineNum">     384 </span>            : </a>
-<a name="385"><span class="lineNum">     385 </span><span class="lineCov">        565 :         circleRelayer = ICircleRelayer(newCircleRelayer);</span></a>
-<a name="386"><span class="lineNum">     386 </span><span class="lineCov">        565 :         emit CircleRelayerSet(newCircleRelayer);</span></a>
+<a name="385"><span class="lineNum">     385 </span><span class="lineCov">        566 :         circleRelayer = ICircleRelayer(newCircleRelayer);</span></a>
+<a name="386"><span class="lineNum">     386 </span><span class="lineCov">        566 :         emit CircleRelayerSet(newCircleRelayer);</span></a>
 <a name="387"><span class="lineNum">     387 </span>            :     }</a>
 <a name="388"><span class="lineNum">     388 </span>            : </a>
 <a name="389"><span class="lineNum">     389 </span>            :     /// @notice Sets an address of Wormhole TokenBridgeRelayer contract.</a>
 <a name="390"><span class="lineNum">     390 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="391"><span class="lineNum">     391 </span>            :     /// @param newTokenBridgeRelayer The new address of Wormhole TokenBridgeRelayer.</a>
 <a name="392"><span class="lineNum">     392 </span>            :     function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {</a>
-<a name="393"><span class="lineNum">     393 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
+<a name="393"><span class="lineNum">     393 </span><span class="lineCov">        566 :         _checkElevatedPermissions();</span></a>
 <a name="394"><span class="lineNum">     394 </span>            : </a>
-<a name="395"><span class="lineNum">     395 </span><span class="lineCov">        565 :         tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);</span></a>
-<a name="396"><span class="lineNum">     396 </span><span class="lineCov">        565 :         emit TokenBridgeRelayerSet(newTokenBridgeRelayer);</span></a>
+<a name="395"><span class="lineNum">     395 </span><span class="lineCov">        566 :         tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);</span></a>
+<a name="396"><span class="lineNum">     396 </span><span class="lineCov">        566 :         emit TokenBridgeRelayerSet(newTokenBridgeRelayer);</span></a>
 <a name="397"><span class="lineNum">     397 </span>            :     }</a>
 <a name="398"><span class="lineNum">     398 </span>            : </a>
 <a name="399"><span class="lineNum">     399 </span>            :     /// @notice Register wormhole specific chain IDs for evm chain IDs.</a>
@@ -478,10 +478,10 @@
 <a name="416"><span class="lineNum">     416 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council.</a>
 <a name="417"><span class="lineNum">     417 </span>            :     /// @param newGelatoSponsor The new address of new gelato sponsor.</a>
 <a name="418"><span class="lineNum">     418 </span>            :     function setGelatoSponsor(address newGelatoSponsor) external {</a>
-<a name="419"><span class="lineNum">     419 </span><span class="lineCov">        565 :         _checkElevatedPermissions();</span></a>
+<a name="419"><span class="lineNum">     419 </span><span class="lineCov">        566 :         _checkElevatedPermissions();</span></a>
 <a name="420"><span class="lineNum">     420 </span>            : </a>
-<a name="421"><span class="lineNum">     421 </span><span class="lineCov">        565 :         gelatoSponsor = newGelatoSponsor;</span></a>
-<a name="422"><span class="lineNum">     422 </span><span class="lineCov">        565 :         emit GelatoSponsorSet(newGelatoSponsor);</span></a>
+<a name="421"><span class="lineNum">     421 </span><span class="lineCov">        566 :         gelatoSponsor = newGelatoSponsor;</span></a>
+<a name="422"><span class="lineNum">     422 </span><span class="lineCov">        566 :         emit GelatoSponsorSet(newGelatoSponsor);</span></a>
 <a name="423"><span class="lineNum">     423 </span>            :     }</a>
 <a name="424"><span class="lineNum">     424 </span>            : </a>
 <a name="425"><span class="lineNum">     425 </span>            :     /// @notice Sets the fee from yield by Curvance DAO to use as gas</a>
@@ -584,12 +584,12 @@
 <a name="522"><span class="lineNum">     522 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council,</a>
 <a name="523"><span class="lineNum">     523 </span>            :     ///      must be a positive boost i.e. &gt; 1.01 or greater multiplier</a>
 <a name="524"><span class="lineNum">     524 </span>            :     function setVoteBoostMultiplier(uint256 value) external {</a>
-<a name="525"><span class="lineNum">     525 </span><span class="lineCov">        823 :         _checkElevatedPermissions();</span></a>
+<a name="525"><span class="lineNum">     525 </span><span class="lineCov">        824 :         _checkElevatedPermissions();</span></a>
 <a name="526"><span class="lineNum">     526 </span>            : </a>
-<a name="527"><span class="lineNum">     527 </span><span class="lineCov">        822 :         if (value &lt; DENOMINATOR &amp;&amp; value != 0) {</span></a>
+<a name="527"><span class="lineNum">     527 </span><span class="lineCov">        823 :         if (value &lt; DENOMINATOR &amp;&amp; value != 0) {</span></a>
 <a name="528"><span class="lineNum">     528 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="529"><span class="lineNum">     529 </span>            :         }</a>
-<a name="530"><span class="lineNum">     530 </span><span class="lineCov">        821 :         voteBoostMultiplier = value;</span></a>
+<a name="530"><span class="lineNum">     530 </span><span class="lineCov">        822 :         voteBoostMultiplier = value;</span></a>
 <a name="531"><span class="lineNum">     531 </span>            :     }</a>
 <a name="532"><span class="lineNum">     532 </span>            : </a>
 <a name="533"><span class="lineNum">     533 </span>            :     /// @notice Sets the emissions boost received by choosing</a>
@@ -597,12 +597,12 @@
 <a name="535"><span class="lineNum">     535 </span>            :     /// @dev Only callable on a 7 day delay or by the Emergency Council,</a>
 <a name="536"><span class="lineNum">     536 </span>            :     ///      must be a positive boost i.e. &gt; 1.01 or greater multiplier</a>
 <a name="537"><span class="lineNum">     537 </span>            :     function setLockBoostMultiplier(uint256 value) external {</a>
-<a name="538"><span class="lineNum">     538 </span><span class="lineCov">        570 :         _checkElevatedPermissions();</span></a>
+<a name="538"><span class="lineNum">     538 </span><span class="lineCov">        571 :         _checkElevatedPermissions();</span></a>
 <a name="539"><span class="lineNum">     539 </span>            : </a>
-<a name="540"><span class="lineNum">     540 </span><span class="lineCov">        569 :         if (value &lt; DENOMINATOR &amp;&amp; value != 0) {</span></a>
+<a name="540"><span class="lineNum">     540 </span><span class="lineCov">        570 :         if (value &lt; DENOMINATOR &amp;&amp; value != 0) {</span></a>
 <a name="541"><span class="lineNum">     541 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="542"><span class="lineNum">     542 </span>            :         }</a>
-<a name="543"><span class="lineNum">     543 </span><span class="lineCov">        568 :         lockBoostMultiplier = value;</span></a>
+<a name="543"><span class="lineNum">     543 </span><span class="lineCov">        569 :         lockBoostMultiplier = value;</span></a>
 <a name="544"><span class="lineNum">     544 </span>            :     }</a>
 <a name="545"><span class="lineNum">     545 </span>            : </a>
 <a name="546"><span class="lineNum">     546 </span>            :     /// OWNERSHIP LOGIC</a>
@@ -638,20 +638,20 @@
 <a name="576"><span class="lineNum">     576 </span>            :     }</a>
 <a name="577"><span class="lineNum">     577 </span>            : </a>
 <a name="578"><span class="lineNum">     578 </span>            :     function transferEmergencyCouncil(address newEmergencyCouncil) external {</a>
-<a name="579"><span class="lineNum">     579 </span><span class="lineCov">        690 :         _checkEmergencyCouncilPermissions();</span></a>
+<a name="579"><span class="lineNum">     579 </span><span class="lineCov">        691 :         _checkEmergencyCouncilPermissions();</span></a>
 <a name="580"><span class="lineNum">     580 </span>            : </a>
-<a name="581"><span class="lineNum">     581 </span><span class="lineCov">        689 :         address previousEmergencyCouncil = emergencyCouncil;</span></a>
-<a name="582"><span class="lineNum">     582 </span><span class="lineCov">        689 :         emergencyCouncil = newEmergencyCouncil;</span></a>
+<a name="581"><span class="lineNum">     581 </span><span class="lineCov">        690 :         address previousEmergencyCouncil = emergencyCouncil;</span></a>
+<a name="582"><span class="lineNum">     582 </span><span class="lineCov">        690 :         emergencyCouncil = newEmergencyCouncil;</span></a>
 <a name="583"><span class="lineNum">     583 </span>            : </a>
 <a name="584"><span class="lineNum">     584 </span>            :         // Delete permission data</a>
-<a name="585"><span class="lineNum">     585 </span><span class="lineCov">        689 :         delete hasDaoPermissions[previousEmergencyCouncil];</span></a>
-<a name="586"><span class="lineNum">     586 </span><span class="lineCov">        689 :         delete hasElevatedPermissions[previousEmergencyCouncil];</span></a>
+<a name="585"><span class="lineNum">     585 </span><span class="lineCov">        690 :         delete hasDaoPermissions[previousEmergencyCouncil];</span></a>
+<a name="586"><span class="lineNum">     586 </span><span class="lineCov">        690 :         delete hasElevatedPermissions[previousEmergencyCouncil];</span></a>
 <a name="587"><span class="lineNum">     587 </span>            : </a>
 <a name="588"><span class="lineNum">     588 </span>            :         // Add new permission data</a>
-<a name="589"><span class="lineNum">     589 </span><span class="lineCov">        689 :         hasDaoPermissions[newEmergencyCouncil] = true;</span></a>
-<a name="590"><span class="lineNum">     590 </span><span class="lineCov">        689 :         hasElevatedPermissions[newEmergencyCouncil] = true;</span></a>
+<a name="589"><span class="lineNum">     589 </span><span class="lineCov">        690 :         hasDaoPermissions[newEmergencyCouncil] = true;</span></a>
+<a name="590"><span class="lineNum">     590 </span><span class="lineCov">        690 :         hasElevatedPermissions[newEmergencyCouncil] = true;</span></a>
 <a name="591"><span class="lineNum">     591 </span>            : </a>
-<a name="592"><span class="lineNum">     592 </span><span class="lineCov">        689 :         emit EmergencyCouncilTransferred(</span></a>
+<a name="592"><span class="lineNum">     592 </span><span class="lineCov">        690 :         emit EmergencyCouncilTransferred(</span></a>
 <a name="593"><span class="lineNum">     593 </span>            :             previousEmergencyCouncil,</a>
 <a name="594"><span class="lineNum">     594 </span>            :             newEmergencyCouncil</a>
 <a name="595"><span class="lineNum">     595 </span>            :         );</a>
@@ -831,16 +831,16 @@
 <a name="769"><span class="lineNum">     769 </span>            :     }</a>
 <a name="770"><span class="lineNum">     770 </span>            : </a>
 <a name="771"><span class="lineNum">     771 </span>            :     function addGaugeController(address newGaugeController) external {</a>
-<a name="772"><span class="lineNum">     772 </span><span class="lineCov">        572 :         _checkElevatedPermissions();</span></a>
+<a name="772"><span class="lineNum">     772 </span><span class="lineCov">        573 :         _checkElevatedPermissions();</span></a>
 <a name="773"><span class="lineNum">     773 </span>            : </a>
-<a name="774"><span class="lineNum">     774 </span><span class="lineCov">        571 :         if (isGaugeController[newGaugeController]) {</span></a>
+<a name="774"><span class="lineNum">     774 </span><span class="lineCov">        572 :         if (isGaugeController[newGaugeController]) {</span></a>
 <a name="775"><span class="lineNum">     775 </span>            :             // Gauge Controller already added</a>
 <a name="776"><span class="lineNum">     776 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="777"><span class="lineNum">     777 </span>            :         }</a>
 <a name="778"><span class="lineNum">     778 </span>            : </a>
-<a name="779"><span class="lineNum">     779 </span><span class="lineCov">        570 :         isGaugeController[newGaugeController] = true;</span></a>
+<a name="779"><span class="lineNum">     779 </span><span class="lineCov">        571 :         isGaugeController[newGaugeController] = true;</span></a>
 <a name="780"><span class="lineNum">     780 </span>            : </a>
-<a name="781"><span class="lineNum">     781 </span><span class="lineCov">        570 :         emit NewCurvanceContract(&quot;Gauge Controller&quot;, newGaugeController);</span></a>
+<a name="781"><span class="lineNum">     781 </span><span class="lineCov">        571 :         emit NewCurvanceContract(&quot;Gauge Controller&quot;, newGaugeController);</span></a>
 <a name="782"><span class="lineNum">     782 </span>            :     }</a>
 <a name="783"><span class="lineNum">     783 </span>            : </a>
 <a name="784"><span class="lineNum">     784 </span>            :     function removeGaugeController(address currentGaugeController) external {</a>
@@ -860,16 +860,16 @@
 <a name="798"><span class="lineNum">     798 </span>            :     }</a>
 <a name="799"><span class="lineNum">     799 </span>            : </a>
 <a name="800"><span class="lineNum">     800 </span>            :     function addHarvester(address newHarvester) external {</a>
-<a name="801"><span class="lineNum">     801 </span><span class="lineCov">        538 :         _checkElevatedPermissions();</span></a>
+<a name="801"><span class="lineNum">     801 </span><span class="lineCov">        539 :         _checkElevatedPermissions();</span></a>
 <a name="802"><span class="lineNum">     802 </span>            : </a>
-<a name="803"><span class="lineNum">     803 </span><span class="lineCov">        537 :         if (isHarvester[newHarvester]) {</span></a>
+<a name="803"><span class="lineNum">     803 </span><span class="lineCov">        538 :         if (isHarvester[newHarvester]) {</span></a>
 <a name="804"><span class="lineNum">     804 </span>            :             // Harvestor already added</a>
 <a name="805"><span class="lineNum">     805 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="806"><span class="lineNum">     806 </span>            :         }</a>
 <a name="807"><span class="lineNum">     807 </span>            : </a>
-<a name="808"><span class="lineNum">     808 </span><span class="lineCov">        536 :         isHarvester[newHarvester] = true;</span></a>
+<a name="808"><span class="lineNum">     808 </span><span class="lineCov">        537 :         isHarvester[newHarvester] = true;</span></a>
 <a name="809"><span class="lineNum">     809 </span>            : </a>
-<a name="810"><span class="lineNum">     810 </span><span class="lineCov">        536 :         emit NewCurvanceContract(&quot;Harvestor&quot;, newHarvester);</span></a>
+<a name="810"><span class="lineNum">     810 </span><span class="lineCov">        537 :         emit NewCurvanceContract(&quot;Harvestor&quot;, newHarvester);</span></a>
 <a name="811"><span class="lineNum">     811 </span>            :     }</a>
 <a name="812"><span class="lineNum">     812 </span>            : </a>
 <a name="813"><span class="lineNum">     813 </span>            :     function removeHarvester(address currentHarvester) external {</a>
@@ -895,16 +895,16 @@
 <a name="833"><span class="lineNum">     833 </span>            :         address newMarketManager,</a>
 <a name="834"><span class="lineNum">     834 </span>            :         uint256 marketInterestFactor</a>
 <a name="835"><span class="lineNum">     835 </span>            :     ) external {</a>
-<a name="836"><span class="lineNum">     836 </span><span class="lineCov">        651 :         _checkElevatedPermissions();</span></a>
+<a name="836"><span class="lineNum">     836 </span><span class="lineCov">        652 :         _checkElevatedPermissions();</span></a>
 <a name="837"><span class="lineNum">     837 </span>            : </a>
 <a name="838"><span class="lineNum">     838 </span>            :         // Validate that `newMarketManager` is not already added.</a>
-<a name="839"><span class="lineNum">     839 </span><span class="lineCov">        650 :         if (isMarketManager[newMarketManager]) {</span></a>
+<a name="839"><span class="lineNum">     839 </span><span class="lineCov">        651 :         if (isMarketManager[newMarketManager]) {</span></a>
 <a name="840"><span class="lineNum">     840 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="841"><span class="lineNum">     841 </span>            :         }</a>
 <a name="842"><span class="lineNum">     842 </span>            : </a>
 <a name="843"><span class="lineNum">     843 </span>            :         // Ensure that `newMarketManager` is a market manager.</a>
 <a name="844"><span class="lineNum">     844 </span>            :         if (</a>
-<a name="845"><span class="lineNum">     845 </span><span class="lineCov">        649 :             !ERC165Checker.supportsInterface(</span></a>
+<a name="845"><span class="lineNum">     845 </span><span class="lineCov">        650 :             !ERC165Checker.supportsInterface(</span></a>
 <a name="846"><span class="lineNum">     846 </span>            :                 newMarketManager,</a>
 <a name="847"><span class="lineNum">     847 </span>            :                 type(IMarketManager).interfaceId</a>
 <a name="848"><span class="lineNum">     848 </span>            :             )</a>
@@ -914,18 +914,18 @@
 <a name="852"><span class="lineNum">     852 </span>            : </a>
 <a name="853"><span class="lineNum">     853 </span>            :         // Validate that desired interest factored is within</a>
 <a name="854"><span class="lineNum">     854 </span>            :         // acceptable bounds.</a>
-<a name="855"><span class="lineNum">     855 </span><span class="lineCov">        648 :         if (marketInterestFactor &gt; 5000) {</span></a>
+<a name="855"><span class="lineNum">     855 </span><span class="lineCov">        649 :         if (marketInterestFactor &gt; 5000) {</span></a>
 <a name="856"><span class="lineNum">     856 </span><span class="lineCov">          1 :             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);</span></a>
 <a name="857"><span class="lineNum">     857 </span>            :         }</a>
 <a name="858"><span class="lineNum">     858 </span>            : </a>
-<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        647 :         isMarketManager[newMarketManager] = true;</span></a>
+<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        648 :         isMarketManager[newMarketManager] = true;</span></a>
 <a name="860"><span class="lineNum">     860 </span>            :         // We store supported markets semi redundantly for offchain querying.</a>
-<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        647 :         marketManagers.push(newMarketManager);</span></a>
-<a name="862"><span class="lineNum">     862 </span><span class="lineCov">        647 :         protocolInterestFactor[newMarketManager] = _bpToWad(</span></a>
+<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        648 :         marketManagers.push(newMarketManager);</span></a>
+<a name="862"><span class="lineNum">     862 </span><span class="lineCov">        648 :         protocolInterestFactor[newMarketManager] = _bpToWad(</span></a>
 <a name="863"><span class="lineNum">     863 </span>            :             marketInterestFactor</a>
 <a name="864"><span class="lineNum">     864 </span>            :         );</a>
 <a name="865"><span class="lineNum">     865 </span>            : </a>
-<a name="866"><span class="lineNum">     866 </span><span class="lineCov">        647 :         emit NewCurvanceContract(&quot;Market Manager&quot;, newMarketManager);</span></a>
+<a name="866"><span class="lineNum">     866 </span><span class="lineCov">        648 :         emit NewCurvanceContract(&quot;Market Manager&quot;, newMarketManager);</span></a>
 <a name="867"><span class="lineNum">     867 </span>            :     }</a>
 <a name="868"><span class="lineNum">     868 </span>            : </a>
 <a name="869"><span class="lineNum">     869 </span>            :     /// @notice Remove a current market manager from Curvance.</a>
@@ -1016,9 +1016,9 @@
 <a name="954"><span class="lineNum">     954 </span>            :     function supportsInterface(</a>
 <a name="955"><span class="lineNum">     955 </span>            :         bytes4 interfaceId</a>
 <a name="956"><span class="lineNum">     956 </span>            :     ) public view override returns (bool) {</a>
-<a name="957"><span class="lineNum">     957 </span><span class="lineCov">      47574 :         return</span></a>
-<a name="958"><span class="lineNum">     958 </span><span class="lineCov">      47574 :             interfaceId == type(ICentralRegistry).interfaceId ||</span></a>
-<a name="959"><span class="lineNum">     959 </span><span class="lineCov">      31716 :             super.supportsInterface(interfaceId);</span></a>
+<a name="957"><span class="lineNum">     957 </span><span class="lineCov">      47778 :         return</span></a>
+<a name="958"><span class="lineNum">     958 </span><span class="lineCov">      47778 :             interfaceId == type(ICentralRegistry).interfaceId ||</span></a>
+<a name="959"><span class="lineNum">     959 </span><span class="lineCov">      31852 :             super.supportsInterface(interfaceId);</span></a>
 <a name="960"><span class="lineNum">     960 </span>            :     }</a>
 <a name="961"><span class="lineNum">     961 </span>            : </a>
 <a name="962"><span class="lineNum">     962 </span>            :     /// INTERNAL FUNCTIONS ///</a>
@@ -1027,7 +1027,7 @@
 <a name="965"><span class="lineNum">     965 </span>            :     ///         to WAD.</a>
 <a name="966"><span class="lineNum">     966 </span>            :     /// @dev Internal helper function for easily converting between scalars.</a>
 <a name="967"><span class="lineNum">     967 </span>            :     function _bpToWad(uint256 value) internal pure returns (uint256) {</a>
-<a name="968"><span class="lineNum">     968 </span><span class="lineCov">        659 :         return value * 1e14;</span></a>
+<a name="968"><span class="lineNum">     968 </span><span class="lineCov">        660 :         return value * 1e14;</span></a>
 <a name="969"><span class="lineNum">     969 </span>            :     }</a>
 <a name="970"><span class="lineNum">     970 </span>            : </a>
 <a name="971"><span class="lineNum">     971 </span>            :     /// @dev Internal helper for reverting efficiently.</a>
@@ -1041,7 +1041,7 @@
 <a name="979"><span class="lineNum">     979 </span>            : </a>
 <a name="980"><span class="lineNum">     980 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="981"><span class="lineNum">     981 </span>            :     function _checkEmergencyCouncilPermissions() internal view {</a>
-<a name="982"><span class="lineNum">     982 </span><span class="lineCov">        692 :         if (msg.sender != emergencyCouncil) {</span></a>
+<a name="982"><span class="lineNum">     982 </span><span class="lineCov">        693 :         if (msg.sender != emergencyCouncil) {</span></a>
 <a name="983"><span class="lineNum">     983 </span><span class="lineCov">          2 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="984"><span class="lineNum">     984 </span>            :         }</a>
 <a name="985"><span class="lineNum">     985 </span>            :     }</a>
@@ -1055,7 +1055,7 @@
 <a name="993"><span class="lineNum">     993 </span>            : </a>
 <a name="994"><span class="lineNum">     994 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="995"><span class="lineNum">     995 </span>            :     function _checkElevatedPermissions() internal view {</a>
-<a name="996"><span class="lineNum">     996 </span><span class="lineCov">      12678 :         if (!hasElevatedPermissions[msg.sender]) {</span></a>
+<a name="996"><span class="lineNum">     996 </span><span class="lineCov">      12692 :         if (!hasElevatedPermissions[msg.sender]) {</span></a>
 <a name="997"><span class="lineNum">     997 </span><span class="lineCov">         30 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="998"><span class="lineNum">     998 </span>            :         }</a>
 <a name="999"><span class="lineNum">     999 </span>            :     }</a>

@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">39</td>
@@ -256,12 +256,12 @@
 <a name="194"><span class="lineNum">     194 </span>            :     ///      better safe than sorry.</a>
 <a name="195"><span class="lineNum">     195 </span>            :     /// @param by The account initializing the market.</a>
 <a name="196"><span class="lineNum">     196 </span>            :     function startMarket(address by) external nonReentrant returns (bool) {</a>
-<a name="197"><span class="lineNum">     197 </span><span class="lineCov">       2294 :         if (msg.sender != address(marketManager)) {</span></a>
+<a name="197"><span class="lineNum">     197 </span><span class="lineCov">       2349 :         if (msg.sender != address(marketManager)) {</span></a>
 <a name="198"><span class="lineNum">     198 </span><span class="lineCov">          1 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="199"><span class="lineNum">     199 </span>            :         }</a>
 <a name="200"><span class="lineNum">     200 </span>            : </a>
-<a name="201"><span class="lineNum">     201 </span><span class="lineCov">       2293 :         uint256 amount = 42069;</span></a>
-<a name="202"><span class="lineNum">     202 </span><span class="lineCov">       2293 :         SafeTransferLib.safeTransferFrom(</span></a>
+<a name="201"><span class="lineNum">     201 </span><span class="lineCov">       2348 :         uint256 amount = 42069;</span></a>
+<a name="202"><span class="lineNum">     202 </span><span class="lineCov">       2348 :         SafeTransferLib.safeTransferFrom(</span></a>
 <a name="203"><span class="lineNum">     203 </span>            :             underlying,</a>
 <a name="204"><span class="lineNum">     204 </span>            :             by,</a>
 <a name="205"><span class="lineNum">     205 </span>            :             address(this),</a>
@@ -271,11 +271,11 @@
 <a name="209"><span class="lineNum">     209 </span>            :         // We do not need to calculate exchange rate here,</a>
 <a name="210"><span class="lineNum">     210 </span>            :         // `by` will always be the first depositor with totalSupply = 0.</a>
 <a name="211"><span class="lineNum">     211 </span>            :         // These values should always be zero but we will add them just incase.</a>
-<a name="212"><span class="lineNum">     212 </span><span class="lineCov">       2292 :         totalSupply = totalSupply + amount;</span></a>
-<a name="213"><span class="lineNum">     213 </span><span class="lineCov">       2292 :         balanceOf[address(this)] = balanceOf[address(this)] + amount;</span></a>
+<a name="212"><span class="lineNum">     212 </span><span class="lineCov">       2347 :         totalSupply = totalSupply + amount;</span></a>
+<a name="213"><span class="lineNum">     213 </span><span class="lineCov">       2347 :         balanceOf[address(this)] = balanceOf[address(this)] + amount;</span></a>
 <a name="214"><span class="lineNum">     214 </span>            : </a>
-<a name="215"><span class="lineNum">     215 </span><span class="lineCov">       2292 :         emit Transfer(address(0), address(this), amount);</span></a>
-<a name="216"><span class="lineNum">     216 </span><span class="lineCov">       2292 :         return true;</span></a>
+<a name="215"><span class="lineNum">     215 </span><span class="lineCov">       2347 :         emit Transfer(address(0), address(this), amount);</span></a>
+<a name="216"><span class="lineNum">     216 </span><span class="lineCov">       2347 :         return true;</span></a>
 <a name="217"><span class="lineNum">     217 </span>            :     }</a>
 <a name="218"><span class="lineNum">     218 </span>            : </a>
 <a name="219"><span class="lineNum">     219 </span>            :     /// @notice Transfer `amount` tokens from `msg.sender` to `to`.</a>
@@ -308,12 +308,12 @@
 <a name="246"><span class="lineNum">     246 </span>            :     /// @dev    Updates interest before executing the borrow.</a>
 <a name="247"><span class="lineNum">     247 </span>            :     /// @param amount The amount of the underlying asset to borrow.</a>
 <a name="248"><span class="lineNum">     248 </span>            :     function borrow(uint256 amount) external nonReentrant {</a>
-<a name="249"><span class="lineNum">     249 </span><span class="lineCov">       6433 :         accrueInterest();</span></a>
+<a name="249"><span class="lineNum">     249 </span><span class="lineCov">       6680 :         accrueInterest();</span></a>
 <a name="250"><span class="lineNum">     250 </span>            : </a>
 <a name="251"><span class="lineNum">     251 </span>            :         // Reverts if borrow not allowed.</a>
-<a name="252"><span class="lineNum">     252 </span><span class="lineCov">       6433 :         marketManager.canBorrowWithNotify(address(this), msg.sender, amount);</span></a>
+<a name="252"><span class="lineNum">     252 </span><span class="lineCov">       6680 :         marketManager.canBorrowWithNotify(address(this), msg.sender, amount);</span></a>
 <a name="253"><span class="lineNum">     253 </span>            : </a>
-<a name="254"><span class="lineNum">     254 </span><span class="lineCov">       6431 :         _borrow(msg.sender, amount, msg.sender);</span></a>
+<a name="254"><span class="lineNum">     254 </span><span class="lineCov">       6678 :         _borrow(msg.sender, amount, msg.sender);</span></a>
 <a name="255"><span class="lineNum">     255 </span>            :     }</a>
 <a name="256"><span class="lineNum">     256 </span>            : </a>
 <a name="257"><span class="lineNum">     257 </span>            :     /// @notice Allows a account to borrow assets from the protocol</a>
@@ -403,7 +403,7 @@
 <a name="341"><span class="lineNum">     341 </span>            : </a>
 <a name="342"><span class="lineNum">     342 </span>            :         // Make sure the marketManager itself is calling since</a>
 <a name="343"><span class="lineNum">     343 </span>            :         // then we know all liquidity checks have passed.</a>
-<a name="344"><span class="lineNum">     344 </span><span class="lineCov">        482 :         if (msg.sender != address(marketManager)) {</span></a>
+<a name="344"><span class="lineNum">     344 </span><span class="lineCov">        471 :         if (msg.sender != address(marketManager)) {</span></a>
 <a name="345"><span class="lineNum">     345 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="346"><span class="lineNum">     346 </span>            :         }</a>
 <a name="347"><span class="lineNum">     347 </span>            : </a>
@@ -411,13 +411,13 @@
 <a name="349"><span class="lineNum">     349 </span>            :         // at the top of liquidateAccount that calls this function.</a>
 <a name="350"><span class="lineNum">     350 </span>            : </a>
 <a name="351"><span class="lineNum">     351 </span>            :         // Cache how much the account has to save gas.</a>
-<a name="352"><span class="lineNum">     352 </span><span class="lineCov">        482 :         uint256 accountDebt = debtBalanceCached(account);</span></a>
-<a name="353"><span class="lineNum">     353 </span><span class="lineCov">        482 :         uint256 repayAmount = (accountDebt * repayRatio) / WAD;</span></a>
+<a name="352"><span class="lineNum">     352 </span><span class="lineCov">        471 :         uint256 accountDebt = debtBalanceCached(account);</span></a>
+<a name="353"><span class="lineNum">     353 </span><span class="lineCov">        471 :         uint256 repayAmount = (accountDebt * repayRatio) / WAD;</span></a>
 <a name="354"><span class="lineNum">     354 </span>            : </a>
 <a name="355"><span class="lineNum">     355 </span>            :         // We do not need to check for listing here as we are</a>
 <a name="356"><span class="lineNum">     356 </span>            :         // coming directly from the marketManager itself.</a>
 <a name="357"><span class="lineNum">     357 </span>            : </a>
-<a name="358"><span class="lineNum">     358 </span><span class="lineCov">        482 :         SafeTransferLib.safeTransferFrom(</span></a>
+<a name="358"><span class="lineNum">     358 </span><span class="lineCov">        471 :         SafeTransferLib.safeTransferFrom(</span></a>
 <a name="359"><span class="lineNum">     359 </span>            :             underlying,</a>
 <a name="360"><span class="lineNum">     360 </span>            :             liquidator,</a>
 <a name="361"><span class="lineNum">     361 </span>            :             address(this),</a>
@@ -426,11 +426,11 @@
 <a name="364"><span class="lineNum">     364 </span>            : </a>
 <a name="365"><span class="lineNum">     365 </span>            :         // Wipe out the accounts debt since we are recognizing</a>
 <a name="366"><span class="lineNum">     366 </span>            :         // unpaid debt as bad debt.</a>
-<a name="367"><span class="lineNum">     367 </span><span class="lineCov">        482 :         delete _debtOf[account].principal;</span></a>
-<a name="368"><span class="lineNum">     368 </span><span class="lineCov">        482 :         totalBorrows -= accountDebt;</span></a>
+<a name="367"><span class="lineNum">     367 </span><span class="lineCov">        471 :         delete _debtOf[account].principal;</span></a>
+<a name="368"><span class="lineNum">     368 </span><span class="lineCov">        471 :         totalBorrows -= accountDebt;</span></a>
 <a name="369"><span class="lineNum">     369 </span>            : </a>
-<a name="370"><span class="lineNum">     370 </span><span class="lineCov">        482 :         emit Repay(liquidator, account, repayAmount);</span></a>
-<a name="371"><span class="lineNum">     371 </span><span class="lineCov">        482 :         emit BadDebtRecognized(liquidator, account, accountDebt - repayAmount);</span></a>
+<a name="370"><span class="lineNum">     370 </span><span class="lineCov">        471 :         emit Repay(liquidator, account, repayAmount);</span></a>
+<a name="371"><span class="lineNum">     371 </span><span class="lineCov">        471 :         emit BadDebtRecognized(liquidator, account, accountDebt - repayAmount);</span></a>
 <a name="372"><span class="lineNum">     372 </span>            :     }</a>
 <a name="373"><span class="lineNum">     373 </span>            : </a>
 <a name="374"><span class="lineNum">     374 </span>            :     /// @notice Liquidates `account`'s collateral by repaying `amount` debt</a>
@@ -444,7 +444,7 @@
 <a name="382"><span class="lineNum">     382 </span>            :         uint256 amount,</a>
 <a name="383"><span class="lineNum">     383 </span>            :         IMToken collateralToken</a>
 <a name="384"><span class="lineNum">     384 </span>            :     ) external nonReentrant {</a>
-<a name="385"><span class="lineNum">     385 </span><span class="lineCov">        355 :         _liquidate(msg.sender, account, amount, collateralToken, true);</span></a>
+<a name="385"><span class="lineNum">     385 </span><span class="lineCov">        409 :         _liquidate(msg.sender, account, amount, collateralToken, true);</span></a>
 <a name="386"><span class="lineNum">     386 </span>            :     }</a>
 <a name="387"><span class="lineNum">     387 </span>            : </a>
 <a name="388"><span class="lineNum">     388 </span>            :     /// @notice Liquidates `account`'s as much collateral as possible by</a>
@@ -457,7 +457,7 @@
 <a name="395"><span class="lineNum">     395 </span>            :         address account,</a>
 <a name="396"><span class="lineNum">     396 </span>            :         IMToken collateralToken</a>
 <a name="397"><span class="lineNum">     397 </span>            :     ) external nonReentrant {</a>
-<a name="398"><span class="lineNum">     398 </span><span class="lineCov">        393 :         _liquidate(</span></a>
+<a name="398"><span class="lineNum">     398 </span><span class="lineCov">        362 :         _liquidate(</span></a>
 <a name="399"><span class="lineNum">     399 </span>            :             msg.sender,</a>
 <a name="400"><span class="lineNum">     400 </span>            :             account,</a>
 <a name="401"><span class="lineNum">     401 </span>            :             0, // Amount = 0 is passed since the max amount possible will be liquidated.</a>
@@ -520,8 +520,8 @@
 <a name="458"><span class="lineNum">     458 </span>            :     /// @param amount The amount of the underlying asset to supply.</a>
 <a name="459"><span class="lineNum">     459 </span>            :     /// @return bool true = successful mint.</a>
 <a name="460"><span class="lineNum">     460 </span>            :     function mint(uint256 amount) external nonReentrant returns (bool) {</a>
-<a name="461"><span class="lineNum">     461 </span><span class="lineCov">       4933 :         _mint(msg.sender, msg.sender, amount);</span></a>
-<a name="462"><span class="lineNum">     462 </span><span class="lineCov">       4931 :         return true;</span></a>
+<a name="461"><span class="lineNum">     461 </span><span class="lineCov">       5038 :         _mint(msg.sender, msg.sender, amount);</span></a>
+<a name="462"><span class="lineNum">     462 </span><span class="lineCov">       5036 :         return true;</span></a>
 <a name="463"><span class="lineNum">     463 </span>            :     }</a>
 <a name="464"><span class="lineNum">     464 </span>            : </a>
 <a name="465"><span class="lineNum">     465 </span>            :     /// @notice Sender supplies assets into the market and `recipient`</a>
@@ -736,7 +736,7 @@
 <a name="674"><span class="lineNum">     674 </span>            :     function getSnapshotPacked(</a>
 <a name="675"><span class="lineNum">     675 </span>            :         address account</a>
 <a name="676"><span class="lineNum">     676 </span>            :     ) external view returns (AccountSnapshot memory) {</a>
-<a name="677"><span class="lineNum">     677 </span><span class="lineCov">      25377 :         return (</span></a>
+<a name="677"><span class="lineNum">     677 </span><span class="lineCov">      26380 :         return (</span></a>
 <a name="678"><span class="lineNum">     678 </span>            :             AccountSnapshot({</a>
 <a name="679"><span class="lineNum">     679 </span>            :                 asset: address(this),</a>
 <a name="680"><span class="lineNum">     680 </span>            :                 isCToken: false,</a>
@@ -819,18 +819,18 @@
 <a name="757"><span class="lineNum">     757 </span>            :     /// @return `account`'s cached balance index.</a>
 <a name="758"><span class="lineNum">     758 </span>            :     function debtBalanceCached(address account) public view returns (uint256) {</a>
 <a name="759"><span class="lineNum">     759 </span>            :         // Cache borrow data to save gas</a>
-<a name="760"><span class="lineNum">     760 </span><span class="lineCov">      35340 :         DebtData storage userDebtData = _debtOf[account];</span></a>
+<a name="760"><span class="lineNum">     760 </span><span class="lineCov">      36671 :         DebtData storage userDebtData = _debtOf[account];</span></a>
 <a name="761"><span class="lineNum">     761 </span>            : </a>
 <a name="762"><span class="lineNum">     762 </span>            :         // If debtBalance = 0 then borrowIndex is likely also 0.</a>
-<a name="763"><span class="lineNum">     763 </span><span class="lineCov">      35340 :         if (userDebtData.principal == 0) {</span></a>
-<a name="764"><span class="lineNum">     764 </span><span class="lineCov">       5133 :             return 0;</span></a>
+<a name="763"><span class="lineNum">     763 </span><span class="lineCov">      36671 :         if (userDebtData.principal == 0) {</span></a>
+<a name="764"><span class="lineNum">     764 </span><span class="lineCov">       5225 :             return 0;</span></a>
 <a name="765"><span class="lineNum">     765 </span>            :         }</a>
 <a name="766"><span class="lineNum">     766 </span>            : </a>
 <a name="767"><span class="lineNum">     767 </span>            :         // Calculate debt balance using the interest index:</a>
 <a name="768"><span class="lineNum">     768 </span>            :         // debtBalanceCached calculation:</a>
 <a name="769"><span class="lineNum">     769 </span>            :         // (account.principal * DToken.borrowIndex) / account.accountExchangeRate.</a>
-<a name="770"><span class="lineNum">     770 </span><span class="lineCov">      30207 :         return</span></a>
-<a name="771"><span class="lineNum">     771 </span><span class="lineCov">      30207 :             (userDebtData.principal * marketData.exchangeRate) /</span></a>
+<a name="770"><span class="lineNum">     770 </span><span class="lineCov">      31446 :         return</span></a>
+<a name="771"><span class="lineNum">     771 </span><span class="lineCov">      31446 :             (userDebtData.principal * marketData.exchangeRate) /</span></a>
 <a name="772"><span class="lineNum">     772 </span>            :             userDebtData.accountExchangeRate;</a>
 <a name="773"><span class="lineNum">     773 </span>            :     }</a>
 <a name="774"><span class="lineNum">     774 </span>            : </a>
@@ -838,7 +838,7 @@
 <a name="776"><span class="lineNum">     776 </span>            :     /// @dev We pull directly from underlying incase its a proxy contract,</a>
 <a name="777"><span class="lineNum">     777 </span>            :     ///      and changes decimals on us.</a>
 <a name="778"><span class="lineNum">     778 </span>            :     function decimals() public view returns (uint8) {</a>
-<a name="779"><span class="lineNum">     779 </span><span class="lineCov">      34864 :         return IERC20(underlying).decimals();</span></a>
+<a name="779"><span class="lineNum">     779 </span><span class="lineCov">      36277 :         return IERC20(underlying).decimals();</span></a>
 <a name="780"><span class="lineNum">     780 </span>            :     }</a>
 <a name="781"><span class="lineNum">     781 </span>            : </a>
 <a name="782"><span class="lineNum">     782 </span>            :     /// @notice Gets balance of this contract in terms of the underlying.</a>
@@ -846,7 +846,7 @@
 <a name="784"><span class="lineNum">     784 </span>            :     ///      current transaction, if any.</a>
 <a name="785"><span class="lineNum">     785 </span>            :     /// @return The quantity of underlying tokens owned by the market.</a>
 <a name="786"><span class="lineNum">     786 </span>            :     function marketUnderlyingHeld() public view returns (uint256) {</a>
-<a name="787"><span class="lineNum">     787 </span><span class="lineCov">      20488 :         return IERC20(underlying).balanceOf(address(this));</span></a>
+<a name="787"><span class="lineNum">     787 </span><span class="lineCov">      21278 :         return IERC20(underlying).balanceOf(address(this));</span></a>
 <a name="788"><span class="lineNum">     788 </span>            :     }</a>
 <a name="789"><span class="lineNum">     789 </span>            : </a>
 <a name="790"><span class="lineNum">     790 </span>            :     /// @notice Returns the type of Curvance token, 1 = Collateral, 0 = Debt.</a>
@@ -868,8 +868,8 @@
 <a name="806"><span class="lineNum">     806 </span>            :         // when we list a market we mint a small amount ourselves.</a>
 <a name="807"><span class="lineNum">     807 </span>            :         // exchangeRate calculation:</a>
 <a name="808"><span class="lineNum">     808 </span>            :         // (total underlying held + totalBorrows - totalReserves) / totalSupply.</a>
-<a name="809"><span class="lineNum">     809 </span><span class="lineCov">       5068 :         return</span></a>
-<a name="810"><span class="lineNum">     810 </span><span class="lineCov">       5068 :             ((marketUnderlyingHeld() + totalBorrows - totalReserves) * WAD) /</span></a>
+<a name="809"><span class="lineNum">     809 </span><span class="lineCov">       5173 :         return</span></a>
+<a name="810"><span class="lineNum">     810 </span><span class="lineCov">       5173 :             ((marketUnderlyingHeld() + totalBorrows - totalReserves) * WAD) /</span></a>
 <a name="811"><span class="lineNum">     811 </span>            :             totalSupply;</a>
 <a name="812"><span class="lineNum">     812 </span>            :     }</a>
 <a name="813"><span class="lineNum">     813 </span>            : </a>
@@ -887,23 +887,23 @@
 <a name="825"><span class="lineNum">     825 </span>            :     ///      up to the latest available checkpoint.</a>
 <a name="826"><span class="lineNum">     826 </span>            :     function accrueInterest() public {</a>
 <a name="827"><span class="lineNum">     827 </span>            :         // Pull current exchange rate data.</a>
-<a name="828"><span class="lineNum">     828 </span><span class="lineCov">      13434 :         MarketData memory cachedData = marketData;</span></a>
+<a name="828"><span class="lineNum">     828 </span><span class="lineCov">      13821 :         MarketData memory cachedData = marketData;</span></a>
 <a name="829"><span class="lineNum">     829 </span>            : </a>
 <a name="830"><span class="lineNum">     830 </span>            :         // If we are up to date there is no reason to continue.</a>
 <a name="831"><span class="lineNum">     831 </span>            :         if (</a>
-<a name="832"><span class="lineNum">     832 </span><span class="lineCov">      13434 :             cachedData.lastTimestampUpdated + cachedData.compoundRate &gt;</span></a>
+<a name="832"><span class="lineNum">     832 </span><span class="lineCov">      13821 :             cachedData.lastTimestampUpdated + cachedData.compoundRate &gt;</span></a>
 <a name="833"><span class="lineNum">     833 </span>            :             block.timestamp</a>
 <a name="834"><span class="lineNum">     834 </span>            :         ) {</a>
-<a name="835"><span class="lineNum">     835 </span><span class="lineCov">      12597 :             return;</span></a>
+<a name="835"><span class="lineNum">     835 </span><span class="lineCov">      12981 :             return;</span></a>
 <a name="836"><span class="lineNum">     836 </span>            :         }</a>
 <a name="837"><span class="lineNum">     837 </span>            : </a>
 <a name="838"><span class="lineNum">     838 </span>            :         // Cache current values to save gas.</a>
-<a name="839"><span class="lineNum">     839 </span><span class="lineCov">        837 :         uint256 borrowsPrior = totalBorrows;</span></a>
-<a name="840"><span class="lineNum">     840 </span><span class="lineCov">        837 :         uint256 reservesPrior = totalReserves;</span></a>
-<a name="841"><span class="lineNum">     841 </span><span class="lineCov">        837 :         uint256 exchangeRatePrior = cachedData.exchangeRate;</span></a>
+<a name="839"><span class="lineNum">     839 </span><span class="lineCov">        840 :         uint256 borrowsPrior = totalBorrows;</span></a>
+<a name="840"><span class="lineNum">     840 </span><span class="lineCov">        840 :         uint256 reservesPrior = totalReserves;</span></a>
+<a name="841"><span class="lineNum">     841 </span><span class="lineCov">        840 :         uint256 exchangeRatePrior = cachedData.exchangeRate;</span></a>
 <a name="842"><span class="lineNum">     842 </span>            : </a>
 <a name="843"><span class="lineNum">     843 </span>            :         // Calculate the current borrow interest rate.</a>
-<a name="844"><span class="lineNum">     844 </span><span class="lineCov">        837 :         uint256 borrowRate = interestRateModel.getBorrowRateWithUpdate(</span></a>
+<a name="844"><span class="lineNum">     844 </span><span class="lineCov">        840 :         uint256 borrowRate = interestRateModel.getBorrowRateWithUpdate(</span></a>
 <a name="845"><span class="lineNum">     845 </span>            :             marketUnderlyingHeld(),</a>
 <a name="846"><span class="lineNum">     846 </span>            :             borrowsPrior,</a>
 <a name="847"><span class="lineNum">     847 </span>            :             reservesPrior</a>
@@ -913,37 +913,37 @@
 <a name="851"><span class="lineNum">     851 </span>            :         // in `interestCompoundRate`.</a>
 <a name="852"><span class="lineNum">     852 </span>            :         // Calculate the interest accumulated into borrows, reserves,</a>
 <a name="853"><span class="lineNum">     853 </span>            :         // and the new exchange rate.</a>
-<a name="854"><span class="lineNum">     854 </span><span class="lineCov">        837 :         uint256 interestCompounds = (block.timestamp -</span></a>
+<a name="854"><span class="lineNum">     854 </span><span class="lineCov">        840 :         uint256 interestCompounds = (block.timestamp -</span></a>
 <a name="855"><span class="lineNum">     855 </span>            :             cachedData.lastTimestampUpdated) / cachedData.compoundRate;</a>
-<a name="856"><span class="lineNum">     856 </span><span class="lineCov">        837 :         uint256 interestAccumulated = borrowRate * interestCompounds;</span></a>
-<a name="857"><span class="lineNum">     857 </span><span class="lineCov">        837 :         uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;</span></a>
-<a name="858"><span class="lineNum">     858 </span><span class="lineCov">        837 :         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;</span></a>
-<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        837 :         uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /</span></a>
+<a name="856"><span class="lineNum">     856 </span><span class="lineCov">        840 :         uint256 interestAccumulated = borrowRate * interestCompounds;</span></a>
+<a name="857"><span class="lineNum">     857 </span><span class="lineCov">        840 :         uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;</span></a>
+<a name="858"><span class="lineNum">     858 </span><span class="lineCov">        840 :         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;</span></a>
+<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        840 :         uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /</span></a>
 <a name="860"><span class="lineNum">     860 </span>            :             WAD) + exchangeRatePrior;</a>
 <a name="861"><span class="lineNum">     861 </span>            : </a>
 <a name="862"><span class="lineNum">     862 </span>            :         // Update storage data.</a>
-<a name="863"><span class="lineNum">     863 </span><span class="lineCov">        837 :         marketData.lastTimestampUpdated = uint32(</span></a>
+<a name="863"><span class="lineNum">     863 </span><span class="lineCov">        840 :         marketData.lastTimestampUpdated = uint32(</span></a>
 <a name="864"><span class="lineNum">     864 </span>            :             cachedData.lastTimestampUpdated +</a>
 <a name="865"><span class="lineNum">     865 </span>            :                 (interestCompounds * cachedData.compoundRate)</a>
 <a name="866"><span class="lineNum">     866 </span>            :         );</a>
-<a name="867"><span class="lineNum">     867 </span><span class="lineCov">        837 :         marketData.exchangeRate = uint224(exchangeRateNew);</span></a>
-<a name="868"><span class="lineNum">     868 </span><span class="lineCov">        837 :         totalBorrows = totalBorrowsNew;</span></a>
+<a name="867"><span class="lineNum">     867 </span><span class="lineCov">        840 :         marketData.exchangeRate = uint224(exchangeRateNew);</span></a>
+<a name="868"><span class="lineNum">     868 </span><span class="lineCov">        840 :         totalBorrows = totalBorrowsNew;</span></a>
 <a name="869"><span class="lineNum">     869 </span>            : </a>
 <a name="870"><span class="lineNum">     870 </span>            :         // Check whether the market takes interest,</a>
 <a name="871"><span class="lineNum">     871 </span>            :         // and debt has been accumulated.</a>
-<a name="872"><span class="lineNum">     872 </span><span class="lineCov">        837 :         uint256 newReserves = ((interestFactor * debtAccumulated) / WAD);</span></a>
-<a name="873"><span class="lineNum">     873 </span><span class="lineCov">        837 :         if (newReserves &gt; 0) {</span></a>
-<a name="874"><span class="lineNum">     874 </span><span class="lineCov">        637 :             totalReserves = newReserves + reservesPrior;</span></a>
+<a name="872"><span class="lineNum">     872 </span><span class="lineCov">        840 :         uint256 newReserves = ((interestFactor * debtAccumulated) / WAD);</span></a>
+<a name="873"><span class="lineNum">     873 </span><span class="lineCov">        840 :         if (newReserves &gt; 0) {</span></a>
+<a name="874"><span class="lineNum">     874 </span><span class="lineCov">        641 :             totalReserves = newReserves + reservesPrior;</span></a>
 <a name="875"><span class="lineNum">     875 </span>            : </a>
 <a name="876"><span class="lineNum">     876 </span>            :             // Deposit new reserves into gauge.</a>
-<a name="877"><span class="lineNum">     877 </span><span class="lineCov">        637 :             _gaugePool().deposit(</span></a>
+<a name="877"><span class="lineNum">     877 </span><span class="lineCov">        641 :             _gaugePool().deposit(</span></a>
 <a name="878"><span class="lineNum">     878 </span>            :                 address(this),</a>
 <a name="879"><span class="lineNum">     879 </span>            :                 centralRegistry.daoAddress(),</a>
 <a name="880"><span class="lineNum">     880 </span>            :                 newReserves</a>
 <a name="881"><span class="lineNum">     881 </span>            :             );</a>
 <a name="882"><span class="lineNum">     882 </span>            :         }</a>
 <a name="883"><span class="lineNum">     883 </span>            : </a>
-<a name="884"><span class="lineNum">     884 </span><span class="lineCov">        837 :         emit InterestAccrued(</span></a>
+<a name="884"><span class="lineNum">     884 </span><span class="lineCov">        840 :         emit InterestAccrued(</span></a>
 <a name="885"><span class="lineNum">     885 </span>            :             debtAccumulated,</a>
 <a name="886"><span class="lineNum">     886 </span>            :             exchangeRateNew,</a>
 <a name="887"><span class="lineNum">     887 </span>            :             totalBorrowsNew</a>
@@ -1050,16 +1050,16 @@
 <a name="988"><span class="lineNum">     988 </span>            :         uint256 amount</a>
 <a name="989"><span class="lineNum">     989 </span>            :     ) internal {</a>
 <a name="990"><span class="lineNum">     990 </span>            :         // Accrue interest if necessary.</a>
-<a name="991"><span class="lineNum">     991 </span><span class="lineCov">       4939 :         accrueInterest();</span></a>
+<a name="991"><span class="lineNum">     991 </span><span class="lineCov">       5044 :         accrueInterest();</span></a>
 <a name="992"><span class="lineNum">     992 </span>            : </a>
 <a name="993"><span class="lineNum">     993 </span>            :         // Fail if mint not allowed.</a>
-<a name="994"><span class="lineNum">     994 </span><span class="lineCov">       4939 :         marketManager.canMint(address(this));</span></a>
+<a name="994"><span class="lineNum">     994 </span><span class="lineCov">       5044 :         marketManager.canMint(address(this));</span></a>
 <a name="995"><span class="lineNum">     995 </span>            : </a>
 <a name="996"><span class="lineNum">     996 </span>            :         // Get exchange rate before transfer.</a>
-<a name="997"><span class="lineNum">     997 </span><span class="lineCov">       4937 :         uint256 er = exchangeRateCached();</span></a>
+<a name="997"><span class="lineNum">     997 </span><span class="lineCov">       5042 :         uint256 er = exchangeRateCached();</span></a>
 <a name="998"><span class="lineNum">     998 </span>            : </a>
 <a name="999"><span class="lineNum">     999 </span>            :         // Transfer underlying in.</a>
-<a name="1000"><span class="lineNum">    1000 </span><span class="lineCov">       4937 :         SafeTransferLib.safeTransferFrom(</span></a>
+<a name="1000"><span class="lineNum">    1000 </span><span class="lineCov">       5042 :         SafeTransferLib.safeTransferFrom(</span></a>
 <a name="1001"><span class="lineNum">    1001 </span>            :             underlying,</a>
 <a name="1002"><span class="lineNum">    1002 </span>            :             account,</a>
 <a name="1003"><span class="lineNum">    1003 </span>            :             address(this),</a>
@@ -1067,18 +1067,18 @@
 <a name="1005"><span class="lineNum">    1005 </span>            :         );</a>
 <a name="1006"><span class="lineNum">    1006 </span>            : </a>
 <a name="1007"><span class="lineNum">    1007 </span>            :         // Calculate dTokens to be minted.</a>
-<a name="1008"><span class="lineNum">    1008 </span><span class="lineCov">       4937 :         uint256 tokens = (amount * WAD) / er;</span></a>
+<a name="1008"><span class="lineNum">    1008 </span><span class="lineCov">       5042 :         uint256 tokens = (amount * WAD) / er;</span></a>
 <a name="1009"><span class="lineNum">    1009 </span>            : </a>
 <a name="1010"><span class="lineNum">    1010 </span>            :         unchecked {</a>
-<a name="1011"><span class="lineNum">    1011 </span><span class="lineCov">       4937 :             totalSupply = totalSupply + tokens;</span></a>
+<a name="1011"><span class="lineNum">    1011 </span><span class="lineCov">       5042 :             totalSupply = totalSupply + tokens;</span></a>
 <a name="1012"><span class="lineNum">    1012 </span>            :             /// Calculate their new balance.</a>
-<a name="1013"><span class="lineNum">    1013 </span><span class="lineCov">       4937 :             balanceOf[recipient] = balanceOf[recipient] + tokens;</span></a>
+<a name="1013"><span class="lineNum">    1013 </span><span class="lineCov">       5042 :             balanceOf[recipient] = balanceOf[recipient] + tokens;</span></a>
 <a name="1014"><span class="lineNum">    1014 </span>            :         }</a>
 <a name="1015"><span class="lineNum">    1015 </span>            : </a>
 <a name="1016"><span class="lineNum">    1016 </span>            :         // emit events on gauge pool.</a>
-<a name="1017"><span class="lineNum">    1017 </span><span class="lineCov">       4937 :         _gaugePool().deposit(address(this), recipient, tokens);</span></a>
+<a name="1017"><span class="lineNum">    1017 </span><span class="lineCov">       5042 :         _gaugePool().deposit(address(this), recipient, tokens);</span></a>
 <a name="1018"><span class="lineNum">    1018 </span>            : </a>
-<a name="1019"><span class="lineNum">    1019 </span><span class="lineCov">       4935 :         emit Transfer(address(0), recipient, tokens);</span></a>
+<a name="1019"><span class="lineNum">    1019 </span><span class="lineCov">       5040 :         emit Transfer(address(0), recipient, tokens);</span></a>
 <a name="1020"><span class="lineNum">    1020 </span>            :     }</a>
 <a name="1021"><span class="lineNum">    1021 </span>            : </a>
 <a name="1022"><span class="lineNum">    1022 </span>            :     /// @notice User redeems dTokens in exchange for the underlying asset.</a>
@@ -1126,19 +1126,19 @@
 <a name="1064"><span class="lineNum">    1064 </span>            :         address recipient</a>
 <a name="1065"><span class="lineNum">    1065 </span>            :     ) internal {</a>
 <a name="1066"><span class="lineNum">    1066 </span>            :         // Check if we have enough underlying held to support the borrow.</a>
-<a name="1067"><span class="lineNum">    1067 </span><span class="lineCov">       6435 :         if (marketUnderlyingHeld() - totalReserves &lt; amount) {</span></a>
+<a name="1067"><span class="lineNum">    1067 </span><span class="lineCov">       6682 :         if (marketUnderlyingHeld() - totalReserves &lt; amount) {</span></a>
 <a name="1068"><span class="lineNum">    1068 </span><span class="lineNoCov">          0 :             revert DToken__InsufficientUnderlyingHeld();</span></a>
 <a name="1069"><span class="lineNum">    1069 </span>            :         }</a>
 <a name="1070"><span class="lineNum">    1070 </span>            : </a>
 <a name="1071"><span class="lineNum">    1071 </span>            :         // We calculate the new account and total borrow balances,</a>
 <a name="1072"><span class="lineNum">    1072 </span>            :         // failing on overflow.</a>
-<a name="1073"><span class="lineNum">    1073 </span><span class="lineCov">       6435 :         _debtOf[account].principal = debtBalanceCached(account) + amount;</span></a>
-<a name="1074"><span class="lineNum">    1074 </span><span class="lineCov">       6435 :         _debtOf[account].accountExchangeRate = marketData.exchangeRate;</span></a>
-<a name="1075"><span class="lineNum">    1075 </span><span class="lineCov">       6435 :         totalBorrows = totalBorrows + amount;</span></a>
+<a name="1073"><span class="lineNum">    1073 </span><span class="lineCov">       6682 :         _debtOf[account].principal = debtBalanceCached(account) + amount;</span></a>
+<a name="1074"><span class="lineNum">    1074 </span><span class="lineCov">       6682 :         _debtOf[account].accountExchangeRate = marketData.exchangeRate;</span></a>
+<a name="1075"><span class="lineNum">    1075 </span><span class="lineCov">       6682 :         totalBorrows = totalBorrows + amount;</span></a>
 <a name="1076"><span class="lineNum">    1076 </span>            : </a>
-<a name="1077"><span class="lineNum">    1077 </span><span class="lineCov">       6435 :         SafeTransferLib.safeTransfer(underlying, recipient, amount);</span></a>
+<a name="1077"><span class="lineNum">    1077 </span><span class="lineCov">       6682 :         SafeTransferLib.safeTransfer(underlying, recipient, amount);</span></a>
 <a name="1078"><span class="lineNum">    1078 </span>            : </a>
-<a name="1079"><span class="lineNum">    1079 </span><span class="lineCov">       6435 :         emit Borrow(account, amount);</span></a>
+<a name="1079"><span class="lineNum">    1079 </span><span class="lineCov">       6682 :         emit Borrow(account, amount);</span></a>
 <a name="1080"><span class="lineNum">    1080 </span>            :     }</a>
 <a name="1081"><span class="lineNum">    1081 </span>            : </a>
 <a name="1082"><span class="lineNum">    1082 </span>            :     /// @notice Allows a payer to repay a loan on behalf of the account,</a>
@@ -1200,11 +1200,11 @@
 <a name="1138"><span class="lineNum">    1138 </span>            :         bool exactAmount</a>
 <a name="1139"><span class="lineNum">    1139 </span>            :     ) internal {</a>
 <a name="1140"><span class="lineNum">    1140 </span>            :         // Update interest funding if necessary.</a>
-<a name="1141"><span class="lineNum">    1141 </span><span class="lineCov">        748 :         accrueInterest();</span></a>
+<a name="1141"><span class="lineNum">    1141 </span><span class="lineCov">        771 :         accrueInterest();</span></a>
 <a name="1142"><span class="lineNum">    1142 </span>            : </a>
 <a name="1143"><span class="lineNum">    1143 </span>            :         // Fail if account = liquidator.</a>
 <a name="1144"><span class="lineNum">    1144 </span>            :         assembly {</a>
-<a name="1145"><span class="lineNum">    1145 </span><span class="lineCov">        748 :             if eq(account, caller()) {</span></a>
+<a name="1145"><span class="lineNum">    1145 </span><span class="lineCov">        771 :             if eq(account, caller()) {</span></a>
 <a name="1146"><span class="lineNum">    1146 </span>            :                 // revert with DToken__Unauthorized().</a>
 <a name="1147"><span class="lineNum">    1147 </span>            :                 mstore(0x00, 0xefeae624)</a>
 <a name="1148"><span class="lineNum">    1148 </span>            :                 revert(0x1c, 0x04)</a>
@@ -1212,16 +1212,16 @@
 <a name="1150"><span class="lineNum">    1150 </span>            :         }</a>
 <a name="1151"><span class="lineNum">    1151 </span>            : </a>
 <a name="1152"><span class="lineNum">    1152 </span>            :         // The MToken must be a collateral token.</a>
-<a name="1153"><span class="lineNum">    1153 </span><span class="lineCov">        748 :         if (!collateralToken.isCToken()) {</span></a>
+<a name="1153"><span class="lineNum">    1153 </span><span class="lineCov">        771 :         if (!collateralToken.isCToken()) {</span></a>
 <a name="1154"><span class="lineNum">    1154 </span><span class="lineNoCov">          0 :             revert DToken__ValidationFailed();</span></a>
 <a name="1155"><span class="lineNum">    1155 </span>            :         }</a>
 <a name="1156"><span class="lineNum">    1156 </span>            : </a>
-<a name="1157"><span class="lineNum">    1157 </span><span class="lineCov">        748 :         uint256 liquidatedTokens;</span></a>
-<a name="1158"><span class="lineNum">    1158 </span><span class="lineCov">        748 :         uint256 protocolTokens;</span></a>
+<a name="1157"><span class="lineNum">    1157 </span><span class="lineCov">        771 :         uint256 liquidatedTokens;</span></a>
+<a name="1158"><span class="lineNum">    1158 </span><span class="lineCov">        771 :         uint256 protocolTokens;</span></a>
 <a name="1159"><span class="lineNum">    1159 </span>            : </a>
 <a name="1160"><span class="lineNum">    1160 </span>            :         // Fail if liquidate not allowed,</a>
 <a name="1161"><span class="lineNum">    1161 </span>            :         // trying to pay too much debt with excessive `amount` will revert.</a>
-<a name="1162"><span class="lineNum">    1162 </span><span class="lineCov">        748 :         (amount, liquidatedTokens, protocolTokens) = marketManager</span></a>
+<a name="1162"><span class="lineNum">    1162 </span><span class="lineCov">        771 :         (amount, liquidatedTokens, protocolTokens) = marketManager</span></a>
 <a name="1163"><span class="lineNum">    1163 </span>            :             .canLiquidateWithExecution(</a>
 <a name="1164"><span class="lineNum">    1164 </span>            :                 address(this),</a>
 <a name="1165"><span class="lineNum">    1165 </span>            :                 address(collateralToken),</a>
@@ -1231,15 +1231,15 @@
 <a name="1169"><span class="lineNum">    1169 </span>            :             );</a>
 <a name="1170"><span class="lineNum">    1170 </span>            : </a>
 <a name="1171"><span class="lineNum">    1171 </span>            :         // Validate that the token is listed inside the market.</a>
-<a name="1172"><span class="lineNum">    1172 </span><span class="lineCov">        747 :         if (!marketManager.isListed(address(this))) {</span></a>
+<a name="1172"><span class="lineNum">    1172 </span><span class="lineCov">        770 :         if (!marketManager.isListed(address(this))) {</span></a>
 <a name="1173"><span class="lineNum">    1173 </span><span class="lineNoCov">          0 :             revert DToken__ValidationFailed();</span></a>
 <a name="1174"><span class="lineNum">    1174 </span>            :         }</a>
 <a name="1175"><span class="lineNum">    1175 </span>            : </a>
 <a name="1176"><span class="lineNum">    1176 </span>            :         // Cache how much the account has to save gas.</a>
-<a name="1177"><span class="lineNum">    1177 </span><span class="lineCov">        747 :         uint256 accountDebt = debtBalanceCached(account);</span></a>
+<a name="1177"><span class="lineNum">    1177 </span><span class="lineCov">        770 :         uint256 accountDebt = debtBalanceCached(account);</span></a>
 <a name="1178"><span class="lineNum">    1178 </span>            : </a>
 <a name="1179"><span class="lineNum">    1179 </span>            :         // Repay `account`'s debt.</a>
-<a name="1180"><span class="lineNum">    1180 </span><span class="lineCov">        747 :         SafeTransferLib.safeTransferFrom(</span></a>
+<a name="1180"><span class="lineNum">    1180 </span><span class="lineCov">        770 :         SafeTransferLib.safeTransferFrom(</span></a>
 <a name="1181"><span class="lineNum">    1181 </span>            :             underlying,</a>
 <a name="1182"><span class="lineNum">    1182 </span>            :             liquidator,</a>
 <a name="1183"><span class="lineNum">    1183 </span>            :             address(this),</a>
@@ -1248,23 +1248,23 @@
 <a name="1186"><span class="lineNum">    1186 </span>            : </a>
 <a name="1187"><span class="lineNum">    1187 </span>            :         // We calculate the new `account` and total borrow balances,</a>
 <a name="1188"><span class="lineNum">    1188 </span>            :         // failing on underflow.</a>
-<a name="1189"><span class="lineNum">    1189 </span><span class="lineCov">        747 :         _debtOf[account].principal = accountDebt - amount;</span></a>
-<a name="1190"><span class="lineNum">    1190 </span><span class="lineCov">        747 :         _debtOf[account].accountExchangeRate = marketData.exchangeRate;</span></a>
-<a name="1191"><span class="lineNum">    1191 </span><span class="lineCov">        747 :         totalBorrows -= amount;</span></a>
+<a name="1189"><span class="lineNum">    1189 </span><span class="lineCov">        770 :         _debtOf[account].principal = accountDebt - amount;</span></a>
+<a name="1190"><span class="lineNum">    1190 </span><span class="lineCov">        770 :         _debtOf[account].accountExchangeRate = marketData.exchangeRate;</span></a>
+<a name="1191"><span class="lineNum">    1191 </span><span class="lineCov">        770 :         totalBorrows -= amount;</span></a>
 <a name="1192"><span class="lineNum">    1192 </span>            : </a>
-<a name="1193"><span class="lineNum">    1193 </span><span class="lineCov">        747 :         emit Repay(liquidator, account, amount);</span></a>
+<a name="1193"><span class="lineNum">    1193 </span><span class="lineCov">        770 :         emit Repay(liquidator, account, amount);</span></a>
 <a name="1194"><span class="lineNum">    1194 </span>            : </a>
 <a name="1195"><span class="lineNum">    1195 </span>            :         // We check above that the mToken must be a collateral token,</a>
 <a name="1196"><span class="lineNum">    1196 </span>            :         // so we cant seize this mToken as it is a debt token,</a>
 <a name="1197"><span class="lineNum">    1197 </span>            :         // so there is no reEntry risk.</a>
-<a name="1198"><span class="lineNum">    1198 </span><span class="lineCov">        747 :         collateralToken.seize(</span></a>
+<a name="1198"><span class="lineNum">    1198 </span><span class="lineCov">        770 :         collateralToken.seize(</span></a>
 <a name="1199"><span class="lineNum">    1199 </span>            :             liquidator,</a>
 <a name="1200"><span class="lineNum">    1200 </span>            :             account,</a>
 <a name="1201"><span class="lineNum">    1201 </span>            :             liquidatedTokens,</a>
 <a name="1202"><span class="lineNum">    1202 </span>            :             protocolTokens</a>
 <a name="1203"><span class="lineNum">    1203 </span>            :         );</a>
 <a name="1204"><span class="lineNum">    1204 </span>            : </a>
-<a name="1205"><span class="lineNum">    1205 </span><span class="lineCov">        747 :         emit Liquidated(</span></a>
+<a name="1205"><span class="lineNum">    1205 </span><span class="lineCov">        770 :         emit Liquidated(</span></a>
 <a name="1206"><span class="lineNum">    1206 </span>            :             liquidator,</a>
 <a name="1207"><span class="lineNum">    1207 </span>            :             account,</a>
 <a name="1208"><span class="lineNum">    1208 </span>            :             amount,</a>
@@ -1276,7 +1276,7 @@
 <a name="1214"><span class="lineNum">    1214 </span>            :     /// @notice Returns gauge pool contract address.</a>
 <a name="1215"><span class="lineNum">    1215 </span>            :     /// @return The gauge controller contract address.</a>
 <a name="1216"><span class="lineNum">    1216 </span>            :     function _gaugePool() internal view returns (GaugePool) {</a>
-<a name="1217"><span class="lineNum">    1217 </span><span class="lineCov">       5646 :         return marketManager.gaugePool();</span></a>
+<a name="1217"><span class="lineNum">    1217 </span><span class="lineCov">       5755 :         return marketManager.gaugePool();</span></a>
 <a name="1218"><span class="lineNum">    1218 </span>            :     }</a>
 <a name="1219"><span class="lineNum">    1219 </span>            : </a>
 <a name="1220"><span class="lineNum">    1220 </span>            :     /// @dev Internal helper for reverting efficiently.</a>

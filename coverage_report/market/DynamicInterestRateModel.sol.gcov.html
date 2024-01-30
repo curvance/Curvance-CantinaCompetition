@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">11</td>
@@ -294,38 +294,38 @@
 <a name="232"><span class="lineNum">     232 </span>            :         uint256 borrows,</a>
 <a name="233"><span class="lineNum">     233 </span>            :         uint256 reserves</a>
 <a name="234"><span class="lineNum">     234 </span>            :     ) external returns (uint256 borrowRate) {</a>
-<a name="235"><span class="lineNum">     235 </span><span class="lineCov">        837 :         uint256 util = utilizationRate(cash, borrows, reserves);</span></a>
-<a name="236"><span class="lineNum">     236 </span><span class="lineCov">        837 :         RatesConfiguration memory config = ratesConfig;</span></a>
-<a name="237"><span class="lineNum">     237 </span><span class="lineCov">        837 :         uint256 vertexPoint = config.vertexStartingPoint;</span></a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineCov">        840 :         uint256 util = utilizationRate(cash, borrows, reserves);</span></a>
+<a name="236"><span class="lineNum">     236 </span><span class="lineCov">        840 :         RatesConfiguration memory config = ratesConfig;</span></a>
+<a name="237"><span class="lineNum">     237 </span><span class="lineCov">        840 :         uint256 vertexPoint = config.vertexStartingPoint;</span></a>
 <a name="238"><span class="lineNum">     238 </span>            : </a>
-<a name="239"><span class="lineNum">     239 </span><span class="lineCov">        837 :         bool belowVertex = (util &lt;= vertexPoint);</span></a>
+<a name="239"><span class="lineNum">     239 </span><span class="lineCov">        840 :         bool belowVertex = (util &lt;= vertexPoint);</span></a>
 <a name="240"><span class="lineNum">     240 </span>            : </a>
 <a name="241"><span class="lineNum">     241 </span>            :         // Query current interest rate.</a>
-<a name="242"><span class="lineNum">     242 </span><span class="lineCov">        837 :         if (belowVertex) {</span></a>
+<a name="242"><span class="lineNum">     242 </span><span class="lineCov">        840 :         if (belowVertex) {</span></a>
 <a name="243"><span class="lineNum">     243 </span>            :             unchecked {</a>
-<a name="244"><span class="lineNum">     244 </span><span class="lineCov">        690 :                 borrowRate = getBaseInterestRate(util);</span></a>
+<a name="244"><span class="lineNum">     244 </span><span class="lineCov">        697 :                 borrowRate = getBaseInterestRate(util);</span></a>
 <a name="245"><span class="lineNum">     245 </span>            :             }</a>
 <a name="246"><span class="lineNum">     246 </span>            :         } else {</a>
 <a name="247"><span class="lineNum">     247 </span>            :             /// We know this will not underflow or overflow,</a>
 <a name="248"><span class="lineNum">     248 </span>            :             /// because of Interest Rate Model configurations.</a>
 <a name="249"><span class="lineNum">     249 </span>            :             unchecked {</a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineCov">        147 :                 borrowRate = (getVertexInterestRate(util - vertexPoint) +</span></a>
+<a name="250"><span class="lineNum">     250 </span><span class="lineCov">        143 :                 borrowRate = (getVertexInterestRate(util - vertexPoint) +</span></a>
 <a name="251"><span class="lineNum">     251 </span>            :                     getBaseInterestRate(vertexPoint));</a>
 <a name="252"><span class="lineNum">     252 </span>            :             }</a>
 <a name="253"><span class="lineNum">     253 </span>            :         }</a>
 <a name="254"><span class="lineNum">     254 </span>            : </a>
 <a name="255"><span class="lineNum">     255 </span>            :         // Execute interest rate update if necessary. </a>
-<a name="256"><span class="lineNum">     256 </span><span class="lineCov">        837 :         if (block.timestamp &gt;= updateTimestamp()) {</span></a>
+<a name="256"><span class="lineNum">     256 </span><span class="lineCov">        840 :         if (block.timestamp &gt;= updateTimestamp()) {</span></a>
 <a name="257"><span class="lineNum">     257 </span>            :             // If the vertex multiplier is already at its minimum,</a>
 <a name="258"><span class="lineNum">     258 </span>            :             // and would decrease more, can break here.</a>
-<a name="259"><span class="lineNum">     259 </span><span class="lineCov">        676 :             if (vertexMultiplier() == WAD &amp;&amp; util &lt; config.increaseThreshold) {</span></a>
+<a name="259"><span class="lineNum">     259 </span><span class="lineCov">        671 :             if (vertexMultiplier() == WAD &amp;&amp; util &lt; config.increaseThreshold) {</span></a>
 <a name="260"><span class="lineNum">     260 </span><span class="lineCov">        620 :                 _setUpdateTimestamp(</span></a>
 <a name="261"><span class="lineNum">     261 </span>            :                     uint64(block.timestamp + config.adjustmentRate)</a>
 <a name="262"><span class="lineNum">     262 </span>            :                 );</a>
 <a name="263"><span class="lineNum">     263 </span><span class="lineCov">        620 :                 return borrowRate;</span></a>
 <a name="264"><span class="lineNum">     264 </span>            :             }</a>
 <a name="265"><span class="lineNum">     265 </span>            : </a>
-<a name="266"><span class="lineNum">     266 </span><span class="lineCov">         56 :             if (belowVertex) {</span></a>
+<a name="266"><span class="lineNum">     266 </span><span class="lineCov">         51 :             if (belowVertex) {</span></a>
 <a name="267"><span class="lineNum">     267 </span><span class="lineNoCov">          0 :                 _currentRates = _packRatesData(</span></a>
 <a name="268"><span class="lineNum">     268 </span>            :                     _updateForBelowVertex(config, util),</a>
 <a name="269"><span class="lineNum">     269 </span>            :                     uint64(block.timestamp + config.adjustmentRate)</a>
@@ -333,7 +333,7 @@
 <a name="271"><span class="lineNum">     271 </span><span class="lineNoCov">          0 :                 return borrowRate;</span></a>
 <a name="272"><span class="lineNum">     272 </span>            :             }</a>
 <a name="273"><span class="lineNum">     273 </span>            : </a>
-<a name="274"><span class="lineNum">     274 </span><span class="lineCov">         56 :             _currentRates = _packRatesData(</span></a>
+<a name="274"><span class="lineNum">     274 </span><span class="lineCov">         51 :             _currentRates = _packRatesData(</span></a>
 <a name="275"><span class="lineNum">     275 </span>            :                 _updateForAboveVertex(config, util),</a>
 <a name="276"><span class="lineNum">     276 </span>            :                 uint64(block.timestamp + config.adjustmentRate)</a>
 <a name="277"><span class="lineNum">     277 </span>            :             );</a>
@@ -393,7 +393,7 @@
 <a name="331"><span class="lineNum">     331 </span>            : </a>
 <a name="332"><span class="lineNum">     332 </span>            :     /// @notice Returns the rate at which interest compounds, in seconds.</a>
 <a name="333"><span class="lineNum">     333 </span>            :     function compoundRate() external pure returns (uint256) {</a>
-<a name="334"><span class="lineNum">     334 </span><span class="lineCov">       3296 :         return INTEREST_COMPOUND_RATE;</span></a>
+<a name="334"><span class="lineNum">     334 </span><span class="lineCov">       3351 :         return INTEREST_COMPOUND_RATE;</span></a>
 <a name="335"><span class="lineNum">     335 </span>            :     }</a>
 <a name="336"><span class="lineNum">     336 </span>            : </a>
 <a name="337"><span class="lineNum">     337 </span>            :     /// @notice Returns the unpacked `DynamicRatesData` struct </a>
@@ -421,11 +421,11 @@
 <a name="359"><span class="lineNum">     359 </span>            :         uint256 reserves</a>
 <a name="360"><span class="lineNum">     360 </span>            :     ) public pure returns (uint256) {</a>
 <a name="361"><span class="lineNum">     361 </span>            :         // Utilization rate is 0 when there are no borrows.</a>
-<a name="362"><span class="lineNum">     362 </span><span class="lineCov">        837 :         if (borrows == 0) {</span></a>
+<a name="362"><span class="lineNum">     362 </span><span class="lineCov">        840 :         if (borrows == 0) {</span></a>
 <a name="363"><span class="lineNum">     363 </span><span class="lineCov">         99 :             return 0;</span></a>
 <a name="364"><span class="lineNum">     364 </span>            :         }</a>
 <a name="365"><span class="lineNum">     365 </span>            : </a>
-<a name="366"><span class="lineNum">     366 </span><span class="lineCov">        738 :         return (borrows * WAD) / (cash + borrows - reserves);</span></a>
+<a name="366"><span class="lineNum">     366 </span><span class="lineCov">        741 :         return (borrows * WAD) / (cash + borrows - reserves);</span></a>
 <a name="367"><span class="lineNum">     367 </span>            :     }</a>
 <a name="368"><span class="lineNum">     368 </span>            : </a>
 <a name="369"><span class="lineNum">     369 </span>            :     /// @notice Calculates the current borrow rate per compound,</a>
@@ -511,13 +511,13 @@
 <a name="449"><span class="lineNum">     449 </span>            :     /// @notice Returns the multiplier applied to the vertex interest rate,</a>
 <a name="450"><span class="lineNum">     450 </span>            :     ///         in `WAD`.</a>
 <a name="451"><span class="lineNum">     451 </span>            :     function vertexMultiplier() public view returns (uint256) {</a>
-<a name="452"><span class="lineNum">     452 </span><span class="lineCov">        879 :         return _currentRates &amp; _BITMASK_VERTEX_MULTIPLIER;</span></a>
+<a name="452"><span class="lineNum">     452 </span><span class="lineCov">        865 :         return _currentRates &amp; _BITMASK_VERTEX_MULTIPLIER;</span></a>
 <a name="453"><span class="lineNum">     453 </span>            :     }</a>
 <a name="454"><span class="lineNum">     454 </span>            : </a>
 <a name="455"><span class="lineNum">     455 </span>            :     /// @notice Returns the next timestamp when `vertexMultiplier` </a>
 <a name="456"><span class="lineNum">     456 </span>            :     ///        will be updated.</a>
 <a name="457"><span class="lineNum">     457 </span>            :     function updateTimestamp() public view returns (uint256) {</a>
-<a name="458"><span class="lineNum">     458 </span><span class="lineCov">        837 :         return uint64(_currentRates &gt;&gt; _BITPOS_UPDATE_TIMESTAMP);</span></a>
+<a name="458"><span class="lineNum">     458 </span><span class="lineCov">        840 :         return uint64(_currentRates &gt;&gt; _BITPOS_UPDATE_TIMESTAMP);</span></a>
 <a name="459"><span class="lineNum">     459 </span>            :     }</a>
 <a name="460"><span class="lineNum">     460 </span>            : </a>
 <a name="461"><span class="lineNum">     461 </span>            :     /// INTERNAL FUNCTIONS ///</a>
@@ -528,7 +528,7 @@
 <a name="466"><span class="lineNum">     466 </span>            :     function getBaseInterestRate(</a>
 <a name="467"><span class="lineNum">     467 </span>            :         uint256 util</a>
 <a name="468"><span class="lineNum">     468 </span>            :     ) internal view returns (uint256) {</a>
-<a name="469"><span class="lineNum">     469 </span><span class="lineCov">        837 :         return (util * ratesConfig.baseInterestRate) / WAD;</span></a>
+<a name="469"><span class="lineNum">     469 </span><span class="lineCov">        840 :         return (util * ratesConfig.baseInterestRate) / WAD;</span></a>
 <a name="470"><span class="lineNum">     470 </span>            :     }</a>
 <a name="471"><span class="lineNum">     471 </span>            : </a>
 <a name="472"><span class="lineNum">     472 </span>            :     /// @notice Calculates the interest rate under `vertexInterestRate`</a>
@@ -542,8 +542,8 @@
 <a name="480"><span class="lineNum">     480 </span>            :     ) internal view returns (uint256) {</a>
 <a name="481"><span class="lineNum">     481 </span>            :         // We divide by 1e36 (WAD_SQUARED) since we need to divide by WAD</a>
 <a name="482"><span class="lineNum">     482 </span>            :         // twice to maintain precision.</a>
-<a name="483"><span class="lineNum">     483 </span><span class="lineCov">        147 :         return</span></a>
-<a name="484"><span class="lineNum">     484 </span><span class="lineCov">        147 :             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /</span></a>
+<a name="483"><span class="lineNum">     483 </span><span class="lineCov">        143 :         return</span></a>
+<a name="484"><span class="lineNum">     484 </span><span class="lineCov">        143 :             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /</span></a>
 <a name="485"><span class="lineNum">     485 </span>            :             WAD_SQUARED;</a>
 <a name="486"><span class="lineNum">     486 </span>            :     }</a>
 <a name="487"><span class="lineNum">     487 </span>            : </a>
@@ -689,12 +689,12 @@
 <a name="627"><span class="lineNum">     627 </span>            :         RatesConfiguration memory config,</a>
 <a name="628"><span class="lineNum">     628 </span>            :         uint256 util</a>
 <a name="629"><span class="lineNum">     629 </span>            :     ) internal view returns (uint256) {</a>
-<a name="630"><span class="lineNum">     630 </span><span class="lineCov">         56 :         uint256 currentMultiplier = vertexMultiplier();</span></a>
+<a name="630"><span class="lineNum">     630 </span><span class="lineCov">         51 :         uint256 currentMultiplier = vertexMultiplier();</span></a>
 <a name="631"><span class="lineNum">     631 </span>            :         // Calculate decay rate.</a>
-<a name="632"><span class="lineNum">     632 </span><span class="lineCov">         56 :         uint256 decay = (currentMultiplier * config.decayRate) / WAD;</span></a>
-<a name="633"><span class="lineNum">     633 </span><span class="lineCov">         56 :         uint256 newMultiplier;</span></a>
+<a name="632"><span class="lineNum">     632 </span><span class="lineCov">         51 :         uint256 decay = (currentMultiplier * config.decayRate) / WAD;</span></a>
+<a name="633"><span class="lineNum">     633 </span><span class="lineCov">         51 :         uint256 newMultiplier;</span></a>
 <a name="634"><span class="lineNum">     634 </span>            : </a>
-<a name="635"><span class="lineNum">     635 </span><span class="lineCov">         56 :         if (util &lt;= config.increaseThreshold) {</span></a>
+<a name="635"><span class="lineNum">     635 </span><span class="lineCov">         51 :         if (util &lt;= config.increaseThreshold) {</span></a>
 <a name="636"><span class="lineNum">     636 </span><span class="lineNoCov">          0 :             newMultiplier = currentMultiplier - decay;</span></a>
 <a name="637"><span class="lineNum">     637 </span>            : </a>
 <a name="638"><span class="lineNum">     638 </span>            :             // Check if decay rate sends new rate below 1.</a>
@@ -704,7 +704,7 @@
 <a name="642"><span class="lineNum">     642 </span>            :         // Apply a positive multiplier to the current multiplier based on</a>
 <a name="643"><span class="lineNum">     643 </span>            :         // `util` vs `increaseThreshold` and `increaseThresholdMax`.</a>
 <a name="644"><span class="lineNum">     644 </span>            :         // Then apply decay effect.</a>
-<a name="645"><span class="lineNum">     645 </span><span class="lineCov">         56 :         newMultiplier = _getPositiveCFactorResult(</span></a>
+<a name="645"><span class="lineNum">     645 </span><span class="lineCov">         51 :         newMultiplier = _getPositiveCFactorResult(</span></a>
 <a name="646"><span class="lineNum">     646 </span>            :             currentMultiplier, // `multiplier`</a>
 <a name="647"><span class="lineNum">     647 </span>            :             config.adjustmentVelocity, // `adjustmentVelocity`</a>
 <a name="648"><span class="lineNum">     648 </span>            :             decay, // `decay`</a>
@@ -716,14 +716,14 @@
 <a name="654"><span class="lineNum">     654 </span>            :         // Update and return with adjustment and decay rate applied.</a>
 <a name="655"><span class="lineNum">     655 </span>            :         // Its theorectically possible for the multiplier to be below 1</a>
 <a name="656"><span class="lineNum">     656 </span>            :         // due to decay, so we need to check like in below vertex.</a>
-<a name="657"><span class="lineNum">     657 </span><span class="lineCov">         56 :         if (newMultiplier &lt; WAD) {</span></a>
+<a name="657"><span class="lineNum">     657 </span><span class="lineCov">         51 :         if (newMultiplier &lt; WAD) {</span></a>
 <a name="658"><span class="lineNum">     658 </span><span class="lineNoCov">          0 :             return WAD;</span></a>
 <a name="659"><span class="lineNum">     659 </span>            :         }</a>
 <a name="660"><span class="lineNum">     660 </span>            : </a>
 <a name="661"><span class="lineNum">     661 </span>            :         // Make sure `newMultiplier` is not above the maximum allowed</a>
 <a name="662"><span class="lineNum">     662 </span>            :         // vertex multiplier.</a>
-<a name="663"><span class="lineNum">     663 </span><span class="lineCov">         56 :         return</span></a>
-<a name="664"><span class="lineNum">     664 </span><span class="lineCov">         56 :             newMultiplier &lt; config.vertexMultiplierMax</span></a>
+<a name="663"><span class="lineNum">     663 </span><span class="lineCov">         51 :         return</span></a>
+<a name="664"><span class="lineNum">     664 </span><span class="lineCov">         51 :             newMultiplier &lt; config.vertexMultiplierMax</span></a>
 <a name="665"><span class="lineNum">     665 </span>            :                 ? newMultiplier</a>
 <a name="666"><span class="lineNum">     666 </span>            :                 : config.vertexMultiplierMax;</a>
 <a name="667"><span class="lineNum">     667 </span>            :     }</a>
@@ -820,15 +820,15 @@
 <a name="758"><span class="lineNum">     758 </span>            :         // the absolute maximum utilization is 100%, and thus current == end.</a>
 <a name="759"><span class="lineNum">     759 </span>            :         // Which will result in WAD result for `cFactor`.</a>
 <a name="760"><span class="lineNum">     760 </span>            :         // Thus, this will be bound between [0, WAD].</a>
-<a name="761"><span class="lineNum">     761 </span><span class="lineCov">         56 :         uint256 cFactor = ((current - start) * WAD) / (end - start);</span></a>
+<a name="761"><span class="lineNum">     761 </span><span class="lineCov">         51 :         uint256 cFactor = ((current - start) * WAD) / (end - start);</span></a>
 <a name="762"><span class="lineNum">     762 </span>            :    </a>
 <a name="763"><span class="lineNum">     763 </span>            :         // Apply cFactor curve result to adjustment velocity.</a>
 <a name="764"><span class="lineNum">     764 </span>            :         // Then add 100% on top for final adjustment value to `multiplier`.</a>
-<a name="765"><span class="lineNum">     765 </span><span class="lineCov">         56 :         cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);</span></a>
+<a name="765"><span class="lineNum">     765 </span><span class="lineCov">         51 :         cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);</span></a>
 <a name="766"><span class="lineNum">     766 </span>            : </a>
 <a name="767"><span class="lineNum">     767 </span>            :         // Apply positive `cFactor` effect to `currentMultiplier`, and</a>
 <a name="768"><span class="lineNum">     768 </span>            :         // adjust for 1e36 precision. Then apply decay effect.</a>
-<a name="769"><span class="lineNum">     769 </span><span class="lineCov">         56 :         return ((multiplier * cFactor) / WAD_SQUARED) - decay;</span></a>
+<a name="769"><span class="lineNum">     769 </span><span class="lineCov">         51 :         return ((multiplier * cFactor) / WAD_SQUARED) - decay;</span></a>
 <a name="770"><span class="lineNum">     770 </span>            :     }</a>
 <a name="771"><span class="lineNum">     771 </span>            : </a>
 <a name="772"><span class="lineNum">     772 </span>            :     /// @notice Calculates a negative curve value based on `current`,</a>
@@ -889,12 +889,12 @@
 <a name="827"><span class="lineNum">     827 </span>            :         assembly {</a>
 <a name="828"><span class="lineNum">     828 </span>            :             // Mask `newVertexMultiplier` to the lower 192 b.its,</a>
 <a name="829"><span class="lineNum">     829 </span>            :             // in case the upper bits somehow aren't clean</a>
-<a name="830"><span class="lineNum">     830 </span><span class="lineCov">         57 :             newVertexMultiplier := and(</span></a>
+<a name="830"><span class="lineNum">     830 </span><span class="lineCov">         52 :             newVertexMultiplier := and(</span></a>
 <a name="831"><span class="lineNum">     831 </span>            :                 newVertexMultiplier,</a>
 <a name="832"><span class="lineNum">     832 </span>            :                 _BITMASK_VERTEX_MULTIPLIER</a>
 <a name="833"><span class="lineNum">     833 </span>            :             )</a>
 <a name="834"><span class="lineNum">     834 </span>            :             // `newVertexMultiplier | block.timestamp`.</a>
-<a name="835"><span class="lineNum">     835 </span><span class="lineCov">         57 :             result := or(</span></a>
+<a name="835"><span class="lineNum">     835 </span><span class="lineCov">         52 :             result := or(</span></a>
 <a name="836"><span class="lineNum">     836 </span>            :                 newVertexMultiplier,</a>
 <a name="837"><span class="lineNum">     837 </span>            :                 shl(_BITPOS_UPDATE_TIMESTAMP, newTimestamp)</a>
 <a name="838"><span class="lineNum">     838 </span>            :             )</a>

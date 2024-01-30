@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">38</td>
@@ -907,20 +907,20 @@
 <a name="845"><span class="lineNum">     845 </span>            :     /// @param time The timestamp for which to calculate the epoch.</a>
 <a name="846"><span class="lineNum">     846 </span>            :     /// @return The current epoch.</a>
 <a name="847"><span class="lineNum">     847 </span>            :     function currentEpoch(uint256 time) public view returns (uint256) {</a>
-<a name="848"><span class="lineNum">     848 </span><span class="lineCov">      21942 :         if (time &lt; genesisEpoch) {</span></a>
+<a name="848"><span class="lineNum">     848 </span><span class="lineCov">      21943 :         if (time &lt; genesisEpoch) {</span></a>
 <a name="849"><span class="lineNum">     849 </span><span class="lineNoCov">          0 :             return 0;</span></a>
 <a name="850"><span class="lineNum">     850 </span>            :         }</a>
 <a name="851"><span class="lineNum">     851 </span>            : </a>
 <a name="852"><span class="lineNum">     852 </span>            :         // Rounds down intentionally.</a>
-<a name="853"><span class="lineNum">     853 </span><span class="lineCov">      21942 :         return ((time - genesisEpoch) / EPOCH_DURATION);</span></a>
+<a name="853"><span class="lineNum">     853 </span><span class="lineCov">      21943 :         return ((time - genesisEpoch) / EPOCH_DURATION);</span></a>
 <a name="854"><span class="lineNum">     854 </span>            :     }</a>
 <a name="855"><span class="lineNum">     855 </span>            : </a>
 <a name="856"><span class="lineNum">     856 </span>            :     /// @notice Returns the current epoch for the given time.</a>
 <a name="857"><span class="lineNum">     857 </span>            :     /// @return The calculated next epoch start timestamp.</a>
 <a name="858"><span class="lineNum">     858 </span>            :     function nextEpochStartTime() public view returns (uint256) {</a>
-<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        270 :         uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *</span></a>
+<a name="859"><span class="lineNum">     859 </span><span class="lineCov">        271 :         uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *</span></a>
 <a name="860"><span class="lineNum">     860 </span>            :             EPOCH_DURATION;</a>
-<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        270 :         return (genesisEpoch + timestampOffset);</span></a>
+<a name="861"><span class="lineNum">     861 </span><span class="lineCov">        271 :         return (genesisEpoch + timestampOffset);</span></a>
 <a name="862"><span class="lineNum">     862 </span>            :     }</a>
 <a name="863"><span class="lineNum">     863 </span>            : </a>
 <a name="864"><span class="lineNum">     864 </span>            :     /// @notice Returns the epoch to lock until for a lock executed</a>

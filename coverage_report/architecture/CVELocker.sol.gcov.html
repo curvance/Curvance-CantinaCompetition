@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">18</td>
@@ -171,14 +171,14 @@
 <a name="109"><span class="lineNum">     109 </span>            :     }</a>
 <a name="110"><span class="lineNum">     110 </span>            : </a>
 <a name="111"><span class="lineNum">     111 </span>            :     function startLocker() external {</a>
-<a name="112"><span class="lineNum">     112 </span><span class="lineCov">        566 :         _checkDaoPermissions();</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineCov">        567 :         _checkDaoPermissions();</span></a>
 <a name="113"><span class="lineNum">     113 </span>            : </a>
-<a name="114"><span class="lineNum">     114 </span><span class="lineCov">        565 :         if (lockerStarted == 2) {</span></a>
+<a name="114"><span class="lineNum">     114 </span><span class="lineCov">        566 :         if (lockerStarted == 2) {</span></a>
 <a name="115"><span class="lineNum">     115 </span><span class="lineCov">          1 :             revert CVELocker__LockerIsAlreadyStarted();</span></a>
 <a name="116"><span class="lineNum">     116 </span>            :         }</a>
 <a name="117"><span class="lineNum">     117 </span>            : </a>
-<a name="118"><span class="lineNum">     118 </span><span class="lineCov">        564 :         veCVE = IVeCVE(centralRegistry.veCVE());</span></a>
-<a name="119"><span class="lineNum">     119 </span><span class="lineCov">        564 :         lockerStarted = 2;</span></a>
+<a name="118"><span class="lineNum">     118 </span><span class="lineCov">        565 :         veCVE = IVeCVE(centralRegistry.veCVE());</span></a>
+<a name="119"><span class="lineNum">     119 </span><span class="lineCov">        565 :         lockerStarted = 2;</span></a>
 <a name="120"><span class="lineNum">     120 </span>            :     }</a>
 <a name="121"><span class="lineNum">     121 </span>            : </a>
 <a name="122"><span class="lineNum">     122 </span>            :     /// @notice Rescue any token sent by mistake.</a>
@@ -578,7 +578,7 @@
 <a name="516"><span class="lineNum">     516 </span>            : </a>
 <a name="517"><span class="lineNum">     517 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="518"><span class="lineNum">     518 </span>            :     function _checkDaoPermissions() internal view {</a>
-<a name="519"><span class="lineNum">     519 </span><span class="lineCov">        830 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
+<a name="519"><span class="lineNum">     519 </span><span class="lineCov">        831 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
 <a name="520"><span class="lineNum">     520 </span><span class="lineCov">          3 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="521"><span class="lineNum">     521 </span>            :         }</a>
 <a name="522"><span class="lineNum">     522 </span>            :     }</a>

@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">13</td>
@@ -128,21 +128,21 @@
 <a name="66"><span class="lineNum">      66 </span>            :     /// @dev    Can only be called once, to start the gauge system.</a>
 <a name="67"><span class="lineNum">      67 </span>            :     /// @param marketManager_ The address to be set as a market manager.</a>
 <a name="68"><span class="lineNum">      68 </span>            :     function start(address marketManager_) external {</a>
-<a name="69"><span class="lineNum">      69 </span><span class="lineCov">        237 :         _checkDaoPermissions();</span></a>
+<a name="69"><span class="lineNum">      69 </span><span class="lineCov">        238 :         _checkDaoPermissions();</span></a>
 <a name="70"><span class="lineNum">      70 </span>            : </a>
-<a name="71"><span class="lineNum">      71 </span><span class="lineCov">        237 :         if (startTime != 0) {</span></a>
+<a name="71"><span class="lineNum">      71 </span><span class="lineCov">        238 :         if (startTime != 0) {</span></a>
 <a name="72"><span class="lineNum">      72 </span><span class="lineNoCov">          0 :             revert GaugeErrors.AlreadyStarted();</span></a>
 <a name="73"><span class="lineNum">      73 </span>            :         }</a>
 <a name="74"><span class="lineNum">      74 </span>            : </a>
 <a name="75"><span class="lineNum">      75 </span>            :         // Validate that `marketManager_` is configured as a market manager</a>
 <a name="76"><span class="lineNum">      76 </span>            :         // inside the Central Registry.</a>
-<a name="77"><span class="lineNum">      77 </span><span class="lineCov">        237 :         if (!centralRegistry.isMarketManager(marketManager_)) {</span></a>
+<a name="77"><span class="lineNum">      77 </span><span class="lineCov">        238 :         if (!centralRegistry.isMarketManager(marketManager_)) {</span></a>
 <a name="78"><span class="lineNum">      78 </span><span class="lineNoCov">          0 :             revert GaugeErrors.InvalidAddress();</span></a>
 <a name="79"><span class="lineNum">      79 </span>            :         }</a>
 <a name="80"><span class="lineNum">      80 </span>            : </a>
 <a name="81"><span class="lineNum">      81 </span>            :         // Validate that `marketManager_` is actually a market manager.</a>
 <a name="82"><span class="lineNum">      82 </span>            :         if (</a>
-<a name="83"><span class="lineNum">      83 </span><span class="lineCov">        237 :             !ERC165Checker.supportsInterface(</span></a>
+<a name="83"><span class="lineNum">      83 </span><span class="lineCov">        238 :             !ERC165Checker.supportsInterface(</span></a>
 <a name="84"><span class="lineNum">      84 </span>            :                 address(marketManager_),</a>
 <a name="85"><span class="lineNum">      85 </span>            :                 type(IMarketManager).interfaceId</a>
 <a name="86"><span class="lineNum">      86 </span>            :             )</a>
@@ -150,8 +150,8 @@
 <a name="88"><span class="lineNum">      88 </span><span class="lineNoCov">          0 :             revert GaugeErrors.InvalidAddress();</span></a>
 <a name="89"><span class="lineNum">      89 </span>            :         }</a>
 <a name="90"><span class="lineNum">      90 </span>            : </a>
-<a name="91"><span class="lineNum">      91 </span><span class="lineCov">        237 :         startTime = veCVE.nextEpochStartTime();</span></a>
-<a name="92"><span class="lineNum">      92 </span><span class="lineCov">        237 :         marketManager = marketManager_;</span></a>
+<a name="91"><span class="lineNum">      91 </span><span class="lineCov">        238 :         startTime = veCVE.nextEpochStartTime();</span></a>
+<a name="92"><span class="lineNum">      92 </span><span class="lineCov">        238 :         marketManager = marketManager_;</span></a>
 <a name="93"><span class="lineNum">      93 </span>            :     }</a>
 <a name="94"><span class="lineNum">      94 </span>            : </a>
 <a name="95"><span class="lineNum">      95 </span>            :     /// @notice Adds a new reward to the gauge system.</a>
@@ -241,8 +241,8 @@
 <a name="179"><span class="lineNum">     179 </span>            :         uint256 epoch,</a>
 <a name="180"><span class="lineNum">     180 </span>            :         address rewardToken</a>
 <a name="181"><span class="lineNum">     181 </span>            :     ) public view returns (uint256) {</a>
-<a name="182"><span class="lineNum">     182 </span><span class="lineCov">      10415 :         if (rewardToken == cve) {</span></a>
-<a name="183"><span class="lineNum">     183 </span><span class="lineCov">      10190 :             return _epochInfo[epoch].poolWeights[token];</span></a>
+<a name="182"><span class="lineNum">     182 </span><span class="lineCov">      10439 :         if (rewardToken == cve) {</span></a>
+<a name="183"><span class="lineNum">     183 </span><span class="lineCov">      10214 :             return _epochInfo[epoch].poolWeights[token];</span></a>
 <a name="184"><span class="lineNum">     184 </span>            :         } else {</a>
 <a name="185"><span class="lineNum">     185 </span><span class="lineCov">        225 :             return</span></a>
 <a name="186"><span class="lineNum">     186 </span><span class="lineCov">        225 :                 (EPOCH_WINDOW *</span></a>
@@ -332,43 +332,43 @@
 <a name="270"><span class="lineNum">     270 </span>            :         address user,</a>
 <a name="271"><span class="lineNum">     271 </span>            :         uint256 amount</a>
 <a name="272"><span class="lineNum">     272 </span>            :     ) external nonReentrant {</a>
-<a name="273"><span class="lineNum">     273 </span><span class="lineCov">      40489 :         if (amount == 0) {</span></a>
+<a name="273"><span class="lineNum">     273 </span><span class="lineCov">      40742 :         if (amount == 0) {</span></a>
 <a name="274"><span class="lineNum">     274 </span><span class="lineCov">          3 :             revert GaugeErrors.InvalidAmount();</span></a>
 <a name="275"><span class="lineNum">     275 </span>            :         }</a>
 <a name="276"><span class="lineNum">     276 </span>            : </a>
 <a name="277"><span class="lineNum">     277 </span>            :         // If the gauge has no startTime </a>
 <a name="278"><span class="lineNum">     278 </span>            :         if (</a>
-<a name="279"><span class="lineNum">     279 </span><span class="lineCov">      40486 :             msg.sender != token || !IMarketManager(marketManager).isListed(token)</span></a>
+<a name="279"><span class="lineNum">     279 </span><span class="lineCov">      40739 :             msg.sender != token || !IMarketManager(marketManager).isListed(token)</span></a>
 <a name="280"><span class="lineNum">     280 </span>            :         ) {</a>
 <a name="281"><span class="lineNum">     281 </span><span class="lineNoCov">          0 :             revert GaugeErrors.InvalidToken();</span></a>
 <a name="282"><span class="lineNum">     282 </span>            :         }</a>
 <a name="283"><span class="lineNum">     283 </span>            : </a>
-<a name="284"><span class="lineNum">     284 </span><span class="lineCov">      40486 :         updatePool(token);</span></a>
+<a name="284"><span class="lineNum">     284 </span><span class="lineCov">      40739 :         updatePool(token);</span></a>
 <a name="285"><span class="lineNum">     285 </span>            : </a>
-<a name="286"><span class="lineNum">     286 </span><span class="lineCov">      40486 :         _calcPending(user, token);</span></a>
+<a name="286"><span class="lineNum">     286 </span><span class="lineCov">      40739 :         _calcPending(user, token);</span></a>
 <a name="287"><span class="lineNum">     287 </span>            : </a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      40486 :         balanceOf[token][user] += amount;</span></a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">      40486 :         totalSupply[token] += amount;</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      40739 :         balanceOf[token][user] += amount;</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineCov">      40739 :         totalSupply[token] += amount;</span></a>
 <a name="290"><span class="lineNum">     290 </span>            : </a>
 <a name="291"><span class="lineNum">     291 </span>            :         // If the gauge has not started yet no need to check whether</a>
 <a name="292"><span class="lineNum">     292 </span>            :         // first deposit has been set.</a>
-<a name="293"><span class="lineNum">     293 </span><span class="lineCov">      40486 :         if (block.timestamp &gt; startTime) {</span></a>
+<a name="293"><span class="lineNum">     293 </span><span class="lineCov">      40739 :         if (block.timestamp &gt; startTime) {</span></a>
 <a name="294"><span class="lineNum">     294 </span>            :             // If first deposit has not occurred we will need to send</a>
 <a name="295"><span class="lineNum">     295 </span>            :             // excess rewards to the DAO.</a>
-<a name="296"><span class="lineNum">     296 </span><span class="lineCov">      40226 :             if (firstDeposit == 0) {</span></a>
+<a name="296"><span class="lineNum">     296 </span><span class="lineCov">      40479 :             if (firstDeposit == 0) {</span></a>
 <a name="297"><span class="lineNum">     297 </span>            :                 // If first deposit, the new rewards from gauge start to this</a>
 <a name="298"><span class="lineNum">     298 </span>            :                 // point will be unallocated rewards.</a>
-<a name="299"><span class="lineNum">     299 </span><span class="lineCov">       6690 :                 firstDeposit = block.timestamp;</span></a>
-<a name="300"><span class="lineNum">     300 </span><span class="lineCov">       6690 :                 updatePool(token);</span></a>
+<a name="299"><span class="lineNum">     299 </span><span class="lineCov">       6691 :                 firstDeposit = block.timestamp;</span></a>
+<a name="300"><span class="lineNum">     300 </span><span class="lineCov">       6691 :                 updatePool(token);</span></a>
 <a name="301"><span class="lineNum">     301 </span>            : </a>
-<a name="302"><span class="lineNum">     302 </span><span class="lineCov">       6690 :                 uint256 rewardTokensLength = rewardTokens.length;</span></a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineCov">       6690 :                 for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
+<a name="302"><span class="lineNum">     302 </span><span class="lineCov">       6691 :                 uint256 rewardTokensLength = rewardTokens.length;</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">       6691 :                 for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
 <a name="304"><span class="lineNum">     304 </span>            :                     // Query rewardToken then increment i.</a>
-<a name="305"><span class="lineNum">     305 </span><span class="lineCov">       6700 :                     address rewardToken = rewardTokens[i++];</span></a>
-<a name="306"><span class="lineNum">     306 </span><span class="lineCov">       6700 :                     uint256 unallocatedRewards = (poolAccRewardPerShare[token][</span></a>
+<a name="305"><span class="lineNum">     305 </span><span class="lineCov">       6701 :                     address rewardToken = rewardTokens[i++];</span></a>
+<a name="306"><span class="lineNum">     306 </span><span class="lineCov">       6701 :                     uint256 unallocatedRewards = (poolAccRewardPerShare[token][</span></a>
 <a name="307"><span class="lineNum">     307 </span>            :                         rewardToken</a>
 <a name="308"><span class="lineNum">     308 </span>            :                     ] * totalSupply[token]) / WAD_SQUARED;</a>
-<a name="309"><span class="lineNum">     309 </span><span class="lineCov">       6700 :                     if (unallocatedRewards &gt; 0) {</span></a>
+<a name="309"><span class="lineNum">     309 </span><span class="lineCov">       6701 :                     if (unallocatedRewards &gt; 0) {</span></a>
 <a name="310"><span class="lineNum">     310 </span><span class="lineCov">          2 :                         SafeTransferLib.safeTransfer(</span></a>
 <a name="311"><span class="lineNum">     311 </span>            :                             rewardToken,</a>
 <a name="312"><span class="lineNum">     312 </span>            :                             centralRegistry.daoAddress(),</a>
@@ -380,9 +380,9 @@
 <a name="318"><span class="lineNum">     318 </span>            :         }</a>
 <a name="319"><span class="lineNum">     319 </span>            :         </a>
 <a name="320"><span class="lineNum">     320 </span>            : </a>
-<a name="321"><span class="lineNum">     321 </span><span class="lineCov">      40486 :         _calcDebt(user, token);</span></a>
+<a name="321"><span class="lineNum">     321 </span><span class="lineCov">      40739 :         _calcDebt(user, token);</span></a>
 <a name="322"><span class="lineNum">     322 </span>            : </a>
-<a name="323"><span class="lineNum">     323 </span><span class="lineCov">      40486 :         emit Deposit(user, token, amount);</span></a>
+<a name="323"><span class="lineNum">     323 </span><span class="lineCov">      40739 :         emit Deposit(user, token, amount);</span></a>
 <a name="324"><span class="lineNum">     324 </span>            :     }</a>
 <a name="325"><span class="lineNum">     325 </span>            : </a>
 <a name="326"><span class="lineNum">     326 </span>            :     /// @notice Withdraw from gauge pool.</a>
@@ -394,29 +394,29 @@
 <a name="332"><span class="lineNum">     332 </span>            :         address user,</a>
 <a name="333"><span class="lineNum">     333 </span>            :         uint256 amount</a>
 <a name="334"><span class="lineNum">     334 </span>            :     ) external nonReentrant {</a>
-<a name="335"><span class="lineNum">     335 </span><span class="lineCov">       3977 :         if (amount == 0) {</span></a>
+<a name="335"><span class="lineNum">     335 </span><span class="lineCov">       3993 :         if (amount == 0) {</span></a>
 <a name="336"><span class="lineNum">     336 </span><span class="lineCov">          6 :             revert GaugeErrors.InvalidAmount();</span></a>
 <a name="337"><span class="lineNum">     337 </span>            :         }</a>
 <a name="338"><span class="lineNum">     338 </span>            : </a>
 <a name="339"><span class="lineNum">     339 </span>            :         if (</a>
-<a name="340"><span class="lineNum">     340 </span><span class="lineCov">       3971 :             msg.sender != token || !IMarketManager(marketManager).isListed(token)</span></a>
+<a name="340"><span class="lineNum">     340 </span><span class="lineCov">       3987 :             msg.sender != token || !IMarketManager(marketManager).isListed(token)</span></a>
 <a name="341"><span class="lineNum">     341 </span>            :         ) {</a>
 <a name="342"><span class="lineNum">     342 </span><span class="lineNoCov">          0 :             revert GaugeErrors.InvalidToken();</span></a>
 <a name="343"><span class="lineNum">     343 </span>            :         }</a>
 <a name="344"><span class="lineNum">     344 </span>            : </a>
-<a name="345"><span class="lineNum">     345 </span><span class="lineCov">       3971 :         if (balanceOf[token][user] &lt; amount) {</span></a>
+<a name="345"><span class="lineNum">     345 </span><span class="lineCov">       3987 :         if (balanceOf[token][user] &lt; amount) {</span></a>
 <a name="346"><span class="lineNum">     346 </span><span class="lineCov">          3 :             revert GaugeErrors.InvalidAmount();</span></a>
 <a name="347"><span class="lineNum">     347 </span>            :         }</a>
 <a name="348"><span class="lineNum">     348 </span>            : </a>
-<a name="349"><span class="lineNum">     349 </span><span class="lineCov">       3968 :         updatePool(token);</span></a>
-<a name="350"><span class="lineNum">     350 </span><span class="lineCov">       3968 :         _calcPending(user, token);</span></a>
+<a name="349"><span class="lineNum">     349 </span><span class="lineCov">       3984 :         updatePool(token);</span></a>
+<a name="350"><span class="lineNum">     350 </span><span class="lineCov">       3984 :         _calcPending(user, token);</span></a>
 <a name="351"><span class="lineNum">     351 </span>            : </a>
-<a name="352"><span class="lineNum">     352 </span><span class="lineCov">       3968 :         balanceOf[token][user] -= amount;</span></a>
-<a name="353"><span class="lineNum">     353 </span><span class="lineCov">       3968 :         totalSupply[token] -= amount;</span></a>
+<a name="352"><span class="lineNum">     352 </span><span class="lineCov">       3984 :         balanceOf[token][user] -= amount;</span></a>
+<a name="353"><span class="lineNum">     353 </span><span class="lineCov">       3984 :         totalSupply[token] -= amount;</span></a>
 <a name="354"><span class="lineNum">     354 </span>            : </a>
-<a name="355"><span class="lineNum">     355 </span><span class="lineCov">       3968 :         _calcDebt(user, token);</span></a>
+<a name="355"><span class="lineNum">     355 </span><span class="lineCov">       3984 :         _calcDebt(user, token);</span></a>
 <a name="356"><span class="lineNum">     356 </span>            : </a>
-<a name="357"><span class="lineNum">     357 </span><span class="lineCov">       3968 :         emit Withdraw(user, token, amount);</span></a>
+<a name="357"><span class="lineNum">     357 </span><span class="lineCov">       3984 :         emit Withdraw(user, token, amount);</span></a>
 <a name="358"><span class="lineNum">     358 </span>            :     }</a>
 <a name="359"><span class="lineNum">     359 </span>            : </a>
 <a name="360"><span class="lineNum">     360 </span>            :     /// @notice Claim all pending rewards for `token` from the gauge pool.</a>
@@ -555,38 +555,38 @@
 <a name="493"><span class="lineNum">     493 </span>            :     /// @notice Update reward variables of the given pool to be up-to-date.</a>
 <a name="494"><span class="lineNum">     494 </span>            :     /// @param token Pool token address.</a>
 <a name="495"><span class="lineNum">     495 </span>            :     function updatePool(address token) public override {</a>
-<a name="496"><span class="lineNum">     496 </span><span class="lineCov">      51182 :         if (block.timestamp &lt;= startTime) {</span></a>
-<a name="497"><span class="lineNum">     497 </span><span class="lineCov">      51182 :             return;</span></a>
+<a name="496"><span class="lineNum">     496 </span><span class="lineCov">      51452 :         if (block.timestamp &lt;= startTime) {</span></a>
+<a name="497"><span class="lineNum">     497 </span><span class="lineCov">      51452 :             return;</span></a>
 <a name="498"><span class="lineNum">     498 </span>            :         }</a>
 <a name="499"><span class="lineNum">     499 </span>            : </a>
-<a name="500"><span class="lineNum">     500 </span><span class="lineCov">      50910 :         uint256 _lastRewardTimestamp = poolLastRewardTimestamp[token];</span></a>
-<a name="501"><span class="lineNum">     501 </span><span class="lineCov">      50910 :         if (_lastRewardTimestamp == 0) {</span></a>
-<a name="502"><span class="lineNum">     502 </span><span class="lineCov">      18162 :             _lastRewardTimestamp = startTime;</span></a>
+<a name="500"><span class="lineNum">     500 </span><span class="lineCov">      51180 :         uint256 _lastRewardTimestamp = poolLastRewardTimestamp[token];</span></a>
+<a name="501"><span class="lineNum">     501 </span><span class="lineCov">      51180 :         if (_lastRewardTimestamp == 0) {</span></a>
+<a name="502"><span class="lineNum">     502 </span><span class="lineCov">      18234 :             _lastRewardTimestamp = startTime;</span></a>
 <a name="503"><span class="lineNum">     503 </span>            :         }</a>
 <a name="504"><span class="lineNum">     504 </span>            : </a>
-<a name="505"><span class="lineNum">     505 </span><span class="lineCov">      50910 :         if (block.timestamp &lt;= _lastRewardTimestamp) {</span></a>
-<a name="506"><span class="lineNum">     506 </span><span class="lineCov">      31550 :             return;</span></a>
+<a name="505"><span class="lineNum">     505 </span><span class="lineCov">      51180 :         if (block.timestamp &lt;= _lastRewardTimestamp) {</span></a>
+<a name="506"><span class="lineNum">     506 </span><span class="lineCov">      31752 :             return;</span></a>
 <a name="507"><span class="lineNum">     507 </span>            :         }</a>
 <a name="508"><span class="lineNum">     508 </span>            : </a>
-<a name="509"><span class="lineNum">     509 </span><span class="lineCov">      19360 :         uint256 totalDeposited = totalSupply[token];</span></a>
-<a name="510"><span class="lineNum">     510 </span><span class="lineCov">      19360 :         if (totalDeposited == 0) {</span></a>
-<a name="511"><span class="lineNum">     511 </span><span class="lineCov">       9274 :             return;</span></a>
+<a name="509"><span class="lineNum">     509 </span><span class="lineCov">      19428 :         uint256 totalDeposited = totalSupply[token];</span></a>
+<a name="510"><span class="lineNum">     510 </span><span class="lineCov">      19428 :         if (totalDeposited == 0) {</span></a>
+<a name="511"><span class="lineNum">     511 </span><span class="lineCov">       9318 :             return;</span></a>
 <a name="512"><span class="lineNum">     512 </span>            :         }</a>
 <a name="513"><span class="lineNum">     513 </span>            : </a>
-<a name="514"><span class="lineNum">     514 </span><span class="lineCov">      10086 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
-<a name="515"><span class="lineNum">     515 </span><span class="lineCov">      10086 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
-<a name="516"><span class="lineNum">     516 </span><span class="lineCov">      10146 :             uint256 lastRewardTimestamp = _lastRewardTimestamp;</span></a>
+<a name="514"><span class="lineNum">     514 </span><span class="lineCov">      10110 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
+<a name="515"><span class="lineNum">     515 </span><span class="lineCov">      10110 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
+<a name="516"><span class="lineNum">     516 </span><span class="lineCov">      10170 :             uint256 lastRewardTimestamp = _lastRewardTimestamp;</span></a>
 <a name="517"><span class="lineNum">     517 </span>            : </a>
 <a name="518"><span class="lineNum">     518 </span>            :             // Query rewardToken then increment i.</a>
-<a name="519"><span class="lineNum">     519 </span><span class="lineCov">      10146 :             address rewardToken = rewardTokens[i++];</span></a>
-<a name="520"><span class="lineNum">     520 </span><span class="lineCov">      10146 :             uint256 accRewardPerShare = poolAccRewardPerShare[token][</span></a>
+<a name="519"><span class="lineNum">     519 </span><span class="lineCov">      10170 :             address rewardToken = rewardTokens[i++];</span></a>
+<a name="520"><span class="lineNum">     520 </span><span class="lineCov">      10170 :             uint256 accRewardPerShare = poolAccRewardPerShare[token][</span></a>
 <a name="521"><span class="lineNum">     521 </span>            :                 rewardToken</a>
 <a name="522"><span class="lineNum">     522 </span>            :             ];</a>
-<a name="523"><span class="lineNum">     523 </span><span class="lineCov">      10146 :             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);</span></a>
-<a name="524"><span class="lineNum">     524 </span><span class="lineCov">      10146 :             uint256 currentEpoch = currentEpoch();</span></a>
-<a name="525"><span class="lineNum">     525 </span><span class="lineCov">      10146 :             uint256 reward;</span></a>
+<a name="523"><span class="lineNum">     523 </span><span class="lineCov">      10170 :             uint256 lastEpoch = epochOfTimestamp(lastRewardTimestamp);</span></a>
+<a name="524"><span class="lineNum">     524 </span><span class="lineCov">      10170 :             uint256 currentEpoch = currentEpoch();</span></a>
+<a name="525"><span class="lineNum">     525 </span><span class="lineCov">      10170 :             uint256 reward;</span></a>
 <a name="526"><span class="lineNum">     526 </span>            : </a>
-<a name="527"><span class="lineNum">     527 </span><span class="lineCov">      10204 :             while (lastEpoch &lt; currentEpoch) {</span></a>
+<a name="527"><span class="lineNum">     527 </span><span class="lineCov">      10228 :             while (lastEpoch &lt; currentEpoch) {</span></a>
 <a name="528"><span class="lineNum">     528 </span><span class="lineCov">         58 :                 uint256 endTimestamp = epochEndTime(lastEpoch);</span></a>
 <a name="529"><span class="lineNum">     529 </span>            : </a>
 <a name="530"><span class="lineNum">     530 </span>            :                 // Update rewards from lastRewardTimestamp to endTimestamp.</a>
@@ -604,44 +604,44 @@
 <a name="542"><span class="lineNum">     542 </span>            :             }</a>
 <a name="543"><span class="lineNum">     543 </span>            : </a>
 <a name="544"><span class="lineNum">     544 </span>            :             // Update rewards from lastRewardTimestamp to current timestamp.</a>
-<a name="545"><span class="lineNum">     545 </span><span class="lineCov">      10146 :             reward =</span></a>
+<a name="545"><span class="lineNum">     545 </span><span class="lineCov">      10170 :             reward =</span></a>
 <a name="546"><span class="lineNum">     546 </span>            :                 ((block.timestamp - lastRewardTimestamp) *</a>
 <a name="547"><span class="lineNum">     547 </span>            :                     rewardAllocation(token, lastEpoch, rewardToken)) /</a>
 <a name="548"><span class="lineNum">     548 </span>            :                 EPOCH_WINDOW;</a>
-<a name="549"><span class="lineNum">     549 </span><span class="lineCov">      10146 :             accRewardPerShare =</span></a>
+<a name="549"><span class="lineNum">     549 </span><span class="lineCov">      10170 :             accRewardPerShare =</span></a>
 <a name="550"><span class="lineNum">     550 </span>            :                 accRewardPerShare +</a>
 <a name="551"><span class="lineNum">     551 </span>            :                 (reward * (WAD_SQUARED)) /</a>
 <a name="552"><span class="lineNum">     552 </span>            :                 totalDeposited;</a>
 <a name="553"><span class="lineNum">     553 </span>            : </a>
-<a name="554"><span class="lineNum">     554 </span><span class="lineCov">      10146 :             poolAccRewardPerShare[token][rewardToken] = accRewardPerShare;</span></a>
+<a name="554"><span class="lineNum">     554 </span><span class="lineCov">      10170 :             poolAccRewardPerShare[token][rewardToken] = accRewardPerShare;</span></a>
 <a name="555"><span class="lineNum">     555 </span>            :         }</a>
 <a name="556"><span class="lineNum">     556 </span>            : </a>
 <a name="557"><span class="lineNum">     557 </span>            :         // Update pool storage.</a>
-<a name="558"><span class="lineNum">     558 </span><span class="lineCov">      10086 :         poolLastRewardTimestamp[token] = block.timestamp;</span></a>
+<a name="558"><span class="lineNum">     558 </span><span class="lineCov">      10110 :         poolLastRewardTimestamp[token] = block.timestamp;</span></a>
 <a name="559"><span class="lineNum">     559 </span>            :     }</a>
 <a name="560"><span class="lineNum">     560 </span>            : </a>
 <a name="561"><span class="lineNum">     561 </span>            :     /// @inheritdoc ERC165</a>
 <a name="562"><span class="lineNum">     562 </span>            :     function supportsInterface(</a>
 <a name="563"><span class="lineNum">     563 </span>            :         bytes4 interfaceId</a>
 <a name="564"><span class="lineNum">     564 </span>            :     ) public view override returns (bool) {</a>
-<a name="565"><span class="lineNum">     565 </span><span class="lineCov">       1929 :         return</span></a>
-<a name="566"><span class="lineNum">     566 </span><span class="lineCov">       1929 :             interfaceId == type(IGaugePool).interfaceId ||</span></a>
-<a name="567"><span class="lineNum">     567 </span><span class="lineCov">       1286 :             super.supportsInterface(interfaceId);</span></a>
+<a name="565"><span class="lineNum">     565 </span><span class="lineCov">       1932 :         return</span></a>
+<a name="566"><span class="lineNum">     566 </span><span class="lineCov">       1932 :             interfaceId == type(IGaugePool).interfaceId ||</span></a>
+<a name="567"><span class="lineNum">     567 </span><span class="lineCov">       1288 :             super.supportsInterface(interfaceId);</span></a>
 <a name="568"><span class="lineNum">     568 </span>            :     }</a>
 <a name="569"><span class="lineNum">     569 </span>            : </a>
 <a name="570"><span class="lineNum">     570 </span>            :     /// INTERNAL FUNCTIONS ///</a>
 <a name="571"><span class="lineNum">     571 </span>            : </a>
 <a name="572"><span class="lineNum">     572 </span>            :     /// @notice Calculate user's pending rewards.</a>
 <a name="573"><span class="lineNum">     573 </span>            :     function _calcPending(address user, address token) internal {</a>
-<a name="574"><span class="lineNum">     574 </span><span class="lineCov">      44480 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
+<a name="574"><span class="lineNum">     574 </span><span class="lineCov">      44749 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
 <a name="575"><span class="lineNum">     575 </span>            : </a>
-<a name="576"><span class="lineNum">     576 </span><span class="lineCov">      44480 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
+<a name="576"><span class="lineNum">     576 </span><span class="lineCov">      44749 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
 <a name="577"><span class="lineNum">     577 </span>            :             // Query rewardToken then increment i.</a>
-<a name="578"><span class="lineNum">     578 </span><span class="lineCov">      44560 :             address rewardToken = rewardTokens[i++];</span></a>
-<a name="579"><span class="lineNum">     579 </span><span class="lineCov">      44560 :             UserRewardInfo storage info = userDebtInfo[token][user][</span></a>
+<a name="578"><span class="lineNum">     578 </span><span class="lineCov">      44829 :             address rewardToken = rewardTokens[i++];</span></a>
+<a name="579"><span class="lineNum">     579 </span><span class="lineCov">      44829 :             UserRewardInfo storage info = userDebtInfo[token][user][</span></a>
 <a name="580"><span class="lineNum">     580 </span>            :                 rewardToken</a>
 <a name="581"><span class="lineNum">     581 </span>            :             ];</a>
-<a name="582"><span class="lineNum">     582 </span><span class="lineCov">      44560 :             info.rewardPending +=</span></a>
+<a name="582"><span class="lineNum">     582 </span><span class="lineCov">      44829 :             info.rewardPending +=</span></a>
 <a name="583"><span class="lineNum">     583 </span>            :                 (balanceOf[token][user] *</a>
 <a name="584"><span class="lineNum">     584 </span>            :                     poolAccRewardPerShare[token][rewardToken]) /</a>
 <a name="585"><span class="lineNum">     585 </span>            :                 (WAD_SQUARED) -</a>
@@ -651,15 +651,15 @@
 <a name="589"><span class="lineNum">     589 </span>            : </a>
 <a name="590"><span class="lineNum">     590 </span>            :     /// @notice Calculate user's debt amount for reward calculation.</a>
 <a name="591"><span class="lineNum">     591 </span>            :     function _calcDebt(address user, address token) internal {</a>
-<a name="592"><span class="lineNum">     592 </span><span class="lineCov">      44480 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
+<a name="592"><span class="lineNum">     592 </span><span class="lineCov">      44749 :         uint256 rewardTokensLength = rewardTokens.length;</span></a>
 <a name="593"><span class="lineNum">     593 </span>            : </a>
-<a name="594"><span class="lineNum">     594 </span><span class="lineCov">      44480 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
+<a name="594"><span class="lineNum">     594 </span><span class="lineCov">      44749 :         for (uint256 i; i &lt; rewardTokensLength; ) {</span></a>
 <a name="595"><span class="lineNum">     595 </span>            :             // Query rewardToken then increment i.</a>
-<a name="596"><span class="lineNum">     596 </span><span class="lineCov">      44560 :             address rewardToken = rewardTokens[i++];</span></a>
-<a name="597"><span class="lineNum">     597 </span><span class="lineCov">      44560 :             UserRewardInfo storage info = userDebtInfo[token][user][</span></a>
+<a name="596"><span class="lineNum">     596 </span><span class="lineCov">      44829 :             address rewardToken = rewardTokens[i++];</span></a>
+<a name="597"><span class="lineNum">     597 </span><span class="lineCov">      44829 :             UserRewardInfo storage info = userDebtInfo[token][user][</span></a>
 <a name="598"><span class="lineNum">     598 </span>            :                 rewardToken</a>
 <a name="599"><span class="lineNum">     599 </span>            :             ];</a>
-<a name="600"><span class="lineNum">     600 </span><span class="lineCov">      44560 :             info.rewardDebt =</span></a>
+<a name="600"><span class="lineNum">     600 </span><span class="lineCov">      44829 :             info.rewardDebt =</span></a>
 <a name="601"><span class="lineNum">     601 </span>            :                 (balanceOf[token][user] *</a>
 <a name="602"><span class="lineNum">     602 </span>            :                     poolAccRewardPerShare[token][rewardToken]) /</a>
 <a name="603"><span class="lineNum">     603 </span>            :                 (WAD_SQUARED);</a>

@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">30</td>
@@ -170,8 +170,8 @@
 <a name="108"><span class="lineNum">     108 </span>            :     /// @param asset The address of the asset.</a>
 <a name="109"><span class="lineNum">     109 </span>            :     /// @param feed The address of the new feed.</a>
 <a name="110"><span class="lineNum">     110 </span>            :     function addAssetPriceFeed(address asset, address feed) external {</a>
-<a name="111"><span class="lineNum">     111 </span><span class="lineCov">      13113 :         _checkElevatedPermissions();</span></a>
-<a name="112"><span class="lineNum">     112 </span><span class="lineCov">      13112 :         _addFeed(asset, feed);</span></a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineCov">      13182 :         _checkElevatedPermissions();</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineCov">      13181 :         _addFeed(asset, feed);</span></a>
 <a name="113"><span class="lineNum">     113 </span>            :     }</a>
 <a name="114"><span class="lineNum">     114 </span>            : </a>
 <a name="115"><span class="lineNum">     115 </span>            :     /// @notice Replaces one price feed with a new price feed for a specific asset.</a>
@@ -426,7 +426,7 @@
 <a name="364"><span class="lineNum">     364 </span>            :     /// @notice Check whether sequencer is valid or down.</a>
 <a name="365"><span class="lineNum">     365 </span>            :     /// @return True if sequencer is valid</a>
 <a name="366"><span class="lineNum">     366 </span>            :     function isSequencerValid() external view returns (bool) {</a>
-<a name="367"><span class="lineNum">     367 </span><span class="lineCov">      98612 :         return _isSequencerValid();</span></a>
+<a name="367"><span class="lineNum">     367 </span><span class="lineCov">     101992 :         return _isSequencerValid();</span></a>
 <a name="368"><span class="lineNum">     368 </span>            :     }</a>
 <a name="369"><span class="lineNum">     369 </span>            : </a>
 <a name="370"><span class="lineNum">     370 </span>            :     /// PUBLIC FUNCTIONS ///</a>
@@ -447,34 +447,34 @@
 <a name="385"><span class="lineNum">     385 </span>            :         bool inUSD,</a>
 <a name="386"><span class="lineNum">     386 </span>            :         bool getLower</a>
 <a name="387"><span class="lineNum">     387 </span>            :     ) public view returns (uint256 price, uint256 errorCode) {</a>
-<a name="388"><span class="lineNum">     388 </span><span class="lineCov">      83285 :         address mAsset;</span></a>
+<a name="388"><span class="lineNum">     388 </span><span class="lineCov">      86550 :         address mAsset;</span></a>
 <a name="389"><span class="lineNum">     389 </span>            :         // Check whether asset is an mToken.</a>
-<a name="390"><span class="lineNum">     390 </span><span class="lineCov">      83285 :         if (mTokenAssets[asset].isMToken) {</span></a>
+<a name="390"><span class="lineNum">     390 </span><span class="lineCov">      86550 :         if (mTokenAssets[asset].isMToken) {</span></a>
 <a name="391"><span class="lineNum">     391 </span><span class="lineCov">        110 :             mAsset = asset;</span></a>
 <a name="392"><span class="lineNum">     392 </span><span class="lineCov">        110 :             asset = mTokenAssets[asset].underlying;</span></a>
 <a name="393"><span class="lineNum">     393 </span>            :         }</a>
 <a name="394"><span class="lineNum">     394 </span>            : </a>
-<a name="395"><span class="lineNum">     395 </span><span class="lineCov">      83285 :         uint256 numFeeds = assetPriceFeeds[asset].length;</span></a>
+<a name="395"><span class="lineNum">     395 </span><span class="lineCov">      86550 :         uint256 numFeeds = assetPriceFeeds[asset].length;</span></a>
 <a name="396"><span class="lineNum">     396 </span>            :         // Validate we have a feed or feeds to price `asset`.</a>
-<a name="397"><span class="lineNum">     397 </span><span class="lineCov">      83285 :         if (numFeeds == 0) {</span></a>
+<a name="397"><span class="lineNum">     397 </span><span class="lineCov">      86550 :         if (numFeeds == 0) {</span></a>
 <a name="398"><span class="lineNum">     398 </span><span class="lineCov">         20 :             _revert(_NOT_SUPPORTED_SELECTOR);</span></a>
 <a name="399"><span class="lineNum">     399 </span>            :         }</a>
 <a name="400"><span class="lineNum">     400 </span>            : </a>
 <a name="401"><span class="lineNum">     401 </span>            :         // Route pricing to a single feed source or dual feed source.</a>
-<a name="402"><span class="lineNum">     402 </span><span class="lineCov">      83265 :         if (numFeeds &lt; 2) {</span></a>
-<a name="403"><span class="lineNum">     403 </span><span class="lineCov">      81665 :             (price, errorCode) = _getPriceSingleFeed(asset, inUSD, getLower);</span></a>
+<a name="402"><span class="lineNum">     402 </span><span class="lineCov">      86530 :         if (numFeeds &lt; 2) {</span></a>
+<a name="403"><span class="lineNum">     403 </span><span class="lineCov">      84930 :             (price, errorCode) = _getPriceSingleFeed(asset, inUSD, getLower);</span></a>
 <a name="404"><span class="lineNum">     404 </span>            :         } else {</a>
 <a name="405"><span class="lineNum">     405 </span><span class="lineCov">       1600 :             (price, errorCode) = _getPriceDualFeed(asset, inUSD, getLower);</span></a>
 <a name="406"><span class="lineNum">     406 </span>            :         }</a>
 <a name="407"><span class="lineNum">     407 </span>            : </a>
 <a name="408"><span class="lineNum">     408 </span>            :         // If somehow a feed returns a price of 0,</a>
 <a name="409"><span class="lineNum">     409 </span>            :         // make sure we trigger the BAD_SOURCE flag.</a>
-<a name="410"><span class="lineNum">     410 </span><span class="lineCov">      83260 :         if (price == 0 &amp;&amp; errorCode &lt; BAD_SOURCE) {</span></a>
+<a name="410"><span class="lineNum">     410 </span><span class="lineCov">      86525 :         if (price == 0 &amp;&amp; errorCode &lt; BAD_SOURCE) {</span></a>
 <a name="411"><span class="lineNum">     411 </span><span class="lineNoCov">          0 :             errorCode = BAD_SOURCE;</span></a>
 <a name="412"><span class="lineNum">     412 </span>            :         }</a>
 <a name="413"><span class="lineNum">     413 </span>            : </a>
 <a name="414"><span class="lineNum">     414 </span>            :         // Query the exchange rate for underlying token vs mToken and offset.</a>
-<a name="415"><span class="lineNum">     415 </span><span class="lineCov">      83260 :         if (mAsset != address(0)) {</span></a>
+<a name="415"><span class="lineNum">     415 </span><span class="lineCov">      86525 :         if (mAsset != address(0)) {</span></a>
 <a name="416"><span class="lineNum">     416 </span><span class="lineCov">        110 :             uint256 exchangeRate = IMToken(mAsset).exchangeRateCached();</span></a>
 <a name="417"><span class="lineNum">     417 </span><span class="lineCov">        110 :             price = (price * exchangeRate) / WAD;</span></a>
 <a name="418"><span class="lineNum">     418 </span>            :         }</a>
@@ -538,34 +538,34 @@
 <a name="476"><span class="lineNum">     476 </span>            :         view</a>
 <a name="477"><span class="lineNum">     477 </span>            :         returns (AccountSnapshot[] memory, uint256[] memory, uint256)</a>
 <a name="478"><span class="lineNum">     478 </span>            :     {</a>
-<a name="479"><span class="lineNum">     479 </span><span class="lineCov">      27227 :         uint256 numAssets = assets.length;</span></a>
+<a name="479"><span class="lineNum">     479 </span><span class="lineCov">      27969 :         uint256 numAssets = assets.length;</span></a>
 <a name="480"><span class="lineNum">     480 </span>            :         // Validate we are not trying to price zero assets.</a>
-<a name="481"><span class="lineNum">     481 </span><span class="lineCov">      27227 :         if (numAssets == 0) {</span></a>
+<a name="481"><span class="lineNum">     481 </span><span class="lineCov">      27969 :         if (numAssets == 0) {</span></a>
 <a name="482"><span class="lineNum">     482 </span><span class="lineCov">          3 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="483"><span class="lineNum">     483 </span>            :         }</a>
 <a name="484"><span class="lineNum">     484 </span>            : </a>
-<a name="485"><span class="lineNum">     485 </span><span class="lineCov">      27224 :         AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);</span></a>
-<a name="486"><span class="lineNum">     486 </span><span class="lineCov">      27224 :         uint256[] memory underlyingPrices = new uint256[](numAssets);</span></a>
-<a name="487"><span class="lineNum">     487 </span><span class="lineCov">      27224 :         uint256 hadError;</span></a>
+<a name="485"><span class="lineNum">     485 </span><span class="lineCov">      27966 :         AccountSnapshot[] memory snapshots = new AccountSnapshot[](numAssets);</span></a>
+<a name="486"><span class="lineNum">     486 </span><span class="lineCov">      27966 :         uint256[] memory underlyingPrices = new uint256[](numAssets);</span></a>
+<a name="487"><span class="lineNum">     487 </span><span class="lineCov">      27966 :         uint256 hadError;</span></a>
 <a name="488"><span class="lineNum">     488 </span>            : </a>
-<a name="489"><span class="lineNum">     489 </span><span class="lineCov">      27224 :         for (uint256 i; i &lt; numAssets; ) {</span></a>
-<a name="490"><span class="lineNum">     490 </span><span class="lineCov">      75103 :             snapshots[i] = assets[i].getSnapshotPacked(account);</span></a>
-<a name="491"><span class="lineNum">     491 </span><span class="lineCov">      75103 :             (underlyingPrices[i], hadError) = getPrice(</span></a>
+<a name="489"><span class="lineNum">     489 </span><span class="lineCov">      27966 :         for (uint256 i; i &lt; numAssets; ) {</span></a>
+<a name="490"><span class="lineNum">     490 </span><span class="lineCov">      78354 :             snapshots[i] = assets[i].getSnapshotPacked(account);</span></a>
+<a name="491"><span class="lineNum">     491 </span><span class="lineCov">      78354 :             (underlyingPrices[i], hadError) = getPrice(</span></a>
 <a name="492"><span class="lineNum">     492 </span>            :                 assets[i].underlying(),</a>
 <a name="493"><span class="lineNum">     493 </span>            :                 true,</a>
 <a name="494"><span class="lineNum">     494 </span>            :                 snapshots[i].isCToken</a>
 <a name="495"><span class="lineNum">     495 </span>            :             );</a>
 <a name="496"><span class="lineNum">     496 </span>            : </a>
-<a name="497"><span class="lineNum">     497 </span><span class="lineCov">      75101 :             if (hadError &gt;= errorCodeBreakpoint) {</span></a>
+<a name="497"><span class="lineNum">     497 </span><span class="lineCov">      78352 :             if (hadError &gt;= errorCodeBreakpoint) {</span></a>
 <a name="498"><span class="lineNum">     498 </span><span class="lineCov">          1 :                 _revert(_ERROR_CODE_FLAGGED_SELECTOR);</span></a>
 <a name="499"><span class="lineNum">     499 </span>            :             }</a>
 <a name="500"><span class="lineNum">     500 </span>            : </a>
 <a name="501"><span class="lineNum">     501 </span>            :             unchecked {</a>
-<a name="502"><span class="lineNum">     502 </span><span class="lineCov">      75100 :                 ++i;</span></a>
+<a name="502"><span class="lineNum">     502 </span><span class="lineCov">      78351 :                 ++i;</span></a>
 <a name="503"><span class="lineNum">     503 </span>            :             }</a>
 <a name="504"><span class="lineNum">     504 </span>            :         }</a>
 <a name="505"><span class="lineNum">     505 </span>            : </a>
-<a name="506"><span class="lineNum">     506 </span><span class="lineCov">      27221 :         return (snapshots, underlyingPrices, numAssets);</span></a>
+<a name="506"><span class="lineNum">     506 </span><span class="lineCov">      27963 :         return (snapshots, underlyingPrices, numAssets);</span></a>
 <a name="507"><span class="lineNum">     507 </span>            :     }</a>
 <a name="508"><span class="lineNum">     508 </span>            : </a>
 <a name="509"><span class="lineNum">     509 </span>            :     /// INTERNAL FUNCTIONS ///</a>
@@ -576,38 +576,38 @@
 <a name="514"><span class="lineNum">     514 </span>            :     /// @param feed The address of the feed to be added.</a>
 <a name="515"><span class="lineNum">     515 </span>            :     function _addFeed(address asset, address feed) internal {</a>
 <a name="516"><span class="lineNum">     516 </span>            :         // Validate that the proposed feed is approved for usage.</a>
-<a name="517"><span class="lineNum">     517 </span><span class="lineCov">      13115 :         if (!isApprovedAdaptor[feed]) {</span></a>
+<a name="517"><span class="lineNum">     517 </span><span class="lineCov">      13184 :         if (!isApprovedAdaptor[feed]) {</span></a>
 <a name="518"><span class="lineNum">     518 </span><span class="lineCov">          2 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="519"><span class="lineNum">     519 </span>            :         }</a>
 <a name="520"><span class="lineNum">     520 </span>            : </a>
 <a name="521"><span class="lineNum">     521 </span>            :         // Validate that the feed supports the proposed asset.</a>
-<a name="522"><span class="lineNum">     522 </span><span class="lineCov">      13113 :         if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {</span></a>
+<a name="522"><span class="lineNum">     522 </span><span class="lineCov">      13182 :         if (!IOracleAdaptor(feed).isSupportedAsset(asset)) {</span></a>
 <a name="523"><span class="lineNum">     523 </span><span class="lineCov">          2 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="524"><span class="lineNum">     524 </span>            :         }</a>
 <a name="525"><span class="lineNum">     525 </span>            : </a>
-<a name="526"><span class="lineNum">     526 </span><span class="lineCov">      13111 :         uint256 numPriceFeeds = assetPriceFeeds[asset].length;</span></a>
+<a name="526"><span class="lineNum">     526 </span><span class="lineCov">      13180 :         uint256 numPriceFeeds = assetPriceFeeds[asset].length;</span></a>
 <a name="527"><span class="lineNum">     527 </span>            : </a>
 <a name="528"><span class="lineNum">     528 </span>            :         // Validate that we do not already have 2 or more feeds for `asset`.</a>
-<a name="529"><span class="lineNum">     529 </span><span class="lineCov">      13111 :         if (numPriceFeeds &gt;= 2) {</span></a>
+<a name="529"><span class="lineNum">     529 </span><span class="lineCov">      13180 :         if (numPriceFeeds &gt;= 2) {</span></a>
 <a name="530"><span class="lineNum">     530 </span><span class="lineCov">          1 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="531"><span class="lineNum">     531 </span>            :         }</a>
 <a name="532"><span class="lineNum">     532 </span>            : </a>
 <a name="533"><span class="lineNum">     533 </span>            :         // Validate that the feed proposed is not a duplicate</a>
 <a name="534"><span class="lineNum">     534 </span>            :         // of a supported feed for `asset`.</a>
-<a name="535"><span class="lineNum">     535 </span><span class="lineCov">      13110 :         if (numPriceFeeds != 0 &amp;&amp; assetPriceFeeds[asset][0] == feed) {</span></a>
+<a name="535"><span class="lineNum">     535 </span><span class="lineCov">      13179 :         if (numPriceFeeds != 0 &amp;&amp; assetPriceFeeds[asset][0] == feed) {</span></a>
 <a name="536"><span class="lineNum">     536 </span><span class="lineCov">          1 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="537"><span class="lineNum">     537 </span>            :         }</a>
 <a name="538"><span class="lineNum">     538 </span>            : </a>
 <a name="539"><span class="lineNum">     539 </span>            :         // Validate that the feed returns a usable price for us with a sample query.</a>
-<a name="540"><span class="lineNum">     540 </span><span class="lineCov">      13109 :         PriceReturnData memory sampleData = IOracleAdaptor(feed).getPrice(</span></a>
+<a name="540"><span class="lineNum">     540 </span><span class="lineCov">      13178 :         PriceReturnData memory sampleData = IOracleAdaptor(feed).getPrice(</span></a>
 <a name="541"><span class="lineNum">     541 </span>            :             asset, true, true</a>
 <a name="542"><span class="lineNum">     542 </span>            :         );</a>
 <a name="543"><span class="lineNum">     543 </span>            : </a>
-<a name="544"><span class="lineNum">     544 </span><span class="lineCov">      13109 :         if (sampleData.price == 0 || sampleData.hadError) {</span></a>
+<a name="544"><span class="lineNum">     544 </span><span class="lineCov">      13178 :         if (sampleData.price == 0 || sampleData.hadError) {</span></a>
 <a name="545"><span class="lineNum">     545 </span><span class="lineNoCov">          0 :             _revert(_INVALID_PARAMETER_SELECTOR);</span></a>
 <a name="546"><span class="lineNum">     546 </span>            :         }</a>
 <a name="547"><span class="lineNum">     547 </span>            : </a>
-<a name="548"><span class="lineNum">     548 </span><span class="lineCov">      13109 :         assetPriceFeeds[asset].push(feed);</span></a>
+<a name="548"><span class="lineNum">     548 </span><span class="lineCov">      13178 :         assetPriceFeeds[asset].push(feed);</span></a>
 <a name="549"><span class="lineNum">     549 </span>            :     }</a>
 <a name="550"><span class="lineNum">     550 </span>            : </a>
 <a name="551"><span class="lineNum">     551 </span>            :     /// @notice Removes a price feed for a specific asset.</a>
@@ -695,23 +695,23 @@
 <a name="633"><span class="lineNum">     633 </span>            :         bool inUSD,</a>
 <a name="634"><span class="lineNum">     634 </span>            :         bool getLower</a>
 <a name="635"><span class="lineNum">     635 </span>            :     ) internal view returns (uint256, uint256) {</a>
-<a name="636"><span class="lineNum">     636 </span><span class="lineCov">      81665 :         address adapter = assetPriceFeeds[asset][0];</span></a>
-<a name="637"><span class="lineNum">     637 </span><span class="lineCov">      81665 :         if (!isApprovedAdaptor[adapter]) {</span></a>
+<a name="636"><span class="lineNum">     636 </span><span class="lineCov">      84930 :         address adapter = assetPriceFeeds[asset][0];</span></a>
+<a name="637"><span class="lineNum">     637 </span><span class="lineCov">      84930 :         if (!isApprovedAdaptor[adapter]) {</span></a>
 <a name="638"><span class="lineNum">     638 </span><span class="lineCov">          1 :             revert OracleRouter__AdaptorIsNotApproved();</span></a>
 <a name="639"><span class="lineNum">     639 </span>            :         }</a>
 <a name="640"><span class="lineNum">     640 </span>            : </a>
-<a name="641"><span class="lineNum">     641 </span><span class="lineCov">      81664 :         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(</span></a>
+<a name="641"><span class="lineNum">     641 </span><span class="lineCov">      84929 :         PriceReturnData memory data = IOracleAdaptor(adapter).getPrice(</span></a>
 <a name="642"><span class="lineNum">     642 </span>            :             asset,</a>
 <a name="643"><span class="lineNum">     643 </span>            :             inUSD,</a>
 <a name="644"><span class="lineNum">     644 </span>            :             getLower</a>
 <a name="645"><span class="lineNum">     645 </span>            :         );</a>
 <a name="646"><span class="lineNum">     646 </span>            :         // If we had an error pricing the asset, bubble up we had a error.</a>
-<a name="647"><span class="lineNum">     647 </span><span class="lineCov">      81660 :         if (data.hadError) {</span></a>
+<a name="647"><span class="lineNum">     647 </span><span class="lineCov">      84925 :         if (data.hadError) {</span></a>
 <a name="648"><span class="lineNum">     648 </span><span class="lineCov">          4 :             return (0, BAD_SOURCE);</span></a>
 <a name="649"><span class="lineNum">     649 </span>            :         }</a>
 <a name="650"><span class="lineNum">     650 </span>            : </a>
 <a name="651"><span class="lineNum">     651 </span>            :         // If the feed denomination is not in the proper form, modify it.</a>
-<a name="652"><span class="lineNum">     652 </span><span class="lineCov">      81656 :         if (data.inUSD != inUSD) {</span></a>
+<a name="652"><span class="lineNum">     652 </span><span class="lineCov">      84921 :         if (data.inUSD != inUSD) {</span></a>
 <a name="653"><span class="lineNum">     653 </span><span class="lineCov">          9 :             uint256 newPrice;</span></a>
 <a name="654"><span class="lineNum">     654 </span><span class="lineCov">          9 :             (newPrice, data.hadError) = _getETHUSD();</span></a>
 <a name="655"><span class="lineNum">     655 </span><span class="lineCov">          9 :             if (data.hadError) {</span></a>
@@ -723,7 +723,7 @@
 <a name="661"><span class="lineNum">     661 </span>            :             );</a>
 <a name="662"><span class="lineNum">     662 </span>            :         }</a>
 <a name="663"><span class="lineNum">     663 </span>            : </a>
-<a name="664"><span class="lineNum">     664 </span><span class="lineCov">      81656 :         return (data.price, NO_ERROR);</span></a>
+<a name="664"><span class="lineNum">     664 </span><span class="lineCov">      84921 :         return (data.price, NO_ERROR);</span></a>
 <a name="665"><span class="lineNum">     665 </span>            :     }</a>
 <a name="666"><span class="lineNum">     666 </span>            : </a>
 <a name="667"><span class="lineNum">     667 </span>            :     /// @notice Retrieves the price of a specified asset from a specific</a>
@@ -807,9 +807,9 @@
 <a name="745"><span class="lineNum">     745 </span>            :     /// @notice Check whether sequencer is valid or down.</a>
 <a name="746"><span class="lineNum">     746 </span>            :     /// @return True if sequencer is valid</a>
 <a name="747"><span class="lineNum">     747 </span>            :     function _isSequencerValid() internal view returns (bool) {</a>
-<a name="748"><span class="lineNum">     748 </span><span class="lineCov">      99944 :         address sequencer = centralRegistry.sequencer();</span></a>
+<a name="748"><span class="lineNum">     748 </span><span class="lineCov">     103324 :         address sequencer = centralRegistry.sequencer();</span></a>
 <a name="749"><span class="lineNum">     749 </span>            : </a>
-<a name="750"><span class="lineNum">     750 </span><span class="lineCov">      99944 :         if (sequencer != address(0)) {</span></a>
+<a name="750"><span class="lineNum">     750 </span><span class="lineCov">     103324 :         if (sequencer != address(0)) {</span></a>
 <a name="751"><span class="lineNum">     751 </span><span class="lineCov">        280 :             (, int256 answer, uint256 startedAt, , ) = IChainlink(sequencer)</span></a>
 <a name="752"><span class="lineNum">     752 </span>            :                 .latestRoundData();</a>
 <a name="753"><span class="lineNum">     753 </span>            : </a>
@@ -823,7 +823,7 @@
 <a name="761"><span class="lineNum">     761 </span>            :             }</a>
 <a name="762"><span class="lineNum">     762 </span>            :         }</a>
 <a name="763"><span class="lineNum">     763 </span>            : </a>
-<a name="764"><span class="lineNum">     764 </span><span class="lineCov">      99942 :         return true;</span></a>
+<a name="764"><span class="lineNum">     764 </span><span class="lineCov">     103322 :         return true;</span></a>
 <a name="765"><span class="lineNum">     765 </span>            :     }</a>
 <a name="766"><span class="lineNum">     766 </span>            : </a>
 <a name="767"><span class="lineNum">     767 </span>            :     /// @notice Converts a given price between ETH and USD formats.</a>
@@ -981,7 +981,7 @@
 <a name="919"><span class="lineNum">     919 </span>            : </a>
 <a name="920"><span class="lineNum">     920 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="921"><span class="lineNum">     921 </span>            :     function _checkElevatedPermissions() internal view {</a>
-<a name="922"><span class="lineNum">     922 </span><span class="lineCov">      16163 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
+<a name="922"><span class="lineNum">     922 </span><span class="lineCov">      16232 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
 <a name="923"><span class="lineNum">     923 </span><span class="lineCov">         11 :             revert OracleRouter__Unauthorized();</span></a>
 <a name="924"><span class="lineNum">     924 </span>            :         }</a>
 <a name="925"><span class="lineNum">     925 </span>            :     }</a>

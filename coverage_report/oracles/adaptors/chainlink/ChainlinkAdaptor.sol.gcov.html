@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 12:55:21</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">7</td>
@@ -144,14 +144,14 @@
 <a name="82"><span class="lineNum">      82 </span>            :         bool  /* getLower */</a>
 <a name="83"><span class="lineNum">      83 </span>            :     ) external view override returns (PriceReturnData memory) {</a>
 <a name="84"><span class="lineNum">      84 </span>            :         // Validate we support pricing `asset`.</a>
-<a name="85"><span class="lineNum">      85 </span><span class="lineCov">      98612 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="85"><span class="lineNum">      85 </span><span class="lineCov">     101992 :         if (!isSupportedAsset[asset]) {</span></a>
 <a name="86"><span class="lineNum">      86 </span><span class="lineNoCov">          0 :             revert ChainlinkAdaptor__AssetIsNotSupported();</span></a>
 <a name="87"><span class="lineNum">      87 </span>            :         }</a>
 <a name="88"><span class="lineNum">      88 </span>            : </a>
 <a name="89"><span class="lineNum">      89 </span>            :         // Check whether we want the pricing in USD first, </a>
 <a name="90"><span class="lineNum">      90 </span>            :         // otherwise price in terms of the gas token.</a>
-<a name="91"><span class="lineNum">      91 </span><span class="lineCov">      98612 :         if (inUSD) {</span></a>
-<a name="92"><span class="lineNum">      92 </span><span class="lineCov">      98604 :             return _getPriceInUSD(asset);</span></a>
+<a name="91"><span class="lineNum">      91 </span><span class="lineCov">     101992 :         if (inUSD) {</span></a>
+<a name="92"><span class="lineNum">      92 </span><span class="lineCov">     101984 :             return _getPriceInUSD(asset);</span></a>
 <a name="93"><span class="lineNum">      93 </span>            :         }</a>
 <a name="94"><span class="lineNum">      94 </span>            : </a>
 <a name="95"><span class="lineNum">      95 </span><span class="lineCov">          8 :         return _getPriceInETH(asset);</span></a>
@@ -172,56 +172,56 @@
 <a name="110"><span class="lineNum">     110 </span>            :         uint256 heartbeat, </a>
 <a name="111"><span class="lineNum">     111 </span>            :         bool inUSD</a>
 <a name="112"><span class="lineNum">     112 </span>            :     ) external {</a>
-<a name="113"><span class="lineNum">     113 </span><span class="lineCov">      16023 :         _checkElevatedPermissions();</span></a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineCov">      16092 :         _checkElevatedPermissions();</span></a>
 <a name="114"><span class="lineNum">     114 </span>            : </a>
-<a name="115"><span class="lineNum">     115 </span><span class="lineCov">      16023 :         if (heartbeat != 0) {</span></a>
+<a name="115"><span class="lineNum">     115 </span><span class="lineCov">      16092 :         if (heartbeat != 0) {</span></a>
 <a name="116"><span class="lineNum">     116 </span><span class="lineNoCov">          0 :             if (heartbeat &gt; DEFAULT_HEART_BEAT) {</span></a>
 <a name="117"><span class="lineNum">     117 </span><span class="lineNoCov">          0 :                 revert ChainlinkAdaptor__InvalidHeartbeat();</span></a>
 <a name="118"><span class="lineNum">     118 </span>            :             }</a>
 <a name="119"><span class="lineNum">     119 </span>            :         }</a>
 <a name="120"><span class="lineNum">     120 </span>            : </a>
 <a name="121"><span class="lineNum">     121 </span>            :         // Use Chainlink to get the min and max of the asset.</a>
-<a name="122"><span class="lineNum">     122 </span><span class="lineCov">      16023 :         IChainlink feedAggregator = IChainlink(</span></a>
+<a name="122"><span class="lineNum">     122 </span><span class="lineCov">      16092 :         IChainlink feedAggregator = IChainlink(</span></a>
 <a name="123"><span class="lineNum">     123 </span>            :             IChainlink(aggregator).aggregator()</a>
 <a name="124"><span class="lineNum">     124 </span>            :         );</a>
 <a name="125"><span class="lineNum">     125 </span>            : </a>
 <a name="126"><span class="lineNum">     126 </span>            :         // Query Max and Min feed prices from Chainlink aggregator.</a>
-<a name="127"><span class="lineNum">     127 </span><span class="lineCov">      16023 :         uint256 maxFromChainlink = uint256(</span></a>
+<a name="127"><span class="lineNum">     127 </span><span class="lineCov">      16092 :         uint256 maxFromChainlink = uint256(</span></a>
 <a name="128"><span class="lineNum">     128 </span>            :             uint192(feedAggregator.maxAnswer())</a>
 <a name="129"><span class="lineNum">     129 </span>            :         );</a>
-<a name="130"><span class="lineNum">     130 </span><span class="lineCov">      16023 :         uint256 minFromChainklink = uint256(</span></a>
+<a name="130"><span class="lineNum">     130 </span><span class="lineCov">      16092 :         uint256 minFromChainklink = uint256(</span></a>
 <a name="131"><span class="lineNum">     131 </span>            :             uint192(feedAggregator.minAnswer())</a>
 <a name="132"><span class="lineNum">     132 </span>            :         );</a>
 <a name="133"><span class="lineNum">     133 </span>            : </a>
 <a name="134"><span class="lineNum">     134 </span>            :         // Add a ~10% buffer to minimum and maximum price from Chainlink</a>
 <a name="135"><span class="lineNum">     135 </span>            :         // because Chainlink can stop updating its price before/above</a>
 <a name="136"><span class="lineNum">     136 </span>            :         // the min/max price.</a>
-<a name="137"><span class="lineNum">     137 </span><span class="lineCov">      16023 :         uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;</span></a>
-<a name="138"><span class="lineNum">     138 </span><span class="lineCov">      16023 :         uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;</span></a>
+<a name="137"><span class="lineNum">     137 </span><span class="lineCov">      16092 :         uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;</span></a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">      16092 :         uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;</span></a>
 <a name="139"><span class="lineNum">     139 </span>            : </a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      16023 :         if (bufferedMinPrice &gt;= bufferedMaxPrice) {</span></a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      16092 :         if (bufferedMinPrice &gt;= bufferedMaxPrice) {</span></a>
 <a name="141"><span class="lineNum">     141 </span><span class="lineNoCov">          0 :             revert ChainlinkAdaptor__InvalidMinMaxConfig();</span></a>
 <a name="142"><span class="lineNum">     142 </span>            :         }</a>
 <a name="143"><span class="lineNum">     143 </span>            : </a>
-<a name="144"><span class="lineNum">     144 </span><span class="lineCov">      16023 :         AdaptorData storage data;</span></a>
+<a name="144"><span class="lineNum">     144 </span><span class="lineCov">      16092 :         AdaptorData storage data;</span></a>
 <a name="145"><span class="lineNum">     145 </span>            : </a>
-<a name="146"><span class="lineNum">     146 </span><span class="lineCov">      16023 :         if (inUSD) {</span></a>
-<a name="147"><span class="lineNum">     147 </span><span class="lineCov">      12561 :             data = adaptorDataUSD[asset];</span></a>
+<a name="146"><span class="lineNum">     146 </span><span class="lineCov">      16092 :         if (inUSD) {</span></a>
+<a name="147"><span class="lineNum">     147 </span><span class="lineCov">      12630 :             data = adaptorDataUSD[asset];</span></a>
 <a name="148"><span class="lineNum">     148 </span>            :         } else {</a>
 <a name="149"><span class="lineNum">     149 </span><span class="lineCov">       3462 :             data = adaptorDataNonUSD[asset];</span></a>
 <a name="150"><span class="lineNum">     150 </span>            :         }</a>
 <a name="151"><span class="lineNum">     151 </span>            : </a>
 <a name="152"><span class="lineNum">     152 </span>            :         // Save adaptor data and update mapping that we support `asset` now.</a>
-<a name="153"><span class="lineNum">     153 </span><span class="lineCov">      16023 :         data.decimals = feedAggregator.decimals();</span></a>
-<a name="154"><span class="lineNum">     154 </span><span class="lineCov">      16023 :         data.max = bufferedMaxPrice;</span></a>
-<a name="155"><span class="lineNum">     155 </span><span class="lineCov">      16023 :         data.min = bufferedMinPrice;</span></a>
-<a name="156"><span class="lineNum">     156 </span><span class="lineCov">      16023 :         data.heartbeat = heartbeat != 0</span></a>
+<a name="153"><span class="lineNum">     153 </span><span class="lineCov">      16092 :         data.decimals = feedAggregator.decimals();</span></a>
+<a name="154"><span class="lineNum">     154 </span><span class="lineCov">      16092 :         data.max = bufferedMaxPrice;</span></a>
+<a name="155"><span class="lineNum">     155 </span><span class="lineCov">      16092 :         data.min = bufferedMinPrice;</span></a>
+<a name="156"><span class="lineNum">     156 </span><span class="lineCov">      16092 :         data.heartbeat = heartbeat != 0</span></a>
 <a name="157"><span class="lineNum">     157 </span>            :             ? heartbeat</a>
 <a name="158"><span class="lineNum">     158 </span>            :             : DEFAULT_HEART_BEAT;</a>
-<a name="159"><span class="lineNum">     159 </span><span class="lineCov">      16023 :         data.aggregator = IChainlink(aggregator);</span></a>
-<a name="160"><span class="lineNum">     160 </span><span class="lineCov">      16023 :         data.isConfigured = true;</span></a>
-<a name="161"><span class="lineNum">     161 </span><span class="lineCov">      16023 :         isSupportedAsset[asset] = true;</span></a>
-<a name="162"><span class="lineNum">     162 </span><span class="lineCov">      16023 :         emit ChainlinkAssetAdded(asset, data);</span></a>
+<a name="159"><span class="lineNum">     159 </span><span class="lineCov">      16092 :         data.aggregator = IChainlink(aggregator);</span></a>
+<a name="160"><span class="lineNum">     160 </span><span class="lineCov">      16092 :         data.isConfigured = true;</span></a>
+<a name="161"><span class="lineNum">     161 </span><span class="lineCov">      16092 :         isSupportedAsset[asset] = true;</span></a>
+<a name="162"><span class="lineNum">     162 </span><span class="lineCov">      16092 :         emit ChainlinkAssetAdded(asset, data);</span></a>
 <a name="163"><span class="lineNum">     163 </span>            :     }</a>
 <a name="164"><span class="lineNum">     164 </span>            : </a>
 <a name="165"><span class="lineNum">     165 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
@@ -259,8 +259,8 @@
 <a name="197"><span class="lineNum">     197 </span>            :     function _getPriceInUSD(</a>
 <a name="198"><span class="lineNum">     198 </span>            :         address asset</a>
 <a name="199"><span class="lineNum">     199 </span>            :     ) internal view returns (PriceReturnData memory) {</a>
-<a name="200"><span class="lineNum">     200 </span><span class="lineCov">      98604 :         if (adaptorDataUSD[asset].isConfigured) {</span></a>
-<a name="201"><span class="lineNum">     201 </span><span class="lineCov">      96217 :             return _parseData(adaptorDataUSD[asset], true);</span></a>
+<a name="200"><span class="lineNum">     200 </span><span class="lineCov">     101984 :         if (adaptorDataUSD[asset].isConfigured) {</span></a>
+<a name="201"><span class="lineNum">     201 </span><span class="lineCov">      99597 :             return _parseData(adaptorDataUSD[asset], true);</span></a>
 <a name="202"><span class="lineNum">     202 </span>            :         }</a>
 <a name="203"><span class="lineNum">     203 </span>            : </a>
 <a name="204"><span class="lineNum">     204 </span><span class="lineCov">       2387 :         return _parseData(adaptorDataNonUSD[asset], false);</span></a>
@@ -291,25 +291,25 @@
 <a name="229"><span class="lineNum">     229 </span>            :         AdaptorData memory data,</a>
 <a name="230"><span class="lineNum">     230 </span>            :         bool inUSD</a>
 <a name="231"><span class="lineNum">     231 </span>            :     ) internal view returns (PriceReturnData memory pData) {</a>
-<a name="232"><span class="lineNum">     232 </span><span class="lineCov">      98612 :         pData.inUSD = inUSD;</span></a>
-<a name="233"><span class="lineNum">     233 </span><span class="lineCov">      98612 :         if (!IOracleRouter(centralRegistry.oracleRouter()).isSequencerValid()) {</span></a>
+<a name="232"><span class="lineNum">     232 </span><span class="lineCov">     101992 :         pData.inUSD = inUSD;</span></a>
+<a name="233"><span class="lineNum">     233 </span><span class="lineCov">     101992 :         if (!IOracleRouter(centralRegistry.oracleRouter()).isSequencerValid()) {</span></a>
 <a name="234"><span class="lineNum">     234 </span><span class="lineCov">          2 :             pData.hadError = true;</span></a>
 <a name="235"><span class="lineNum">     235 </span><span class="lineCov">          2 :             return pData;</span></a>
 <a name="236"><span class="lineNum">     236 </span>            :         }</a>
 <a name="237"><span class="lineNum">     237 </span>            : </a>
-<a name="238"><span class="lineNum">     238 </span><span class="lineCov">      98610 :         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)</span></a>
+<a name="238"><span class="lineNum">     238 </span><span class="lineCov">     101990 :         (, int256 price, , uint256 updatedAt, ) = IChainlink(data.aggregator)</span></a>
 <a name="239"><span class="lineNum">     239 </span>            :             .latestRoundData();</a>
 <a name="240"><span class="lineNum">     240 </span>            : </a>
 <a name="241"><span class="lineNum">     241 </span>            :         // If we got a price of 0 or less, bubble up an error immediately.</a>
-<a name="242"><span class="lineNum">     242 </span><span class="lineCov">      98610 :         if (price &lt;= 0) {</span></a>
+<a name="242"><span class="lineNum">     242 </span><span class="lineCov">     101990 :         if (price &lt;= 0) {</span></a>
 <a name="243"><span class="lineNum">     243 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
 <a name="244"><span class="lineNum">     244 </span><span class="lineNoCov">          0 :             return pData;</span></a>
 <a name="245"><span class="lineNum">     245 </span>            :         }</a>
 <a name="246"><span class="lineNum">     246 </span>            : </a>
-<a name="247"><span class="lineNum">     247 </span><span class="lineCov">      98610 :         uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);</span></a>
+<a name="247"><span class="lineNum">     247 </span><span class="lineCov">     101990 :         uint256 newPrice = (uint256(price) * WAD) / (10 ** data.decimals);</span></a>
 <a name="248"><span class="lineNum">     248 </span>            : </a>
-<a name="249"><span class="lineNum">     249 </span><span class="lineCov">      98610 :         pData.price = uint240(newPrice);</span></a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineCov">      98610 :         pData.hadError = _verifyData(</span></a>
+<a name="249"><span class="lineNum">     249 </span><span class="lineCov">     101990 :         pData.price = uint240(newPrice);</span></a>
+<a name="250"><span class="lineNum">     250 </span><span class="lineCov">     101990 :         pData.hadError = _verifyData(</span></a>
 <a name="251"><span class="lineNum">     251 </span>            :                         uint256(price),</a>
 <a name="252"><span class="lineNum">     252 </span>            :                         updatedAt,</a>
 <a name="253"><span class="lineNum">     253 </span>            :                         data.max,</a>
@@ -337,21 +337,21 @@
 <a name="275"><span class="lineNum">     275 </span>            :         uint256 heartbeat</a>
 <a name="276"><span class="lineNum">     276 </span>            :     ) internal view returns (bool) {</a>
 <a name="277"><span class="lineNum">     277 </span>            :         // Validate `value` is not below the buffered min value allowed.</a>
-<a name="278"><span class="lineNum">     278 </span><span class="lineCov">      98610 :         if (value &lt; min) {</span></a>
+<a name="278"><span class="lineNum">     278 </span><span class="lineCov">     101990 :         if (value &lt; min) {</span></a>
 <a name="279"><span class="lineNum">     279 </span><span class="lineNoCov">          0 :             return true;</span></a>
 <a name="280"><span class="lineNum">     280 </span>            :         }</a>
 <a name="281"><span class="lineNum">     281 </span>            : </a>
 <a name="282"><span class="lineNum">     282 </span>            :         // Validate `value` is not above the buffered maximum value allowed.</a>
-<a name="283"><span class="lineNum">     283 </span><span class="lineCov">      98610 :         if (value &gt; max) {</span></a>
+<a name="283"><span class="lineNum">     283 </span><span class="lineCov">     101990 :         if (value &gt; max) {</span></a>
 <a name="284"><span class="lineNum">     284 </span><span class="lineNoCov">          0 :             return true;</span></a>
 <a name="285"><span class="lineNum">     285 </span>            :         }</a>
 <a name="286"><span class="lineNum">     286 </span>            : </a>
 <a name="287"><span class="lineNum">     287 </span>            :         // Validate the price returned is not stale.</a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">      98610 :         if (block.timestamp - timestamp &gt; heartbeat) {</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">     101990 :         if (block.timestamp - timestamp &gt; heartbeat) {</span></a>
 <a name="289"><span class="lineNum">     289 </span><span class="lineCov">          2 :             return true;</span></a>
 <a name="290"><span class="lineNum">     290 </span>            :         }</a>
 <a name="291"><span class="lineNum">     291 </span>            : </a>
-<a name="292"><span class="lineNum">     292 </span><span class="lineCov">      98608 :         return false;</span></a>
+<a name="292"><span class="lineNum">     292 </span><span class="lineCov">     101988 :         return false;</span></a>
 <a name="293"><span class="lineNum">     293 </span>            :     }</a>
 <a name="294"><span class="lineNum">     294 </span>            : }</a>
 </pre>
