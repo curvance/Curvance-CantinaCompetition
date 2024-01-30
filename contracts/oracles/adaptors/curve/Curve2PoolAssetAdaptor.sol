@@ -236,7 +236,7 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
     ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
@@ -253,7 +253,7 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
         delete isSupportedAsset[asset];
         delete adaptorData[asset];
 
-        // Notify the price router that we are going to stop supporting
+        // Notify the Oracle Router that we are going to stop supporting
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit CurvePoolAssetRemoved(asset);

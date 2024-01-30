@@ -218,7 +218,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
     ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
@@ -235,7 +235,7 @@ contract GMAdaptor is BaseOracleAdaptor {
         delete isSupportedAsset[asset];
         delete marketData[asset];
 
-        // Notify the oracle router that we are going to
+        // Notify the Oracle Router that we are going to
         // stop supporting the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
