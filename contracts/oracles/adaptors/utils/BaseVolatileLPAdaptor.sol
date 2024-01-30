@@ -13,11 +13,12 @@ import { IUniswapV2Pair } from "contracts/interfaces/external/uniswap/IUniswapV2
 contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Adaptor storage.
-    /// @param token0 token0 address.
-    /// @param decimals0 token0 decimals.
-    /// @param token1 token1 address.
-    /// @param decimals1 token1 decimals.
+    /// @notice Stores configuration data for Uniswap V2 volatile style
+    ///         Twap price sources.
+    /// @param token0 Underlying token0 address.
+    /// @param decimals0 Underlying decimals for token0.
+    /// @param token1 Underlying token1 address.
+    /// @param decimals1 Underlying decimals for token1.
     struct AdaptorData {
         address token0;
         uint8 decimals0;

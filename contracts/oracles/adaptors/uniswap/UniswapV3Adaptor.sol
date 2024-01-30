@@ -14,11 +14,12 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Uniswap V3 Twap price sources.
-    /// @param priceSource The address location where you query the associated assets TWAP price
-    /// @param secondsAgo period used for TWAP calculation
-    /// @param baseDecimals the asset you want to price, decimals
-    /// @param quoteDecimals the asset price is quoted in, decimals
-    /// @param quoteToken the asset Twap calulation denominates in
+    /// @param priceSource The address location where you query
+    ///                    the associated assets TWAP price.
+    /// @param secondsAgo Period used for TWAP calculation.
+    /// @param baseDecimals The decimals of base asset you want to price.
+    /// @param quoteDecimals The decimals asset price is quoted in.
+    /// @param quoteToken The asset Twap calulation denominates in.
     struct AdaptorData {
         address priceSource;
         uint32 secondsAgo;
@@ -30,22 +31,23 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 
     /// @notice The smallest possible TWAP that can be used.
+    ///         300 = 5 minutes.
     uint32 public constant MINIMUM_SECONDS_AGO = 300;
 
     /// @notice Chain WETH address.
     address public immutable WETH;
 
+    /// @notice Static uniswap oracle router address.
     IStaticOracle public immutable uniswapOracleRouter;
 
     /// STORAGE ///
 
-    /// @notice Uniswap adaptor storage
+    /// @notice Asset Address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
 
     event UniswapV3AssetAdded(address asset, AdaptorData assetConfig);
-
     event UniswapV3AssetRemoved(address asset);
 
     /// ERRORS ///

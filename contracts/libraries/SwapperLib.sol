@@ -28,6 +28,7 @@ library SwapperLib {
     /// ERRORS ///
 
     error SwapperLib__SwapError();
+    error SwapperLib__UnknownCalldata();
 
     /// FUNCTIONS ///
 
@@ -41,7 +42,12 @@ library SwapperLib {
         address callDataChecker = centralRegistry.externalCallDataChecker(
             swapData.target
         );
-        require(callDataChecker != address(0), "Invalid target");
+
+        // Make sure we know how to validate this calldata.
+        if (callDataChecker == address(0)) {
+            revert SwapperLib__UnknownCalldata();
+        }
+
         IExternalCallDataChecker(callDataChecker).checkCallData(
             swapData,
             address(this)
@@ -53,6 +59,7 @@ library SwapperLib {
             swapData.inputAmount
         );
 
+        // Cache output token from struct for easier querying.
         address outputToken = swapData.outputToken;
         uint256 balance = CommonLib.getTokenBalance(outputToken);
 
