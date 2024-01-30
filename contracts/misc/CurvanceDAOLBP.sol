@@ -266,7 +266,7 @@ contract CurvanceDAOLBP {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Preconditional check to determine whether the LBP is active.
-    function _canCommit() internal {
+    function _canCommit() internal view {
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
             revert CurvanceDAOLBP__NotStarted();

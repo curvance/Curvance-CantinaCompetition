@@ -390,7 +390,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         uint256 virtualPrice,
         uint256 lowerBound,
         uint256 upperBound
-    ) internal view {
+    ) internal pure {
         if (virtualPrice < lowerBound || virtualPrice > upperBound) {
             revert Curve2PoolLPAdaptor__BoundsExceeded();
         }

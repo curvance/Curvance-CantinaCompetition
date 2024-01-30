@@ -75,7 +75,8 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
 
     function test_getUnlockPenalty_penaltyZero() public {
         // unlock penalty is 0 by default
-        veCVE.getUnlockPenalty(address(this), 0);
+        uint256 penalty = veCVE.getUnlockPenalty(address(this), 0);
+        assertEq(penalty, 0);
     }
 
     function test_getUnlockPenalty_fail_invalidIndex() public {

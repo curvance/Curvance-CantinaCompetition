@@ -81,18 +81,23 @@ contract PendleLPCToken is CTokenCompounding {
     }
 
     function reQueryUnderlyingTokens() external {
-        address[] memory underlyingTokens = strategyData.underlyingTokens;
-        uint256 numUnderlyingTokens = underlyingTokens.length;
-        for (uint256 i; i < numUnderlyingTokens; ) {
+        address[] memory currentTokens = strategyData.underlyingTokens;
+        uint256 numCurrentTokens = currentTokens.length;
+        
+        // Remove `isUnderlyingToken` mapping value from current
+        // flagged underlying tokens.
+        for (uint256 i; i < numCurrentTokens; ) {
             unchecked {
-                isUnderlyingToken[underlyingTokens[i++]] = false;
+                isUnderlyingToken[currentTokens[i++]] = false;
             }
         }
 
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
-        numUnderlyingTokens = strategyData.underlyingTokens.length;
+        numCurrentTokens = strategyData.underlyingTokens.length;
 
-        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+        // Add `isUnderlyingToken` mapping value to new
+        // flagged underlying tokens.
+        for (uint256 i = 0; i < numCurrentTokens; ) {
             unchecked {
                 isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
             }

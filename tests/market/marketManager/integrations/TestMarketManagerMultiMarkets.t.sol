@@ -302,7 +302,7 @@ contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
         uint256[] memory dTokenBalancesPre,
         uint256[] memory underlyingBalancesPre,
         address user
-    ) internal {
+    ) internal view {
         uint256[] memory cTokenBalances = new uint256[](noOfCollateralTokens);
         uint256[] memory dTokenBalances = new uint256[](noOfDebtTokens);
         uint256[] memory underlyingBalances = new uint256[](noOfDebtTokens);
