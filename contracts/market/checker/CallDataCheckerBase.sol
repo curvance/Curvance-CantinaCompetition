@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { IExternalCallDataChecker } from "contracts/interfaces/IExternalCallDataChecker.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 abstract contract CallDataCheckerBase is IExternalCallDataChecker {
     address public target;
@@ -10,9 +11,8 @@ abstract contract CallDataCheckerBase is IExternalCallDataChecker {
         target = _target;
     }
 
-    function checkRecipient(
-        address _target,
-        bytes memory _data,
+    function checkCallData(
+        SwapperLib.Swap memory _swapData,
         address _recipient
     ) external view virtual override;
 

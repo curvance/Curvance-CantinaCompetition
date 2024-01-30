@@ -41,13 +41,11 @@ library SwapperLib {
         address callDataChecker = centralRegistry.externalCallDataChecker(
             swapData.target
         );
-        if (callDataChecker != address(0)) {
-            IExternalCallDataChecker(callDataChecker).checkRecipient(
-                swapData.target,
-                swapData.call,
-                address(this)
-            );
-        }
+        require(callDataChecker != address(0), "Invalid target");
+        IExternalCallDataChecker(callDataChecker).checkCallData(
+            swapData,
+            address(this)
+        );
 
         _approveTokenIfNeeded(
             swapData.inputToken,

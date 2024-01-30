@@ -2,23 +2,31 @@
 pragma solidity ^0.8.17;
 
 import { IAggregationRouterV5 } from "contracts/interfaces/external/1inch/IAggregationRouterV5.sol";
-import { CallDataCheckerBase } from "./CallDataCheckerBase.sol";
+import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Pool.sol";
+import { CallDataCheckerBase, SwapperLib } from "./CallDataCheckerBase.sol";
 
 contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
+    uint256 private constant _ONE_FOR_ZERO_MASK = 1 << 255;
+    uint256 private constant _REVERSE_MASK =
+        0x8000000000000000000000000000000000000000000000000000000000000000;
+
     constructor(address _target) CallDataCheckerBase(_target) {}
 
-    function checkRecipient(
-        address _target,
-        bytes memory _data,
+    function checkCallData(
+        SwapperLib.Swap memory _swapData,
         address _recipient
     ) external view override {
-        require(target == _target, "Invalid target");
+        require(_swapData.target == target, "Invalid target");
 
-        bytes4 funcSigHash = getFuncSigHash(_data);
+        bytes4 funcSigHash = getFuncSigHash(_swapData.call);
+        address recipient;
+        address inputToken;
+        uint256 inputAmount;
+        address outputToken;
         if (funcSigHash == IAggregationRouterV5.swap.selector) {
             (, IAggregationRouterV5.SwapDescription memory desc, , ) = abi
                 .decode(
-                    getFuncParams(_data),
+                    getFuncParams(_swapData.call),
                     (
                         address,
                         IAggregationRouterV5.SwapDescription,
@@ -26,38 +34,142 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                         bytes
                     )
                 );
-            require(desc.dstReceiver == _recipient, "Invalid recipient");
+            recipient = desc.dstReceiver;
+            inputToken = desc.srcToken;
+            inputAmount = desc.amount;
+            outputToken = desc.dstToken;
         } else if (
             funcSigHash ==
             IAggregationRouterV5.uniswapV3SwapToWithPermit.selector
         ) {
-            (address payable recipient, , , , , ) = abi.decode(
-                getFuncParams(_data),
-                (address, address, uint256, uint256, uint256[], bytes)
-            );
-            require(recipient == _recipient, "Invalid recipient");
+            (
+                address payable recipientAddress,
+                address srcToken,
+                uint256 amount,
+                ,
+                uint256[] memory pools,
+
+            ) = abi.decode(
+                    getFuncParams(_swapData.call),
+                    (address, address, uint256, uint256, uint256[], bytes)
+                );
+
+            recipient = recipientAddress;
+            inputToken = srcToken;
+            inputAmount = amount;
+
+            uint256 pool = pools[pools.length - 1];
+            outputToken = (pool & _ONE_FOR_ZERO_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
         } else if (
             funcSigHash == IAggregationRouterV5.uniswapV3SwapTo.selector
         ) {
-            (address payable recipient, , , ) = abi.decode(
-                getFuncParams(_data),
-                (address, uint256, uint256, uint256[])
+            (
+                address payable recipientAddress,
+                uint256 amount,
+                ,
+                uint256[] memory pools
+            ) = abi.decode(
+                    getFuncParams(_swapData.call),
+                    (address, uint256, uint256, uint256[])
+                );
+
+            recipient = recipientAddress;
+            inputAmount = amount;
+
+            uint256 pool = pools[0];
+            inputToken = (pool & _ONE_FOR_ZERO_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token0()
+                : UniswapV3Pool(address(uint160(pool))).token1();
+
+            pool = pools[pools.length - 1];
+            outputToken = (pool & _ONE_FOR_ZERO_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
+        } else if (
+            funcSigHash == IAggregationRouterV5.uniswapV3Swap.selector
+        ) {
+            (uint256 amount, , uint256[] memory pools) = abi.decode(
+                getFuncParams(_swapData.call),
+                (uint256, uint256, uint256[])
             );
-            require(recipient == _recipient, "Invalid recipient");
+
+            recipient = _recipient;
+            inputAmount = amount;
+
+            uint256 pool = pools[0];
+            inputToken = (pool & _ONE_FOR_ZERO_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token0()
+                : UniswapV3Pool(address(uint160(pool))).token1();
+
+            pool = pools[pools.length - 1];
+            outputToken = (pool & _ONE_FOR_ZERO_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
         } else if (
             funcSigHash == IAggregationRouterV5.unoswapToWithPermit.selector
         ) {
-            (address payable recipient, , , , , ) = abi.decode(
-                getFuncParams(_data),
-                (address, address, uint256, uint256, uint256[], bytes)
-            );
-            require(recipient == _recipient, "Invalid recipient");
+            (
+                address payable recipientAddress,
+                address srcToken,
+                uint256 amount,
+                ,
+                uint256[] memory pools,
+
+            ) = abi.decode(
+                    getFuncParams(_swapData.call),
+                    (address, address, uint256, uint256, uint256[], bytes)
+                );
+
+            recipient = recipientAddress;
+            inputToken = srcToken;
+            inputAmount = amount;
+
+            uint256 pool = pools[pools.length - 1];
+            outputToken = (pool & _REVERSE_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
         } else if (funcSigHash == IAggregationRouterV5.unoswapTo.selector) {
-            (address payable recipient, , , , ) = abi.decode(
-                getFuncParams(_data),
-                (address, address, uint256, uint256, uint256[])
-            );
-            require(recipient == _recipient, "Invalid recipient");
+            (
+                address payable recipientAddress,
+                address srcToken,
+                uint256 amount,
+                ,
+                uint256[] memory pools
+            ) = abi.decode(
+                    getFuncParams(_swapData.call),
+                    (address, address, uint256, uint256, uint256[])
+                );
+
+            recipient = recipientAddress;
+            inputToken = srcToken;
+            inputAmount = amount;
+
+            uint256 pool = pools[pools.length - 1];
+            outputToken = (pool & _REVERSE_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
+        } else if (funcSigHash == IAggregationRouterV5.unoswap.selector) {
+            (address srcToken, uint256 amount, , uint256[] memory pools) = abi
+                .decode(
+                    getFuncParams(_swapData.call),
+                    (address, uint256, uint256, uint256[])
+                );
+
+            recipient = _recipient;
+            inputToken = srcToken;
+            inputAmount = amount;
+
+            uint256 pool = pools[pools.length - 1];
+            outputToken = (pool & _REVERSE_MASK == 0)
+                ? UniswapV3Pool(address(uint160(pool))).token1()
+                : UniswapV3Pool(address(uint160(pool))).token0();
         }
+
+        require(recipient == _recipient, "Invalid recipient");
+        require(inputToken == _swapData.inputToken, "Invalid inputToken");
+        require(inputAmount == _swapData.inputAmount, "Invalid inputAmount");
+        require(outputToken == _swapData.outputToken, "Invalid outputToken");
     }
 }
