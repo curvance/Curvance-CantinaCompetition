@@ -12,7 +12,7 @@ import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 contract OracleRouterDeployer is DeployConfiguration {
     address oracleRouter;
 
-    function deployOracleRouter(
+    function _deployOracleRouter(
         address centralRegistry,
         address ethUsdFeed
     ) internal {

@@ -74,15 +74,6 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.setCVELocker: ", cveLocker);
     }
 
-    function _startLocker(address cveLocker) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(CVELocker(cveLocker).lockerStarted() != 2, "Locker already started!");
-        require(CentralRegistry(centralRegistry).veCVE() != address(0), "Set veCVE!");
-
-        CVELocker(cveLocker).startLocker();
-        console.log("cveLocker.startLocker: ", cveLocker);
-    }
-
     function _setProtocolMessagingHub(address protocolMessagingHub) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(
