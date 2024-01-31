@@ -16,7 +16,7 @@ import { MarketManagerDeployer } from "./deployers/MarketManagerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 import { OracleRouterDeployer } from "./deployers/OracleRouterDeployer.s.sol";
-import { AuxiliaryDataDeployer } from "./deployers/OracleRouterDeployer.s.sol";
+import { AuxiliaryDataDeployer } from "./deployers/AuxiliaryDataDeployer.s.sol";
 
 contract DeployCurvance is
     DeployConfiguration,
