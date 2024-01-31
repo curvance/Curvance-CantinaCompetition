@@ -6,8 +6,8 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { ICurveRemoveLiquidity } from "contracts/interfaces/external/curve/ICurveReentrancy.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-/// Kudos to Curve Finance/Silo Finance/Chain Security for researching
-/// specific gas limit values for Pool Reentrancy.
+/// @dev Kudos to Curve Finance/Silo Finance/Chain Security for researching
+///      specific gas limit values for Pool Reentrancy.
 abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 

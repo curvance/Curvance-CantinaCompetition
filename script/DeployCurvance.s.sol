@@ -119,6 +119,10 @@ contract DeployCurvance is
         _deployVeCve(centralRegistry);
         _setVeCVE(veCve);
 
+        // Link CVELocker and veCVE
+
+        _startLocker(cveLocker);
+
         // Deploy GaugePool
 
         _deployGaugePool(centralRegistry);
@@ -149,7 +153,8 @@ contract DeployCurvance is
             centralRegistry,
             _readConfigAddress(".oracleRouter.chainlinkEthUsd")
         );
-        CentralRegistryDeployer.setOracleRouter(oracleRouter);
+
+        _setOracleRouter(oracleRouter);
 
         // transfer dao, timelock, emergency council
         // _transferDaoOwnership(

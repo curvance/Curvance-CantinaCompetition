@@ -6,7 +6,8 @@ import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.
 import { IVault } from "contracts/interfaces/external/balancer/IVault.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-/// Kudos to Balancer for researching gas limit values for Vault Reentrancy
+/// @dev Kudos to Balancer for researching specific gas limit values
+///      for Vault Reentrancy.
 abstract contract BalancerBaseAdaptor is BaseOracleAdaptor {
     
     /// CONSTANTS ///
@@ -19,7 +20,8 @@ abstract contract BalancerBaseAdaptor is BaseOracleAdaptor {
 
     /// ERRORS ///
 
-    /// @notice Attempted to price BPTs while in the Balancer Vault.
+    /// @notice Attempted to price BPTs while already inside
+    ///         another Balancer Vault call scope.
     error BalancerBaseAdaptor__Reentrancy();
 
     /// CONSTRUCTOR ///
@@ -81,7 +83,8 @@ abstract contract BalancerBaseAdaptor is BaseOracleAdaptor {
             )
         );
 
-        if (keccak256(revertData) == REENTRANCY_ERROR_HASH)
+        if (keccak256(revertData) == REENTRANCY_ERROR_HASH) {
             revert BalancerBaseAdaptor__Reentrancy();
+        }
     }
 }

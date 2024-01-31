@@ -13,16 +13,16 @@ import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
 
-    /// @notice Adaptor storage.
-    /// @param poolId the pool id of the BPT being priced.
-    /// @param poolDecimals the decimals of the BPT being priced.
-    /// @param rateProviders array of rate providers for each constituent
-    ///        a zero address rate provider means we are using an underlying
-    ///        correlated to the pools virtual base.
-    /// @param underlyingOrConstituent the ERC20 underlying asset or
-    ///                                the constituent in the pool.
+    /// @notice Stores configuration data for Balance BPT pricing.
     /// @dev Only use the underlying asset, if the underlying is correlated
     ///      to the pools virtual base.
+    /// @param poolId The pool id of the BPT being priced.
+    /// @param poolDecimals The decimals of the BPT being priced.
+    /// @param rateProviders Array of rate providers for each constituent,
+    ///        a zero address rate provider means we are using an underlying
+    ///        correlated to the pools virtual base.
+    /// @param underlyingOrConstituent The ERC20 underlying asset or
+    ///                                the constituent in the pool.
     struct AdaptorData {
         bytes32 poolId;
         uint8 poolDecimals;
@@ -109,7 +109,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 getLower
             );
 
-            // Validate we did not run into any errors pricing the quote asset.
+            // If we had an error pricing the quote asset, bubble up an error.
             if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
