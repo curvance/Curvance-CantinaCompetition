@@ -37,7 +37,7 @@ contract StartContractsConfig is Script, DeployConfiguration {
     function _startLocker() internal {
         address centralRegistry = _getDeployedContract("centralRegistry");
         console.log("centralRegistry =", centralRegistry);
-        address cveLocker = _getDeployedContract("cveLocker");
+        address payable cveLocker = _getDeployedContract("cveLocker");
         console.log("cveLocker =", cveLocker);
         
         require(centralRegistry != address(0), "Set the centralRegistry!");
