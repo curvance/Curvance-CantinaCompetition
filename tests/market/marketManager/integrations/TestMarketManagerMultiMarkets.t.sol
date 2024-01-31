@@ -31,6 +31,7 @@ contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
         // start gauge to enable deposits
         gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime() + 1000);
+        chainlinkEthUsd.updateAnswer(1500e8);
     }
 
     function setUpFuzzTest(
