@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 
 contract User {}
 
@@ -172,5 +173,49 @@ contract TestBoostedLock is TestBaseMarket {
         assertEq(veCVE.balanceOf(users[3]), 176000e18);
         assertEq(veCVE.getVotes(users[0]), 35200e18);
         assertApproxEqAbs(veCVE.getVotes(users[3]), 148923e18, 1e18);
+    }
+
+    function testRevertClaimAndExtendLock() public {
+        vm.warp(gaugePool.startTime() - 1);
+
+        RewardsData memory rewardData;
+
+        vm.expectRevert(GaugeErrors.NotStarted.selector);
+        vm.prank(users[0]);
+        gaugePool.claimAndExtendLock(
+            address(cve),
+            0,
+            true,
+            rewardData,
+            "0x",
+            0
+        );
+
+        vm.warp(gaugePool.startTime());
+        vm.expectRevert(GaugeErrors.NoReward.selector);
+        vm.prank(users[0]);
+        gaugePool.claimAndExtendLock(
+            address(cve),
+            0,
+            true,
+            rewardData,
+            "0x",
+            0
+        );
+    }
+
+    function testRevertClaimAndLock() public {
+        vm.warp(gaugePool.startTime() - 1);
+
+        RewardsData memory rewardData;
+
+        vm.expectRevert(GaugeErrors.NotStarted.selector);
+        vm.prank(users[0]);
+        gaugePool.claimAndLock(address(cve), true, rewardData, "0x", 0);
+
+        vm.warp(gaugePool.startTime());
+        vm.expectRevert(GaugeErrors.NoReward.selector);
+        vm.prank(users[0]);
+        gaugePool.claimAndLock(address(cve), true, rewardData, "0x", 0);
     }
 }
