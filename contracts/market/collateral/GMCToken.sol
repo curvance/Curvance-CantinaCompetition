@@ -16,19 +16,19 @@ contract GMCToken is CTokenCompounding {
     /// STORAGE ///
 
     /// @notice The address of GMX Deposit Vault.
-    address gmxDepositVault;
+    address public gmxDepositVault;
 
     /// @notice The address of GMX Exchange Router.
-    address gmxExchangeRouter;
+    address public gmxExchangeRouter;
 
     /// @notice The address of GMX Router.
-    address gmxRouter;
+    address public gmxRouter;
 
     /// @notice The address of GMX Datastore.
-    address gmxDataStore;
+    address public gmxDataStore;
 
     /// @notice The address of GMX Deposit Handler.
-    address gmxDepositHandler;
+    address public gmxDepositHandler;
 
     /// @notice An array of underlying tokens.
     /// First element is long token and second one is short token.
