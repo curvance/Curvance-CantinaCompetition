@@ -5,17 +5,29 @@ import { IExternalCallDataChecker } from "contracts/interfaces/IExternalCallData
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 abstract contract CallDataCheckerBase is IExternalCallDataChecker {
+    /// STORAGE ///
     address public target;
+
+    /// CONSTRUCTOR ///
 
     constructor(address _target) {
         target = _target;
     }
 
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Overridden in child CallData checker contracts,
+    ///         used to inspect and validate calldata safety.
     function checkCallData(
         SwapperLib.Swap memory _swapData,
         address _recipient
     ) external view virtual override;
 
+    /// INTERNAL FUNCTIONS ///
+
+    /// @notice Queries the function signature of `_data`, this is used
+    ///         to check against an expected selector.
+    /// @param _data The bytes array to pull a function signature from.
     function getFuncSigHash(
         bytes memory _data
     ) internal pure returns (bytes4 sig) {
@@ -30,6 +42,8 @@ abstract contract CallDataCheckerBase is IExternalCallDataChecker {
         return slice(_data, 4, _data.length - 4);
     }
 
+    /// @notice Modifies `_bytes` into desired form based on
+    ///         `_start` starting point,and `_length` length.
     function slice(
         bytes memory _bytes,
         uint256 _start,

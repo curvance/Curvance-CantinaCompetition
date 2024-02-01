@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
@@ -13,8 +12,6 @@ import { IRewards } from "contracts/interfaces/external/convex/IRewards.sol";
 import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 
 contract Convex2PoolCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -203,7 +200,7 @@ contract Convex2PoolCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         address(rewardToken),
@@ -235,13 +232,8 @@ contract Convex2PoolCToken is CTokenCompounding {
             }
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, _vestPeriod),
-                block.timestamp + _vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

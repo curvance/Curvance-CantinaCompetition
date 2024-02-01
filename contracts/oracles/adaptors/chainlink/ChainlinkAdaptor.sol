@@ -17,18 +17,19 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         /// @notice The current phase's aggregator address.
         IChainlink aggregator;
         /// @notice Whether the asset is configured or not.
-        /// @dev    false = unconfigured; true = configured
+        /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice Returns the number of decimals the aggregator responses with.
+        /// @notice Returns the number of decimals the aggregator responds
+        ///         with.
         uint8 decimals;
-        /// @notice heartbeat the max amount of time between price updates
-        /// @dev    0 defaults to using DEFAULT_HEART_BEAT
+        /// @notice heartbeat the max amount of time between price updates.
+        /// @dev    0 defaults to using DEFAULT_HEART_BEAT.
         uint256 heartbeat;
-        /// @notice max the max valid price of the asset
-        /// @dev    0 defaults to use aggregators max price reduced by ~10%
+        /// @notice max the max valid price of the asset.
+        /// @dev    0 defaults to use aggregators max price reduced by ~10%.
         uint256 max;
-        /// @notice min the min valid price of the asset
-        /// @dev    0 defaults to use aggregators min price increased by ~10%
+        /// @notice min the min valid price of the asset.
+        /// @dev    0 defaults to use aggregators min price increased by ~10%.
         uint256 min;
     }
 
@@ -36,27 +37,30 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice If zero is specified for a Chainlink asset heartbeat,
     ///         this value is used instead.
+    ///         1 days = 24 hours = 1,440 minutes = 86,400 seconds.
     uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
-    /// @notice Chainlink Adaptor Data for pricing in ETH
+    /// @notice Chainlink Adaptor Data for pricing in ETH.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Chainlink Adaptor Data for pricing in USD
+    /// @notice Chainlink Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
 
-    event ChainlinkAssetAdded(address asset, AdaptorData assetConfig);
+    event ChainlinkAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event ChainlinkAssetRemoved(address asset);
 
     /// ERRORS ///
 
     error ChainlinkAdaptor__AssetIsNotSupported();
     error ChainlinkAdaptor__InvalidHeartbeat();
-    error ChainlinkAdaptor__InvalidMinPrice();
-    error ChainlinkAdaptor__InvalidMaxPrice();
     error ChainlinkAdaptor__InvalidMinMaxConfig();
 
     /// CONSTRUCTOR ///
@@ -74,17 +78,20 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
     ///              USD or not.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return A structure containing the price, error status,
+    ///         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
         bool  /* getLower */
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
         }
 
+        // Check whether we want the pricing in USD first, 
+        // otherwise price in terms of the gas token.
         if (inUSD) {
             return _getPriceInUSD(asset);
         }
@@ -92,11 +99,11 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         return _getPriceInETH(asset);
     }
 
-    /// @notice Add a Chainlink Price Feed as an asset.
+    /// @notice Adds pricing support for `asset` via a new Chainlink feed.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token to add pricing for
-    /// @param aggregator Chainlink aggregator to use for pricing `asset`
+    /// @param asset The address of the token to add pricing support for.
+    /// @param aggregator Chainlink aggregator to use for pricing `asset`.
     /// @param heartbeat Chainlink heartbeat to use when validating prices
     ///                  for `asset`. 0 = `DEFAULT_HEART_BEAT`.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
@@ -120,6 +127,7 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             IChainlink(aggregator).aggregator()
         );
 
+        // Query Max and Min feed prices from Chainlink aggregator.
         uint256 maxFromChainlink = uint256(
             uint192(feedAggregator.maxAnswer())
         );
@@ -133,6 +141,18 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         uint256 bufferedMaxPrice = (maxFromChainlink * 9) / 10;
         uint256 bufferedMinPrice = (minFromChainklink * 11) / 10;
 
+        // If the buffered max price is above uint240 its theoretically
+        // possible to get a price which would lose precision on uint240
+        // conversion, which we need to protect against in getPrice() so
+        // we can add a second protective layer here.
+        if (bufferedMaxPrice > type(uint240).max) {
+            bufferedMaxPrice = type(uint240).max;
+        }
+
+        if (bufferedMinPrice >= bufferedMaxPrice) {
+            revert ChainlinkAdaptor__InvalidMinMaxConfig();
+        }
+
         AdaptorData storage data;
 
         if (inUSD) {
@@ -141,58 +161,48 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
             data = adaptorDataNonUSD[asset];
         }
 
-        if (data.min == 0) {
-            data.min = bufferedMinPrice;
-        } else {
-            if (data.min < bufferedMinPrice) {
-                revert ChainlinkAdaptor__InvalidMinPrice();
-            }
-            data.min = bufferedMinPrice;
-        }
-
-        if (data.max == 0) {
-            data.max = bufferedMaxPrice;
-        } else {
-            if (data.max > bufferedMaxPrice) {
-                revert ChainlinkAdaptor__InvalidMaxPrice();
-            }
-            data.max = bufferedMaxPrice;
-        }
-
-        if (bufferedMinPrice >= bufferedMaxPrice) {
-            revert ChainlinkAdaptor__InvalidMinMaxConfig();
-        }
-       
+        // Save adaptor data and update mapping that we support `asset` now.
         data.decimals = feedAggregator.decimals();
+        data.max = bufferedMaxPrice;
+        data.min = bufferedMinPrice;
         data.heartbeat = heartbeat != 0
             ? heartbeat
             : DEFAULT_HEART_BEAT;
-
         data.aggregator = IChainlink(aggregator);
         data.isConfigured = true;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit ChainlinkAssetAdded(asset, data);
+        emit ChainlinkAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert ChainlinkAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
 
-        // Wipe config mapping entries for a gas refund
+        // Wipe config mapping entries for a gas refund.
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the oracle router that we are going to stop supporting the asset
+        // Notify the Oracle Router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit ChainlinkAssetRemoved(asset);
     }
@@ -283,14 +293,17 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
         uint256 min,
         uint256 heartbeat
     ) internal view returns (bool) {
+        // Validate `value` is not below the buffered min value allowed.
         if (value < min) {
             return true;
         }
 
+        // Validate `value` is not above the buffered maximum value allowed.
         if (value > max) {
             return true;
         }
 
+        // Validate the price returned is not stale.
         if (block.timestamp - timestamp > heartbeat) {
             return true;
         }

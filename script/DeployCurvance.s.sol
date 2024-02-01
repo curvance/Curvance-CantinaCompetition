@@ -16,6 +16,7 @@ import { MarketManagerDeployer } from "./deployers/MarketManagerDeployer.s.sol";
 import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 import { OracleRouterDeployer } from "./deployers/OracleRouterDeployer.s.sol";
+import { AuxiliaryDataDeployer } from "./deployers/AuxiliaryDataDeployer.s.sol";
 
 contract DeployCurvance is
     DeployConfiguration,
@@ -30,7 +31,8 @@ contract DeployCurvance is
     MarketManagerDeployer,
     ZapperDeployer,
     PositionFoldingDeployer,
-    OracleRouterDeployer
+    OracleRouterDeployer,
+    AuxiliaryDataDeployer
 {
     function run() external {
         _deploy("ethereum");
@@ -145,11 +147,16 @@ contract DeployCurvance is
 
         _deployPositionFolding(centralRegistry, marketManager);
 
-        deployOracleRouter(
+        _deployOracleRouter(
             centralRegistry,
             _readConfigAddress(".oracleRouter.chainlinkEthUsd")
         );
-        CentralRegistryDeployer.setOracleRouter(oracleRouter);
+
+        _setOracleRouter(oracleRouter);
+
+        //  Deploy Auxiliary Data
+
+        _deployAuxiliaryData(centralRegistry);
 
         // transfer dao, timelock, emergency council
         // _transferDaoOwnership(

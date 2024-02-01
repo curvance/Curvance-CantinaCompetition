@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:24:50</td>
+            <td class="headerValue">2024-01-30 12:55:21</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">4</td>
@@ -102,12 +102,12 @@
 <a name="40"><span class="lineNum">      40 </span>            :     }</a>
 <a name="41"><span class="lineNum">      41 </span>            : </a>
 <a name="42"><span class="lineNum">      42 </span>            :     function updateAnswer(int256 _answer) public {</a>
-<a name="43"><span class="lineNum">      43 </span><span class="lineCov">         34 :         latestAnswer = _answer;</span></a>
-<a name="44"><span class="lineNum">      44 </span><span class="lineCov">         34 :         latestTimestamp = block.timestamp;</span></a>
-<a name="45"><span class="lineNum">      45 </span><span class="lineCov">         34 :         latestRound++;</span></a>
-<a name="46"><span class="lineNum">      46 </span><span class="lineCov">         34 :         getAnswer[latestRound] = _answer;</span></a>
-<a name="47"><span class="lineNum">      47 </span><span class="lineCov">         34 :         getTimestamp[latestRound] = block.timestamp;</span></a>
-<a name="48"><span class="lineNum">      48 </span><span class="lineCov">         34 :         getStartedAt[latestRound] = block.timestamp;</span></a>
+<a name="43"><span class="lineNum">      43 </span><span class="lineCov">         36 :         latestAnswer = _answer;</span></a>
+<a name="44"><span class="lineNum">      44 </span><span class="lineCov">         36 :         latestTimestamp = block.timestamp;</span></a>
+<a name="45"><span class="lineNum">      45 </span><span class="lineCov">         36 :         latestRound++;</span></a>
+<a name="46"><span class="lineNum">      46 </span><span class="lineCov">         36 :         getAnswer[latestRound] = _answer;</span></a>
+<a name="47"><span class="lineNum">      47 </span><span class="lineCov">         36 :         getTimestamp[latestRound] = block.timestamp;</span></a>
+<a name="48"><span class="lineNum">      48 </span><span class="lineCov">         36 :         getStartedAt[latestRound] = block.timestamp;</span></a>
 <a name="49"><span class="lineNum">      49 </span>            :     }</a>
 <a name="50"><span class="lineNum">      50 </span>            : </a>
 <a name="51"><span class="lineNum">      51 </span>            :     function updateRoundData(</a>
@@ -116,12 +116,12 @@
 <a name="54"><span class="lineNum">      54 </span>            :         uint256 _timestamp,</a>
 <a name="55"><span class="lineNum">      55 </span>            :         uint256 _startedAt</a>
 <a name="56"><span class="lineNum">      56 </span>            :     ) public {</a>
-<a name="57"><span class="lineNum">      57 </span><span class="lineCov">       2540 :         latestRound = _roundId;</span></a>
-<a name="58"><span class="lineNum">      58 </span><span class="lineCov">       2540 :         latestAnswer = _answer;</span></a>
-<a name="59"><span class="lineNum">      59 </span><span class="lineCov">       2540 :         latestTimestamp = _timestamp;</span></a>
-<a name="60"><span class="lineNum">      60 </span><span class="lineCov">       2540 :         getAnswer[latestRound] = _answer;</span></a>
-<a name="61"><span class="lineNum">      61 </span><span class="lineCov">       2540 :         getTimestamp[latestRound] = _timestamp;</span></a>
-<a name="62"><span class="lineNum">      62 </span><span class="lineCov">       2540 :         getStartedAt[latestRound] = _startedAt;</span></a>
+<a name="57"><span class="lineNum">      57 </span><span class="lineCov">       2947 :         latestRound = _roundId;</span></a>
+<a name="58"><span class="lineNum">      58 </span><span class="lineCov">       2947 :         latestAnswer = _answer;</span></a>
+<a name="59"><span class="lineNum">      59 </span><span class="lineCov">       2947 :         latestTimestamp = _timestamp;</span></a>
+<a name="60"><span class="lineNum">      60 </span><span class="lineCov">       2947 :         getAnswer[latestRound] = _answer;</span></a>
+<a name="61"><span class="lineNum">      61 </span><span class="lineCov">       2947 :         getTimestamp[latestRound] = _timestamp;</span></a>
+<a name="62"><span class="lineNum">      62 </span><span class="lineCov">       2947 :         getStartedAt[latestRound] = _startedAt;</span></a>
 <a name="63"><span class="lineNum">      63 </span>            :     }</a>
 <a name="64"><span class="lineNum">      64 </span>            : </a>
 <a name="65"><span class="lineNum">      65 </span>            :     function getRoundData(</a>
@@ -158,7 +158,7 @@
 <a name="96"><span class="lineNum">      96 </span>            :             uint80 answeredInRound</a>
 <a name="97"><span class="lineNum">      97 </span>            :         )</a>
 <a name="98"><span class="lineNum">      98 </span>            :     {</a>
-<a name="99"><span class="lineNum">      99 </span><span class="lineCov">      87244 :         return (</span></a>
+<a name="99"><span class="lineNum">      99 </span><span class="lineCov">      97903 :         return (</span></a>
 <a name="100"><span class="lineNum">     100 </span>            :             uint80(latestRound),</a>
 <a name="101"><span class="lineNum">     101 </span>            :             getAnswer[latestRound],</a>
 <a name="102"><span class="lineNum">     102 </span>            :             getStartedAt[latestRound],</a>
@@ -168,7 +168,7 @@
 <a name="106"><span class="lineNum">     106 </span>            :     }</a>
 <a name="107"><span class="lineNum">     107 </span>            : </a>
 <a name="108"><span class="lineNum">     108 </span>            :     function aggregator() external view override returns (address) {</a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineCov">      12699 :         return address(this);</span></a>
+<a name="109"><span class="lineNum">     109 </span><span class="lineCov">      14249 :         return address(this);</span></a>
 <a name="110"><span class="lineNum">     110 </span>            :     }</a>
 <a name="111"><span class="lineNum">     111 </span>            : }</a>
 </pre>

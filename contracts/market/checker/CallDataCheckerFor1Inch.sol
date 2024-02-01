@@ -6,17 +6,32 @@ import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Po
 import { CallDataCheckerBase, SwapperLib } from "./CallDataCheckerBase.sol";
 
 contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
+    /// CONSTANTS ///
     uint256 private constant _ONE_FOR_ZERO_MASK = 1 << 255;
     uint256 private constant _REVERSE_MASK =
         0x8000000000000000000000000000000000000000000000000000000000000000;
 
+    /// ERRORS ///
+
+    error CallDataChecker__TargetError();
+    error CallDataChecker__RecipientError();
+    error CallDataChecker__InputTokenError();
+    error CallDataChecker__InputAmountError();
+    error CallDataChecker__OutputTokenError();
+
+    /// CONSTRUCTOR ///
+
     constructor(address _target) CallDataCheckerBase(_target) {}
+
+    /// EXTERNAL FUNCTIONS ///
 
     function checkCallData(
         SwapperLib.Swap memory _swapData,
         address _recipient
     ) external view override {
-        require(_swapData.target == target, "Invalid target");
+        if (_swapData.target != target) {
+            revert CallDataChecker__TargetError();
+        }
 
         bytes4 funcSigHash = getFuncSigHash(_swapData.call);
         address recipient;
@@ -167,9 +182,20 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 : UniswapV3Pool(address(uint160(pool))).token0();
         }
 
-        require(recipient == _recipient, "Invalid recipient");
-        require(inputToken == _swapData.inputToken, "Invalid inputToken");
-        require(inputAmount == _swapData.inputAmount, "Invalid inputAmount");
-        require(outputToken == _swapData.outputToken, "Invalid outputToken");
+        if (recipient != _recipient) {
+            revert CallDataChecker__RecipientError();
+        }
+
+        if (inputToken != _swapData.inputToken) {
+            revert CallDataChecker__InputTokenError();
+        }
+
+        if (inputAmount != _swapData.inputAmount) {
+            revert CallDataChecker__InputAmountError();
+        }
+
+        if (outputToken != _swapData.outputToken) {
+            revert CallDataChecker__OutputTokenError();
+        }
     }
 }

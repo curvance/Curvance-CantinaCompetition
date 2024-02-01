@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
-import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 
@@ -14,10 +14,12 @@ abstract contract BaseWrappedAggregator is IChainlink {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Returns the current phase's aggregator address.
     function aggregator() external view returns (address) {
         return address(this);
     }
 
+    /// @notice Returns the maximum value that the aggregator can returned.
     function maxAnswer() external view returns (int192) {
         uint256 max = uint256(
             uint192(
@@ -39,6 +41,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
         return _toInt192(intMax);
     }
 
+    /// @notice Returns the minimum value that the aggregator can returned.
     function minAnswer() external view returns (int192) {
         uint256 min = uint256(
             uint192(
@@ -61,10 +64,21 @@ abstract contract BaseWrappedAggregator is IChainlink {
         return _toInt192(intMin);
     }
 
+    /// @notice Returns the number of decimals the aggregator responds with.
     function decimals() external view returns (uint8) {
         return IChainlink(underlyingAssetAggregator()).decimals();
     }
 
+    /// @notice Returns the latest oracle data from the aggregator, 
+    ///         adjusted by the wrapper.
+    /// @return roundId The round ID from the aggregator for which the data
+    ///                 was retrieved.
+    ///         answer The price returned by the aggregator, 
+    ///                adjusted by the wrapper.
+    ///         startedAt The timestamp the current round was started.
+    ///         updatedAt The timestamp the current round last was updated.
+    ///         answeredInRound The round ID of the round in which `answer`
+    ///                         was computed.
     function latestRoundData()
         external
         view
@@ -87,6 +101,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
 
     /// PUBLIC FUNCTIONS TO OVERRIDE ///
 
+    /// @notice Returns the underlying aggregator address.
+    /// @dev Overridden in implemented wrapped oracle aggregators.
     function underlyingAssetAggregator()
         public
         view
@@ -94,13 +110,17 @@ abstract contract BaseWrappedAggregator is IChainlink {
         returns (address)
     {}
 
+    /// @notice Returns the current exchange rate between the wrapped asset
+    ///         and the underlying aggregator, in `WAD`.
+    /// @dev Overridden in implemented wrapped oracle aggregators.
     function getWrappedAssetWeight() public view virtual returns (uint256) {}
 
     /// INTERNAl FUNCTIONS ///
 
-    /// @dev Returns the downcasted int192 from int256, reverting on
-    ///      overflow (when the input is less than smallest int192 or
-    ///      greater than largest int192).
+    /// @notice Returns the downcasted int192 from int256, reverting on
+    ///         overflow (when the input is less than smallest int192 or
+    ///         greater than largest int192).
+    /// @param value The int256 value to convert to int192.
     function _toInt192(
         int256 value
     ) internal pure returns (int192 downcasted) {
@@ -110,7 +130,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
         }
     }
 
-    /// @dev Converts an unsigned uint256 into a signed int256.
+    /// @notice Converts an unsigned uint256 into a signed int256.
+    /// @param value The uint256 value to convert to int256.
     function _toInt256(uint256 value) internal pure returns (int256) {
         // Note: Unsafe cast below is okay because `type(int256).max`
         //       is guaranteed to be positive
@@ -120,7 +141,8 @@ abstract contract BaseWrappedAggregator is IChainlink {
         return int256(value);
     }
 
-    /// @dev Converts a signed int256 into an unsigned uint256.
+    /// @notice Converts a signed int256 into an unsigned uint256.
+    /// @param value The int256 value to convert to uint256.
     function _toUInt256(int256 value) internal pure returns (uint256) {
         if (value < 0) {
             revert BaseWrappedAggregator__intToUIntError();

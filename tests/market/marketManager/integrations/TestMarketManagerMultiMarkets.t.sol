@@ -31,6 +31,7 @@ contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
         // start gauge to enable deposits
         gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime() + 1000);
+        chainlinkEthUsd.updateAnswer(1500e8);
     }
 
     function setUpFuzzTest(
@@ -302,7 +303,7 @@ contract TestMarketManagerMultiMarkets is TestBaseMarketManagerEntropy {
         uint256[] memory dTokenBalancesPre,
         uint256[] memory underlyingBalancesPre,
         address user
-    ) internal {
+    ) internal view {
         uint256[] memory cTokenBalances = new uint256[](noOfCollateralTokens);
         uint256[] memory dTokenBalances = new uint256[](noOfDebtTokens);
         uint256[] memory underlyingBalances = new uint256[](noOfDebtTokens);

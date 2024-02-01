@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.17;
 
 import { BaseOracleAdaptor } from "contracts/oracles/adaptors/BaseOracleAdaptor.sol";
@@ -29,15 +28,19 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Redstone Adaptor Data for pricing in ETH
+    /// @notice Redstone Adaptor Data for pricing in ETH.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Redstone Adaptor Data for pricing in USD
+    /// @notice Redstone Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
 
-    event RedstoneCoreAssetAdded(address asset, AdaptorData assetConfig);
+    event RedstoneCoreAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event RedstoneCoreAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -65,6 +68,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         bool inUSD,
         bool
     ) external view override returns (PriceReturnData memory) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
@@ -79,7 +83,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// @notice Add a Redstone Core Price Feed as an asset.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
-    /// @param asset The address of the token to add pricing for.
+    /// @param asset The address of the token to add pricing support for.
     /// @param inUSD Whether the price feed is in USD (inUSD = true)
     ///              or ETH (inUSD = false).
     /// @param decimals The number of decimals the redstone core feed
@@ -129,30 +133,37 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         data.max = (type(uint192).max * 9) / 10;
         data.symbolHash = symbolHash;
         data.isConfigured = true;
-        isSupportedAsset[asset] = true;
 
-        emit RedstoneCoreAssetAdded(asset, data);
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
+        isSupportedAsset[asset] = true;
+        emit RedstoneCoreAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert BaseRedstoneCoreAdaptor__AssetIsNotSupported();
         }
 
+        // Wipe config mapping entries for a gas refund.
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-
-        // Wipe config mapping entries for a gas refund.
         delete adaptorDataUSD[asset];
         delete adaptorDataNonUSD[asset];
 
-        // Notify the oracle router that we are going to stop supporting
+        // Notify the Oracle Router that we are going to stop supporting
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         
@@ -189,9 +200,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         return _parseData(adaptorDataUSD[asset], true);
     }
 
-    /// @notice Extracts the redstone core feed data for pricing of an asset.
-    /// @dev Calls read() from Redstone Core to get the latest data
-    ///      for pricing and staleness.
+    /// @notice Extracts the Redstone Core feed data for pricing of an asset.
+    /// @dev Extracts price from Redstone Core attached msg.data to get
+    ///      the latest data. Natively validates staleness.
     /// @param data Redstone Core feed details.
     /// @param inUSD A boolean to denote if the price is in USD.
     /// @return pData A structure containing the price, error status,
@@ -200,10 +211,9 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         AdaptorData memory data,
         bool inUSD
     ) internal view returns (PriceReturnData memory pData) {
-        pData.inUSD = inUSD;
         uint256 price = _extractPrice(data.symbolHash);
 
-        // Load decimals into cache to minimize MLOADs/SLOADs.
+        // Cache decimals value.
         uint256 quoteDecimals = data.decimals;
         if (quoteDecimals != 18) {
             // Decimals are < 18 so we need to multiply up to coerce to
@@ -220,6 +230,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         pData.hadError = _verifyData(price, data.max);
 
         if (!pData.hadError) {
+            pData.inUSD = inUSD;
             pData.price = uint240(price);
         }
     }
@@ -235,6 +246,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         uint256 value,
         uint256 max
     ) internal pure returns (bool) {
+        // Validate `value` is not above the buffered maximum value allowed.
         if (value > max) {
             return true;
         }

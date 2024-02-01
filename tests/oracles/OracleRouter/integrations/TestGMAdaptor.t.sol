@@ -91,11 +91,6 @@ contract TestGMAdaptor is TestBaseOracleRouter {
         );
     }
 
-    function testAddAssetRevertWhenGMTokenIsAlreadySupported() public {
-        vm.expectRevert(GMAdaptor.GMAdaptor__AssetIsAlreadySupported.selector);
-        adapter.addAsset(GM_BTC_USDC, WBTC);
-    }
-
     function testAddAssetRevertWhenAlteredTokenIsInvalid() public {
         adapter.removeAsset(GM_BTC_USDC);
 

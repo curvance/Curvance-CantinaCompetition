@@ -179,7 +179,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         uint256 _amount,
         bool _exact
     )
-        internal
+        internal view
         returns (
             uint256 liqAmount,
             uint256 liquidatedTokens,
@@ -477,6 +477,8 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         address _user,
         bool _exact
     ) internal {
+        _dToken.accrueInterest();
+
         console2.log("\n expected liquidation");
         (uint256 expectedLiqAmount, , ) = _expectedLiquidation(
             _cToken.balanceOf(_user),
@@ -484,8 +486,6 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
             _dToken,
             _cToken
         );
-
-        _dToken.accrueInterest();
 
         console2.log("\n check liquidation");
         _checkLiquidation(_user, _dToken, _cToken, expectedLiqAmount, _exact);
@@ -572,7 +572,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         DToken[] memory dTokens,
         uint256 redeemTokens, // in shares
         uint256 borrowAmount // in assets
-    ) internal {
+    ) internal view {
         for (uint256 i; i < noOfUsersCollateral; i++) {
             console2.log("user %s", users[i]);
             for (uint256 j; j < noOfDebtTokens; j++) {
