@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
+import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
@@ -106,6 +107,68 @@ contract TestPartnerGaugePool is TestBaseMarket {
 
         mockDaiFeed = new MockDataFeed(_CHAINLINK_DAI_USD);
         chainlinkAdaptor.addAsset(_DAI_ADDRESS, address(mockDaiFeed), 0, true);
+    }
+
+    function testRevertAddExtraRewardInvalidAddress() public {
+        vm.expectRevert(GaugeErrors.InvalidAddress.selector);
+        gaugePool.addExtraReward(address(0));
+
+        vm.expectRevert(GaugeErrors.InvalidAddress.selector);
+        gaugePool.addExtraReward(address(partnerRewardTokens[0]));
+    }
+
+    function testRevertRemoveExtraReward() public {
+        vm.expectRevert(GaugeErrors.Unauthorized.selector);
+        gaugePool.removeExtraReward(0, address(cve));
+
+        vm.expectRevert(GaugeErrors.InvalidAddress.selector);
+        gaugePool.removeExtraReward(0, address(partnerRewardTokens[0]));
+    }
+
+    function testSuccessRevertExtraReward() public {
+        assertEq(gaugePool.getRewardTokensLength(), CHILD_GAUGE_COUNT + 1);
+
+        gaugePool.removeExtraReward(1, address(partnerRewardTokens[0]));
+
+        assertEq(gaugePool.getRewardTokensLength(), CHILD_GAUGE_COUNT);
+    }
+
+    function testRevertSetRewardPerSecInvalidEpoch() public {
+        // set gauge weights
+        address[] memory tokensParam = new address[](2);
+        tokensParam[0] = tokens[0];
+        tokensParam[1] = tokens[1];
+        uint256[] memory poolWeights = new uint256[](2);
+        poolWeights[0] = 100 * 2 weeks;
+        poolWeights[1] = 200 * 2 weeks;
+        vm.prank(address(protocolMessagingHub));
+        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
+        vm.prank(address(protocolMessagingHub));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
+
+        for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
+            vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
+            gaugePool.setRewardPerSec(0, partnerRewardTokens[i], 300);
+        }
+    }
+
+    function testUpdateRewardPerSec() public {
+        // set gauge weights
+        address[] memory tokensParam = new address[](2);
+        tokensParam[0] = tokens[0];
+        tokensParam[1] = tokens[1];
+        uint256[] memory poolWeights = new uint256[](2);
+        poolWeights[0] = 100 * 2 weeks;
+        poolWeights[1] = 200 * 2 weeks;
+        vm.prank(address(protocolMessagingHub));
+        gaugePool.setEmissionRates(1, tokensParam, poolWeights);
+        vm.prank(address(protocolMessagingHub));
+        cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
+
+        for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
+            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 200);
+        }
     }
 
     function testPartnerGaugesRewardRatioOfDifferentPools() public {

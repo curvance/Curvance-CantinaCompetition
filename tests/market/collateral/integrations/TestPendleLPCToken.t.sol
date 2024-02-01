@@ -87,6 +87,7 @@ contract TestPendleLPCToken is TestBaseMarket {
 
         // Mint some extra rewards for Vault.
         deal(address(_PENDLE), address(cSTETH), 100e18);
+        deal(address(cSTETH), 1e18);
 
         uint256 rewardAmount = (100e18 * 84) / 100; // 16% for protocol harvest fee;
         SwapperLib.Swap[] memory swaps = new SwapperLib.Swap[](1);
@@ -128,5 +129,61 @@ contract TestPendleLPCToken is TestBaseMarket {
 
         vm.prank(user1);
         cSTETH.withdraw(assets, user1, user1);
+    }
+
+    function testRevertWithInvalidSwapper() external {
+        uint256 assets = 100e18;
+        deal(address(_LP_STETH), user1, assets);
+        deal(address(_LP_STETH), address(this), 42069);
+
+        _LP_STETH.approve(address(cSTETH), 42069);
+        marketManager.listToken(address(cSTETH));
+
+        vm.prank(user1);
+        _LP_STETH.approve(address(cSTETH), assets);
+
+        vm.prank(user1);
+        cSTETH.deposit(assets, user1);
+
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 3 days);
+
+        // Mint some extra rewards for Vault.
+        deal(address(_PENDLE), address(cSTETH), 100e18);
+
+        uint256 rewardAmount = (100e18 * 84) / 100; // 16% for protocol harvest fee;
+        SwapperLib.Swap[] memory swaps = new SwapperLib.Swap[](1);
+        swaps[0].inputToken = _PENDLE;
+        swaps[0].inputAmount = rewardAmount;
+        swaps[0].outputToken = _WETH_ADDRESS;
+        swaps[0].target = address(0);
+
+        ApproxParams memory approx;
+        approx.guessMin = 1e10;
+        approx.guessMax = 1e18;
+        approx.guessOffchain = 0;
+        approx.maxIteration = 200;
+        approx.eps = 1e18;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PendleLPCToken.PendleLPCToken__InvalidSwapper.selector,
+                0,
+                address(0)
+            )
+        );
+        cSTETH.harvest(abi.encode(swaps, 0, approx));
+    }
+
+    function testReQueryRewardTokens() external {
+        cSTETH.reQueryRewardTokens();
+
+        assertEq(cSTETH.rewardTokens().length, 1);
+    }
+
+    function testReQueryUnderlyingTokens() external {
+        cSTETH.reQueryUnderlyingTokens();
+
+        assertEq(cSTETH.underlyingTokens().length, 4);
     }
 }
