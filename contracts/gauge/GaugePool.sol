@@ -140,6 +140,10 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         emit RemoveExtraReward(newReward);
     }
 
+    function getRewardTokensLength() external view returns (uint256) {
+        return rewardTokens.length;
+    }
+
     function setRewardPerSec(
         uint256 epoch,
         address rewardToken,
@@ -274,9 +278,10 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        // If the gauge has no startTime 
+        // If the gauge has no startTime
         if (
-            msg.sender != token || !IMarketManager(marketManager).isListed(token)
+            msg.sender != token ||
+            !IMarketManager(marketManager).isListed(token)
         ) {
             revert GaugeErrors.InvalidToken();
         }
@@ -316,7 +321,6 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
                 }
             }
         }
-        
 
         _calcDebt(user, token);
 
@@ -337,7 +341,8 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         }
 
         if (
-            msg.sender != token || !IMarketManager(marketManager).isListed(token)
+            msg.sender != token ||
+            !IMarketManager(marketManager).isListed(token)
         ) {
             revert GaugeErrors.InvalidToken();
         }
@@ -368,7 +373,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         _calcPending(msg.sender, token);
 
         bool hasRewards;
-        
+
         uint256 rewardTokensLength = rewardTokens.length;
         for (uint256 i; i < rewardTokensLength; ) {
             // Query rewardToken then increment i.
