@@ -53,7 +53,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     error CVEInitialDistribution__InvalidlockedClaimMultiplier();
 
     constructor(
-        ICentralRegistry centralRegistry_, 
+        ICentralRegistry centralRegistry_,
         uint256 maximumClaimAmount_
     ) {
         if (
@@ -68,7 +68,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
         // Sanity check that maximumClaimAmount and lockedClaimMultiplier
         // are not horribly misconfigured. A single claim taking the entire
-        // initial distribution community would not make any sense, 
+        // initial distribution community would not make any sense,
         // in practice the values should be significantly smaller.
         if (maximumClaimAmount_ * lockedClaimMultiplier > 1575000259e16) {
             revert CVEInitialDistribution__InvalidlockedClaimMultiplier();
@@ -146,11 +146,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
             );
         } else {
             // Transfer CVE tokens.
-            SafeTransferLib.safeTransfer(
-                cve,
-                msg.sender,
-                amount
-            );
+            SafeTransferLib.safeTransfer(cve, msg.sender, amount);
         }
 
         // Should always emit events based on the base distribution amount.
@@ -188,10 +184,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     /// @dev Rescue any token sent by mistake to this contract.
     /// @param token The token address to rescue.
     /// @param amount Amount of `token` to rescue, 0 indicates to rescue all.
-    function rescueToken(
-        address token,
-        uint256 amount
-    ) external {
+    function rescueToken(address token, uint256 amount) external {
         _checkDaoPermissions();
         address daoOperator = centralRegistry.daoAddress();
 
@@ -225,8 +218,8 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
         uint256 amount = IERC20(cve).balanceOf(address(this));
         SafeTransferLib.safeTransfer(
-            cve, 
-            centralRegistry.daoAddress(), 
+            cve,
+            centralRegistry.daoAddress(),
             amount
         );
 
@@ -237,7 +230,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     /// @param newRoot New merkle root.
     function setMerkleRoot(bytes32 newRoot) external {
         _checkDaoPermissions();
-        
+
         if (newRoot == bytes32(0)) {
             revert CVEInitialDistribution__ParametersAreInvalid();
         }
@@ -255,7 +248,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     /// @param state New pause state.
     function setPauseState(bool state) external {
         _checkDaoPermissions();
-        
+
         uint256 currentState = isPaused;
         isPaused = state ? 2 : 1;
 
@@ -271,11 +264,11 @@ contract CVEInitialDistribution is ReentrancyGuard {
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`,
     ///      given `proof`.
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
-    function verify(bytes32[] memory proof, bytes32 root, bytes32 leaf)
-        internal
-        pure
-        returns (bool isValid)
-    {
+    function verify(
+        bytes32[] memory proof,
+        bytes32 root,
+        bytes32 leaf
+    ) internal pure returns (bool isValid) {
         /// @solidity memory-safe-assembly
         assembly {
             if mload(proof) {
@@ -284,7 +277,11 @@ contract CVEInitialDistribution is ReentrancyGuard {
                 // Left shift by 5 is equivalent to multiplying by 0x20.
                 let end := add(offset, shl(5, mload(proof)))
                 // Iterate over proof elements to compute root hash.
-                for {} 1 {} {
+                for {
+
+                } 1 {
+
+                } {
                     // Slot of `leaf` in scratch space.
                     // If the condition is true: 0x20, otherwise: 0x00.
                     let scratch := shl(5, gt(leaf, mload(offset)))
@@ -295,7 +292,9 @@ contract CVEInitialDistribution is ReentrancyGuard {
                     // Reuse `leaf` to store the hash to reduce stack operations.
                     leaf := keccak256(0x00, 0x40)
                     offset := add(offset, 0x20)
-                    if iszero(lt(offset, end)) { break }
+                    if iszero(lt(offset, end)) {
+                        break
+                    }
                 }
             }
             isValid := eq(leaf, root)
