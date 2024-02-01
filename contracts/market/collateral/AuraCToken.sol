@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
@@ -14,8 +13,6 @@ import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerP
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
 
 contract AuraCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -221,7 +218,7 @@ contract AuraCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -293,11 +290,8 @@ contract AuraCToken is CTokenCompounding {
             yield = IERC20(asset()).balanceOf(address(this));
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, vestPeriod),
-                block.timestamp + vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

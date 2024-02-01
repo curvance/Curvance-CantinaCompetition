@@ -102,6 +102,11 @@ interface IMToken {
     /// @return The borrow interest rate per year, in `WAD`.
     function borrowRatePerYear() external view returns (uint256);
 
+    /// @notice Returns the predicted upcoming dToken borrow interest rate
+    ///         per year.
+    /// @return The predicted borrow interest rate per year, in `WAD`.
+    function predictedBorrowRatePerYear() external view returns (uint256);
+
     /// @notice Returns the current dToken supply interest rate per year.
     /// @return The supply interest rate per year, in `WAD`.
     function supplyRatePerYear() external view returns (uint256);

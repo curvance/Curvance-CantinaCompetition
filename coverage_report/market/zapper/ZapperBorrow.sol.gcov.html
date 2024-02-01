@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">1</td>
@@ -115,7 +115,7 @@
 <a name="53"><span class="lineNum">      53 </span><span class="lineNoCov">          0 :                 revert ZapperBorrow__InvalidSwapper(swapData.target);</span></a>
 <a name="54"><span class="lineNum">      54 </span>            :             }</a>
 <a name="55"><span class="lineNum">      55 </span>            :             unchecked {</a>
-<a name="56"><span class="lineNum">      56 </span><span class="lineCov">          1 :                 SwapperLib.swap(swapData);</span></a>
+<a name="56"><span class="lineNum">      56 </span><span class="lineCov">          1 :                 SwapperLib.swap(centralRegistry, swapData);</span></a>
 <a name="57"><span class="lineNum">      57 </span>            :             }</a>
 <a name="58"><span class="lineNum">      58 </span>            :         } else {</a>
 <a name="59"><span class="lineNum">      59 </span><span class="lineNoCov">          0 :             if (swapData.target != address(0)) {</span></a>

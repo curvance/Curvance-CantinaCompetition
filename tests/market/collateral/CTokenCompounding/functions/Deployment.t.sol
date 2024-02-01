@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity ^0.8.17;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.17;
 
 import "forge-std/StdStorage.sol";
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";

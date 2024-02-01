@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
@@ -13,8 +12,6 @@ import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.
 import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStandardizedYield.sol";
 
 contract PendleLPCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -84,18 +81,23 @@ contract PendleLPCToken is CTokenCompounding {
     }
 
     function reQueryUnderlyingTokens() external {
-        address[] memory underlyingTokens = strategyData.underlyingTokens;
-        uint256 numUnderlyingTokens = underlyingTokens.length;
-        for (uint256 i; i < numUnderlyingTokens; ) {
+        address[] memory currentTokens = strategyData.underlyingTokens;
+        uint256 numCurrentTokens = currentTokens.length;
+        
+        // Remove `isUnderlyingToken` mapping value from current
+        // flagged underlying tokens.
+        for (uint256 i; i < numCurrentTokens; ) {
             unchecked {
-                isUnderlyingToken[underlyingTokens[i++]] = false;
+                isUnderlyingToken[currentTokens[i++]] = false;
             }
         }
 
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
-        numUnderlyingTokens = strategyData.underlyingTokens.length;
+        numCurrentTokens = strategyData.underlyingTokens.length;
 
-        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+        // Add `isUnderlyingToken` mapping value to new
+        // flagged underlying tokens.
+        for (uint256 i = 0; i < numCurrentTokens; ) {
             unchecked {
                 isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
             }
@@ -165,7 +167,7 @@ contract PendleLPCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -246,12 +248,8 @@ contract PendleLPCToken is CTokenCompounding {
                 );
             }
 
-            // There is no gauge for pendle, so no _afterDeposit here
-            // update vesting info
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, vestPeriod),
-                block.timestamp + vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }

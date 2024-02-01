@@ -179,7 +179,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         uint256 _amount,
         bool _exact
     )
-        internal
+        internal view
         returns (
             uint256 liqAmount,
             uint256 liquidatedTokens,
@@ -572,7 +572,7 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         DToken[] memory dTokens,
         uint256 redeemTokens, // in shares
         uint256 borrowAmount // in assets
-    ) internal {
+    ) internal view {
         for (uint256 i; i < noOfUsersCollateral; i++) {
             console2.log("user %s", users[i]);
             for (uint256 j; j < noOfDebtTokens; j++) {

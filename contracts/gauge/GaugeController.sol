@@ -34,6 +34,7 @@ abstract contract GaugeController is IGaugePool {
     /// @notice Start time that gauge controller starts, in unix time.
     uint256 public startTime;
 
+    /// @notice Epoch Number => Epoch information.
     mapping(uint256 => Epoch) internal _epochInfo;
 
     /// CONSTRUCTOR ///
@@ -48,6 +49,7 @@ abstract contract GaugeController is IGaugePool {
             revert GaugeErrors.InvalidAddress();
         }
         centralRegistry = centralRegistry_;
+        // Query cve/veCVE directly to minimize potential human error.
         cve = centralRegistry.cve();
         veCVE = IVeCVE(centralRegistry.veCVE());
     }
@@ -55,8 +57,8 @@ abstract contract GaugeController is IGaugePool {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Returns gauge weight of given epoch and token.
-    /// @param epoch Epoch number.
-    /// @param token Gauge token address.
+    /// @param epoch The epoch to pull weights for.
+    /// @param token The address of the gauge token to query weights for.
     function gaugeWeight(
         uint256 epoch,
         address token
@@ -67,11 +69,12 @@ abstract contract GaugeController is IGaugePool {
         );
     }
 
-    /// @notice Set emission rates of tokens of next epoch.
+    /// @notice Sets emission rates of tokens of next epoch.
     /// @dev Only the protocol messaging hub can call this.
-    /// @param epoch Next epoch number.
+    /// @param epoch The epoch to set emission rates for, should be the next epoch.
     /// @param tokens Array containing all tokens to set emission rates for.
-    /// @param poolWeights Gauge weights (or gauge weights).
+    /// @param poolWeights Gauge/Pool weights corresponding to DAO
+    ///                    voted emission rates.
     function setEmissionRates(
         uint256 epoch,
         address[] calldata tokens,
@@ -81,6 +84,8 @@ abstract contract GaugeController is IGaugePool {
             revert GaugeErrors.Unauthorized();
         }
 
+        // Validate that Gauge system is fully active and only the upcoming
+        // epoch can have emissions set.
         if (
             !(epoch == 0 && (startTime == 0 || block.timestamp < startTime)) &&
             epoch != currentEpoch() + 1
@@ -90,6 +95,7 @@ abstract contract GaugeController is IGaugePool {
 
         uint256 numTokens = tokens.length;
 
+        // Validate that tokens and poolWeights are properly configured.
         if (numTokens != poolWeights.length) {
             revert GaugeErrors.InvalidLength();
         }
@@ -97,8 +103,8 @@ abstract contract GaugeController is IGaugePool {
         Epoch storage info = _epochInfo[epoch];
         address priorAddress;
         for (uint256 i; i < numTokens; ) {
-            /// We sort the token addresses offchain
-            /// from smallest to largest to validate there are no duplicates.
+            // We sort the token addresses offchain from smallest to largest
+            // to validate there are no duplicates.
             if (priorAddress > tokens[i]) {
                 revert GaugeErrors.InvalidToken();
             }
@@ -109,7 +115,7 @@ abstract contract GaugeController is IGaugePool {
                 info.poolWeights[tokens[i]];
             info.poolWeights[tokens[i]] = poolWeights[i];
             unchecked {
-                /// Update prior to current token then increment i.
+                /// Update prior to current token, then increment i.
                 priorAddress = tokens[i++];
             }
         }
@@ -144,21 +150,21 @@ abstract contract GaugeController is IGaugePool {
     }
 
     /// @notice Returns start time of `epoch`.
-    /// @param epoch Epoch number.
+    /// @param epoch Epoch number to return start time for.
     function epochStartTime(uint256 epoch) public view returns (uint256) {
         _checkGaugeHasStarted();
         return startTime + epoch * EPOCH_WINDOW;
     }
 
     /// @notice Returns end time of `epoch`.
-    /// @param epoch Epoch number.
+    /// @param epoch Epoch number to return end time for.
     function epochEndTime(uint256 epoch) public view returns (uint256) {
         _checkGaugeHasStarted();
         return startTime + (epoch + 1) * EPOCH_WINDOW;
     }
 
     /// @notice Returns if given gauge token is enabled in `epoch`.
-    /// @param epoch Epoch number.
+    /// @param epoch Epoch number to check for gauge activity.
     /// @param token Gauge token address.
     function isGaugeEnabled(
         uint256 epoch,

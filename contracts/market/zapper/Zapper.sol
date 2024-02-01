@@ -8,9 +8,9 @@ import { CommonLib } from "contracts/libraries/CommonLib.sol";
 import { CurveLib } from "contracts/libraries/CurveLib.sol";
 import { BalancerLib } from "contracts/libraries/BalancerLib.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
