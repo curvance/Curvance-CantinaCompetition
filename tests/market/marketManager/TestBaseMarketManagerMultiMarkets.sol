@@ -477,6 +477,8 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         address _user,
         bool _exact
     ) internal {
+        _dToken.accrueInterest();
+
         console2.log("\n expected liquidation");
         (uint256 expectedLiqAmount, , ) = _expectedLiquidation(
             _cToken.balanceOf(_user),
@@ -484,8 +486,6 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
             _dToken,
             _cToken
         );
-
-        _dToken.accrueInterest();
 
         console2.log("\n check liquidation");
         _checkLiquidation(_user, _dToken, _cToken, expectedLiqAmount, _exact);
