@@ -151,6 +151,14 @@ contract CentralRegistryDeployer is DeployConfiguration {
         );
     }
 
+    function _setOracleRouter(address oracleRouter) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(oracleRouter != address(0), "Set the oracleRouter!");
+
+        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
+        console.log("centralRegistry._setOracleRouter: ", oracleRouter);
+    }
+
     function _addGaugeController(address gaugePool) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(gaugePool != address(0), "Set the gaugePool!");
@@ -213,13 +221,5 @@ contract CentralRegistryDeployer is DeployConfiguration {
             "centralRegistry.transferEmergencyCouncil: ",
             emergencyCouncil
         );
-    }
-
-    function setOracleRouter(address oracleRouter) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(oracleRouter != address(0), "Set the oracleRouter!");
-
-        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
-        console.log("centralRegistry.setOracleRouter: ", oracleRouter);
     }
 }

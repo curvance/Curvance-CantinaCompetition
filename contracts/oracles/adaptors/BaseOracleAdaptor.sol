@@ -45,8 +45,8 @@ abstract contract BaseOracleAdaptor {
     ///              USD or not.
     /// @param getLower A boolean to determine if lower of two oracle prices
     ///                 should be retrieved.
-    /// @return PriceReturnData A structure containing the price, error status,
-    ///                         and the quote format of the price.
+    /// @return A structure containing the price, error status,
+    ///         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -55,8 +55,10 @@ abstract contract BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Checks whether `price` would overflow based on a
-    ///         uint240 maximum.
+    /// @notice Helper function to check whether `price` would overflow 
+    ///         based on a uint240 maximum.
+    /// @param price The price to check against overflow.
+    /// @return Whether `price` will overflow on conversion to uint240.
     function _checkOracleOverflow(
         uint256 price
     ) internal pure returns (bool) {
@@ -87,5 +89,9 @@ abstract contract BaseOracleAdaptor {
     /// FUNCTIONS TO OVERRIDE ///
 
     /// @notice Removes a supported asset from the adaptor.
+    /// @dev Calls back into oracle router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
+    /// @param asset The address of the supported asset to remove from
+    ///              the adaptor.
     function removeAsset(address asset) external virtual;
 }

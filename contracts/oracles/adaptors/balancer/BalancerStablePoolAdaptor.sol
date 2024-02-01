@@ -13,16 +13,16 @@ import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
     /// TYPES ///
 
-    /// @notice Adaptor storage
-    /// @param poolId the pool id of the BPT being priced
-    /// @param poolDecimals the decimals of the BPT being priced
-    /// @param rateProviders array of rate providers for each constituent
-    ///        a zero address rate provider means we are using an underlying
-    ///        correlated to the pools virtual base.
-    /// @param underlyingOrConstituent the ERC20 underlying asset or
-    ///                                the constituent in the pool
+    /// @notice Stores configuration data for Balance BPT pricing.
     /// @dev Only use the underlying asset, if the underlying is correlated
     ///      to the pools virtual base.
+    /// @param poolId The pool id of the BPT being priced.
+    /// @param poolDecimals The decimals of the BPT being priced.
+    /// @param rateProviders Array of rate providers for each constituent,
+    ///        a zero address rate provider means we are using an underlying
+    ///        correlated to the pools virtual base.
+    /// @param underlyingOrConstituent The ERC20 underlying asset or
+    ///                                the constituent in the pool.
     struct AdaptorData {
         bytes32 poolId;
         uint8 poolDecimals;
@@ -33,13 +33,16 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Balancer Stable Pool Adaptor Storage
+    /// @notice Balancer stable pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
 
-    event BalancerStablePoolAssetAdded(address asset, AdaptorData assetConfig);
-
+    event BalancerStablePoolAssetAdded(
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
+    );
     event BalancerStablePoolAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -56,23 +59,29 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset the bpt being priced
-    /// @param inUSD indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
+    /// @notice Retrieves the price of a given BPT.
+    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return pData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
+        // Validate that the vault is not being reentered.
         _ensureNotInVaultContext(balancerVault);
-        // Read Adaptor storage and grab pool tokens
+
+        // Cache adaptor data.
         AdaptorData memory data = adaptorData[asset];
         IBalancerPool pool = IBalancerPool(asset);
 
@@ -84,7 +93,7 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             .underlyingOrConstituent
             .length;
         uint256 averagePrice;
-        uint256 availablePriceCount;
+        uint256 numPrices;
 
         uint256 price;
         uint256 errorCode;
@@ -99,43 +108,48 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
                 inUSD,
                 getLower
             );
-            // If error code is BAD_SOURCE we can't use this price.
-            if (errorCode == BAD_SOURCE) {
-                pData.hadError = true;
-            }
 
-            averagePrice += price;
-            availablePriceCount += 1;
-        }
-
-        if (averagePrice == 0) {
-            pData.hadError = true;
-        } else {
-            averagePrice = ((averagePrice / availablePriceCount) * pool.getRate()) / WAD;
-            
-            if (_checkOracleOverflow(averagePrice)) {
+            // If we had an error pricing the quote asset, bubble up an error.
+            if (errorCode > 0) {
                 pData.hadError = true;
                 return pData;
-            }
-
-            pData.price = uint240(averagePrice);
+            } 
+            
+            // We did not have an error, so we can add the price
+            // to the average, and increment number of prices.
+            averagePrice += price;
+            ++numPrices;
+            
         }
+
+        // If we were not able to price anything, bubble up an error.
+        if (averagePrice == 0) {
+            pData.hadError = true;
+            return pData;
+        } 
+
+        averagePrice = ((averagePrice / numPrices) * pool.getRate()) / WAD;
+        
+        // Validate price will not overflow on conversion to uint240.
+        if (_checkOracleOverflow(averagePrice)) {
+            pData.hadError = true;
+            return pData;
+        }
+
+        pData.price = uint240(averagePrice);
     }
 
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset the address of the bpt to add
-    /// @param data AdaptorData needed to add `asset`
+    /// @notice Adds pricing support for `asset`, a new Balancer BPT.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the BPT to add pricing support for.
+    /// @param data The adaptor data needed to add `asset`.
     function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert BalancerStablePoolAdaptor__ConfigurationError();
-        }
-
         IBalancerPool pool = IBalancerPool(asset);
 
-        // Grab the poolId and decimals.
+        // Query the poolId and decimals from the pool contract.
         data.poolId = pool.getPoolId();
         data.poolDecimals = pool.decimals();
 
@@ -171,29 +185,39 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
             }
         }
 
-        // Save values in Adaptor storage.
+        // Save adaptor data and update mapping that we support `asset` now.
         adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit BalancerStablePoolAssetAdded(asset, data);
+        emit BalancerStablePoolAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert BalancerStablePoolAdaptor__AssetIsNotSupported();
         }
 
-        // Notify the adaptor to stop supporting the asset
+        // Wipe config mapping entries for a gas refund.
+        // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-        // Wipe config mapping entries for a gas refund
         delete adaptorData[asset];
 
-        // Notify the oracle router that we are going to stop supporting the asset
+        // Notify the Oracle Router that we are going to stop supporting
+        // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit BalancerStablePoolAssetRemoved(asset);
     }

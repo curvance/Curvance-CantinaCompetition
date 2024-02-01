@@ -22,25 +22,33 @@ contract MarketManager is LiquidityManager, ERC165 {
     IGaugePool public immutable gaugePool;
 
     /// @notice Maximum collateral requirement to avoid liquidation. 
-    ///         234% maximum, resulting in 1 / (WAD + 2.34 WAD),
-    ///         or ~30% LTV liquidation level.
+    ///         2.34e18 = 234%. Resulting in 1 / (WAD + 2.34 WAD),
+    ///         or ~30% maximum LTV soft liquidation level.
     uint256 public constant MAX_COLLATERAL_REQUIREMENT = 2.34e18;
     /// @notice Minimum excess collateral requirement 
-    ///         on top of liquidation incentive. 1.5%.
-    uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = 0.015e18;
-    /// @notice Maximum collateralization ratio. 91%.
-    uint256 public constant MAX_COLLATERALIZATION_RATIO = 0.91e18;
-    /// @notice The maximum liquidation incentive. 30%.
+    ///         on top of liquidation incentive.
+    ///         .015e18 = 1.5%.
+    uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = .015e18;
+    /// @notice Maximum collateralization ratio.
+    ///         .91e18 = 91%.
+    uint256 public constant MAX_COLLATERALIZATION_RATIO = .91e18;
+    /// @notice The maximum liquidation incentive.
+    ///         .3e18 = 30%.
     uint256 public constant MAX_LIQUIDATION_INCENTIVE = .3e18;
-    /// @notice The minimum liquidation incentive. 1%.
+    /// @notice The minimum liquidation incentive.
+    ///         .01e18 = 1%.
     uint256 public constant MIN_LIQUIDATION_INCENTIVE = .01e18;
-    /// @notice The maximum liquidation incentive. 5%.
+    /// @notice The maximum liquidation fee distributed to Curvance DAO.
+    ///         .05e18 = 5%.
     uint256 public constant MAX_LIQUIDATION_FEE = .05e18;
-    /// @notice The maximum base cFactor. 50%.
+    /// @notice The maximum base cFactor.
+    ///         .5e18 = 50%.
     uint256 public constant MAX_BASE_CFACTOR = .5e18;
-    /// @notice The minimum base cFactor. 10%.
+    /// @notice The minimum base cFactor.
+    ///         .1e18 = 10%.
     uint256 public constant MIN_BASE_CFACTOR = .1e18;
     /// @notice Minimum hold time to minimize external risks, in seconds.
+    ///         20 minutes = 1,200 seconds.
     uint256 public constant MIN_HOLD_PERIOD = 20 minutes;
     
     /// @dev `bytes4(keccak256(bytes("MarketManager__InvalidParameter()")))`
@@ -1346,10 +1354,11 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
     }
 
+    /// @notice Multiplies `value` by 1e14 to convert it from `basis points`
+    ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        // Multiply by 1e14 to convert from basis points to `WAD`.
-        return value * 100000000000000;
+        return value * 1e14;
     }
 
     /// @dev Checks whether the caller has sufficient permissions.

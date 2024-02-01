@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import { CTokenBase, SafeTransferLib, ERC4626 } from "contracts/market/collateral/CTokenBase.sol";
 
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -14,8 +13,6 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
 contract CTokenPrimitive is CTokenBase {
-    using Math for uint256;
-
     /// ERRORS ///
 
     error CTokenPrimitive__RedeemMoreThanMax();

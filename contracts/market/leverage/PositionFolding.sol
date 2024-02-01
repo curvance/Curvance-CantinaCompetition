@@ -4,12 +4,12 @@ pragma solidity ^0.8.17;
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -138,7 +138,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        if (!marketManager.isListed(borrowToken) || msg.sender != borrowToken) {
+        if (
+            !marketManager.isListed(borrowToken) || msg.sender != borrowToken
+        ) {
             revert PositionFolding__Unauthorized();
         }
 
@@ -178,7 +180,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 );
             }
 
-            SwapperLib.swap(leverageData.swapData);
+            SwapperLib.swap(centralRegistry, leverageData.swapData);
         }
 
         // prepare LP
@@ -307,7 +309,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
                 );
             }
 
-            SwapperLib.swap(deleverageData.swapData);
+            SwapperLib.swap(centralRegistry, deleverageData.swapData);
         }
 
         // repay debt
@@ -358,8 +360,11 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         address user,
         address borrowToken
     ) public view returns (uint256) {
-        (uint256 sumCollateral, uint256 maxDebt, uint256 sumDebt) = marketManager
-            .statusOf(user);
+        (
+            uint256 sumCollateral,
+            uint256 maxDebt,
+            uint256 sumDebt
+        ) = marketManager.statusOf(user);
         uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /

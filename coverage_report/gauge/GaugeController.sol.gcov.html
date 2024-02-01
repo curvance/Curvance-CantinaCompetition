@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-01-30 13:08:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">8</td>
@@ -193,7 +193,7 @@
 <a name="131"><span class="lineNum">     131 </span>            : </a>
 <a name="132"><span class="lineNum">     132 </span>            :     /// @notice Returns current epoch number.</a>
 <a name="133"><span class="lineNum">     133 </span>            :     function currentEpoch() public view returns (uint256) {</a>
-<a name="134"><span class="lineNum">     134 </span><span class="lineCov">       9800 :         return epochOfTimestamp(block.timestamp);</span></a>
+<a name="134"><span class="lineNum">     134 </span><span class="lineCov">      10371 :         return epochOfTimestamp(block.timestamp);</span></a>
 <a name="135"><span class="lineNum">     135 </span>            :     }</a>
 <a name="136"><span class="lineNum">     136 </span>            : </a>
 <a name="137"><span class="lineNum">     137 </span>            :     /// @notice Returns epoch number of `timestamp`.</a>
@@ -201,8 +201,8 @@
 <a name="139"><span class="lineNum">     139 </span>            :     function epochOfTimestamp(</a>
 <a name="140"><span class="lineNum">     140 </span>            :         uint256 timestamp</a>
 <a name="141"><span class="lineNum">     141 </span>            :     ) public view returns (uint256) {</a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineCov">      19573 :         _checkGaugeHasStarted();</span></a>
-<a name="143"><span class="lineNum">     143 </span><span class="lineCov">      19573 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
+<a name="142"><span class="lineNum">     142 </span><span class="lineCov">      20715 :         _checkGaugeHasStarted();</span></a>
+<a name="143"><span class="lineNum">     143 </span><span class="lineCov">      20715 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
 <a name="144"><span class="lineNum">     144 </span>            :     }</a>
 <a name="145"><span class="lineNum">     145 </span>            : </a>
 <a name="146"><span class="lineNum">     146 </span>            :     /// @notice Returns start time of `epoch`.</a>
@@ -233,14 +233,14 @@
 <a name="171"><span class="lineNum">     171 </span>            : </a>
 <a name="172"><span class="lineNum">     172 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="173"><span class="lineNum">     173 </span>            :     function _checkDaoPermissions() internal view {</a>
-<a name="174"><span class="lineNum">     174 </span><span class="lineCov">        238 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
+<a name="174"><span class="lineNum">     174 </span><span class="lineCov">        263 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
 <a name="175"><span class="lineNum">     175 </span><span class="lineNoCov">          0 :             revert GaugeErrors.Unauthorized();</span></a>
 <a name="176"><span class="lineNum">     176 </span>            :         }</a>
 <a name="177"><span class="lineNum">     177 </span>            :     }</a>
 <a name="178"><span class="lineNum">     178 </span>            : </a>
 <a name="179"><span class="lineNum">     179 </span>            :     /// @dev Checks whether the gauge controller has started or not.</a>
 <a name="180"><span class="lineNum">     180 </span>            :     function _checkGaugeHasStarted() internal view {</a>
-<a name="181"><span class="lineNum">     181 </span><span class="lineCov">      19674 :         if (startTime == 0) {</span></a>
+<a name="181"><span class="lineNum">     181 </span><span class="lineCov">      20816 :         if (startTime == 0) {</span></a>
 <a name="182"><span class="lineNum">     182 </span><span class="lineNoCov">          0 :             revert GaugeErrors.NotStarted();</span></a>
 <a name="183"><span class="lineNum">     183 </span>            :         }</a>
 <a name="184"><span class="lineNum">     184 </span>            :     }</a>

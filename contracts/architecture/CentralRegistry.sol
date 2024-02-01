@@ -159,6 +159,7 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public isHarvester;
     mapping(address => bool) public isMarketManager;
     mapping(address => bool) public isEndpoint;
+    mapping(address => address) public externalCallDataChecker;
 
     /// EVENTS ///
 
@@ -255,12 +256,12 @@ contract CentralRegistry is ERC165 {
 
         uint256 dTokenLength = dTokens.length;
         if (dTokenLength == 0) {
-           _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
         IMToken dToken;
 
-        for(uint256 i; i < dTokenLength; ) {
+        for (uint256 i; i < dTokenLength; ) {
             dToken = IMToken(dTokens[i++]);
             // Revert if somehow a misconfigured token made it in here.
             if (dToken.isCToken()) {
@@ -680,6 +681,15 @@ contract CentralRegistry is ERC165 {
 
     /// CONTRACT MAPPING LOGIC
 
+    function setExternalCallDataChecker(
+        address target,
+        address callDataChecker
+    ) external {
+        _checkElevatedPermissions();
+
+        externalCallDataChecker[target] = callDataChecker;
+    }
+
     function addZapper(address newZapper) external {
         _checkElevatedPermissions();
 
@@ -955,7 +965,7 @@ contract CentralRegistry is ERC165 {
     ///         to WAD.
     /// @dev Internal helper function for easily converting between scalars.
     function _bpToWad(uint256 value) internal pure returns (uint256) {
-        return value * 100000000000000;
+        return value * 1e14;
     }
 
     /// @dev Internal helper for reverting efficiently.

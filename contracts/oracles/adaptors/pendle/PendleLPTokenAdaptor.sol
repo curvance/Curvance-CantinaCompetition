@@ -32,22 +32,22 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// @notice The minimum acceptable twap duration when pricing.
     uint32 public constant MINIMUM_TWAP_DURATION = 12;
-    /// @notice Current networks ptOracle.
+    /// @notice Current network's ptOracle.
     /// @dev for mainnet use 0x414d3C8A26157085f286abE3BC6E1bb010733602.
     IPendlePTOracle public immutable ptOracle;
 
     /// STORAGE ///
 
-    /// @notice Pendle LP adaptor storage.
+    /// @notice Pendle lp token address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
 
     event PendleLPAssetAdded(
         address asset,
-        AdaptorData assetConfig
+        AdaptorData assetConfig,
+        bool isUpdate
     );
-
     event PendleLPAssetRemoved(address asset);
 
     /// ERRORS ///
@@ -59,7 +59,6 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     error PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
     error PendleLPTokenAdaptor__CallIncreaseCardinality();
     error PendleLPTokenAdaptor__OldestObservationIsNotSatisfied();
-    error PendleLPTokenAdaptor__ConfigurationError();
 
     /// CONSTRUCTOR ///
 
@@ -72,30 +71,34 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset The pendle market token being priced.
-    /// @param inUSD Indicates whether we want the price in USD or ETH.
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the upper
-    ///                 or lower prices of assets.
+    /// @notice Retrieves the price of a given Pendle lp token.
+    /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
+    /// @param asset The address of the asset for which the price is needed.
+    /// @param inUSD A boolean to determine if the price should be returned in
+    ///              USD or not.
+    /// @param getLower A boolean to determine if lower of two oracle prices
+    ///                 should be retrieved.
+    /// @return pData A structure containing the price, error status,
+    ///                         and the quote format of the price.
     function getPrice(
         address asset,
         bool inUSD,
         bool getLower
     ) external view override returns (PriceReturnData memory pData) {
-        AdaptorData memory data = adaptorData[asset];
-
+        // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
             revert PendleLPTokenAdaptor__AssetIsNotSupported();
         }
 
+        AdaptorData memory data = adaptorData[asset];
+        // Get LP to underlying asset ratio conversion.
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
-        pData.inUSD = inUSD;
-
+        
         (uint256 price, uint256 errorCode) = IOracleRouter(
             centralRegistry.oracleRouter()
         ).getPrice(data.quoteAsset, inUSD, getLower);
 
+        // Validate we did not run into any errors pricing the quote asset.
         if (errorCode > 0) {
             pData.hadError = true;
             return pData;
@@ -105,17 +108,21 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         // to get the Lp Token fair value.
         price = (price * lpRate) / WAD;
 
+        // Validate price will not overflow on conversion to uint240.
         if (_checkOracleOverflow(price)) {
             pData.hadError = true;
             return pData;
         }
 
+        pData.inUSD = inUSD;
         pData.price = uint240(price);
     }
 
-    /// @notice Add a Pendle Market as an asset.
-    /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.
-    /// @param asset The address of the Pendle Market.
+    /// @notice Adds pricing support for `asset`, a pendle lp token.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the Pendle lp token to add pricing
+    ///              support for.
     /// @param data The adaptor data needed to add `asset`.
     function addAsset(
         address asset,
@@ -123,16 +130,18 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     ) external {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert PendleLPTokenAdaptor__ConfigurationError();
-        }
-
         // Make sure pt and market match.
         (IStandardizedYield sy, IPPrincipalToken pt, ) = IPMarket(asset)
             .readTokens();
 
+        // Validate pt pulled from market matches pt inside `data`.
         if (address(pt) != data.pt) {
             revert PendleLPTokenAdaptor__WrongMarket();
+        }
+
+        // Validate the parameter twap duration is within acceptable bounds.
+        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
+            revert PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
         }
 
         // Make sure quote asset is the same as SY `assetInfo.assetAddress`.
@@ -141,13 +150,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             revert PendleLPTokenAdaptor__WrongQuote();
         }
 
-        if (data.twapDuration < MINIMUM_TWAP_DURATION) {
-            revert PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum();
-        }
-
         // Make sure the underlying PT TWAP is working.
         _checkPtTwap(asset, data.twapDuration);
 
+        // Validate we support the pricing quote asset for this LP token.
         if (
             !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(
                 data.quoteAsset
@@ -156,35 +162,38 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
             revert PendleLPTokenAdaptor__QuoteAssetIsNotSupported();
         }
 
-        // Write to adaptor storage.
-        adaptorData[asset] = AdaptorData({
-            twapDuration: data.twapDuration,
-            quoteAsset: data.quoteAsset,
-            pt: data.pt,
-            quoteAssetDecimals: data.quoteAssetDecimals
-        });
+        // Save adaptor data and update mapping that we support `asset` now.
+        adaptorData[asset] = data;
+
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         isSupportedAsset[asset] = true;
-        emit PendleLPAssetAdded(asset, data);
+        emit PendleLPAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
     function removeAsset(address asset) external override {
         _checkElevatedPermissions();
 
+        // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
             revert PendleLPTokenAdaptor__AssetIsNotSupported();
         }
 
+        // Wipe config mapping entries for a gas refund.
         // Notify the adaptor to stop supporting the asset.
         delete isSupportedAsset[asset];
-
-        // Wipe config mapping entries for a gas refund.
         delete adaptorData[asset];
 
-        // Notify the oracle router that we are going to stop supporting
+        // Notify the Oracle Router that we are going to stop supporting
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
         emit PendleLPAssetRemoved(asset);
@@ -192,9 +201,10 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Check whether the underlying PT TWAP is working.
-    /// @param market the address of the Pendle LP.
-    /// @param twapDuration the twap duration to use when pricing.
+    /// @notice Helper function to check whether the underlying PT TWAP
+    ///         is working.
+    /// @param market The address of the Pendle LP.
+    /// @param twapDuration The twap duration to use when pricing.
     function _checkPtTwap(address market, uint32 twapDuration) internal view {
         (
             bool increaseCardinalityRequired,

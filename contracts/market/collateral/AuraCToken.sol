@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IBooster } from "contracts/interfaces/external/convex/IBooster.sol";
 import { IBaseRewardPool } from "contracts/interfaces/external/convex/IBaseRewardPool.sol";
@@ -14,8 +13,6 @@ import { IBalancerPool } from "contracts/interfaces/external/balancer/IBalancerP
 import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.sol";
 
 contract AuraCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -38,7 +35,7 @@ contract AuraCToken is CTokenCompounding {
     /// STORAGE ///
 
     /// @notice StrategyData packed configuration data
-    StrategyData public strategyData; 
+    StrategyData public strategyData;
 
     /// @notice Token => underlying token of the BPT or not
     mapping(address => bool) public isUnderlyingToken;
@@ -221,7 +218,7 @@ contract AuraCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = rewardAmount.mulDivDown(harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -240,7 +237,7 @@ contract AuraCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }
@@ -293,11 +290,8 @@ contract AuraCToken is CTokenCompounding {
             yield = IERC20(asset()).balanceOf(address(this));
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, vestPeriod),
-                block.timestamp + vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }
@@ -318,16 +312,5 @@ contract AuraCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
-    }
-
-    /// @notice Gets the balance of assets inside Aura reward pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.rewarder.balanceOf(address(this));
     }
 }
