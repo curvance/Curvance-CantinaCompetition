@@ -91,9 +91,12 @@ abstract contract LiquidityManager {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
-    /// @notice Market Token => isListed, Token Characteristics, Account Data.
+    /// @notice Market token data including listing status,
+    ///         token characterists, account position data.
+    /// @dev Market Token Address => MarketToken struct.
     mapping(address => MarketToken) public tokenData;
-    /// @notice Account => Assets, cooldownTimestamp.
+    /// @notice Assets and redemption cooldown data for an account.
+    /// @dev Account => AccountData struct.
     mapping(address => AccountData) public accountAssets;
 
     /// ERRORS ///
