@@ -13,6 +13,8 @@ import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 
 contract TestBaseOracleRouter is TestBase {
+    address internal constant _ETH_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address internal constant _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant _CHAINLINK_ETH_USD =
@@ -59,8 +61,7 @@ contract TestBaseOracleRouter is TestBase {
 
     function _deployOracleRouter() internal {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            _CHAINLINK_ETH_USD
+            ICentralRegistry(address(centralRegistry))
         );
 
         centralRegistry.setOracleRouter(address(oracleRouter));

@@ -31,8 +31,7 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
         );
 
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            CHAINLINK_PRICE_FEED_ETH
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
@@ -41,10 +40,20 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
         );
         adapter.addAsset(DAI_USDC);
 
+        chainlinkAdaptor.addAsset(
+            _ETH_ADDRESS,
+            CHAINLINK_PRICE_FEED_ETH,
+            0,
+            true
+        );
         chainlinkAdaptor.addAsset(DAI, CHAINLINK_PRICE_FEED_DAI, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 

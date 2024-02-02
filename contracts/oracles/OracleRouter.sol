@@ -31,10 +31,8 @@ contract OracleRouter {
 
     /// CONSTANTS ///
 
-    /// @notice The address of the chainlink feed to convert ETH -> USD.
-    address public immutable CHAINLINK_ETH_USD;
-    /// @notice The number of decimals the aggregator responses with.
-    uint256 public immutable CHAINLINK_DECIMALS;
+    /// @notice The address of the ETH.
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
     /// @notice Time to pass before accepting answers when sequencer
@@ -78,7 +76,7 @@ contract OracleRouter {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address ethUsdFeed) {
+    constructor(ICentralRegistry centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -88,16 +86,7 @@ contract OracleRouter {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        if (ethUsdFeed == address(0)) {
-            _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
         centralRegistry = centralRegistry_;
-        // Save the USD-ETH price feed because it is a widely used pricing
-        // path. 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 on Ethereum
-        // mainnet.
-        CHAINLINK_ETH_USD = ethUsdFeed;
-        CHAINLINK_DECIMALS = 10 ** IChainlink(CHAINLINK_ETH_USD).decimals();
     }
 
     /// FUNCTIONS ///
@@ -118,7 +107,11 @@ contract OracleRouter {
     /// @param asset The address of the asset.
     /// @param feedToAdd The address of the feed to remove.
     /// @param feedToAdd The address of the new feed.
-    function replaceAssetPriceFeed(address asset, address feedToRemove, address feedToAdd) external {
+    function replaceAssetPriceFeed(
+        address asset,
+        address feedToRemove,
+        address feedToAdd
+    ) external {
         _checkElevatedPermissions();
 
         // Validate that the feeds are not identical as there would be no
@@ -140,7 +133,7 @@ contract OracleRouter {
         _removeFeed(asset, feed);
     }
 
-    /// @notice Removes a price feed for a specific asset 
+    /// @notice Removes a price feed for a specific asset
     ///         triggered by an adaptors notification.
     /// @dev Requires that the feed exists for the asset.
     /// @param asset The address of the asset.
@@ -202,7 +195,7 @@ contract OracleRouter {
     /// @param adaptorToRemove The address of the adaptor to remove approval.
     /// @param adaptorToAdd The address of the adaptor to approve.
     function replaceApprovedAdaptor(
-        address adaptorToRemove, 
+        address adaptorToRemove,
         address adaptorToAdd
     ) external {
         _checkElevatedPermissions();
@@ -245,18 +238,18 @@ contract OracleRouter {
     ///         before CAUTION or BAD_SOURCE is activated.
     /// @dev Requires that the new divergences is greater than
     ///      or equal to 10200 aka 2% and less than or equal to 12000 aka 20%.
-    /// @param maxCautionDivergence The new maximum divergence 
+    /// @param maxCautionDivergence The new maximum divergence
     ///                             for a caution flag to be returned.
     /// @param maxBadSourceDivergence The new maximum divergence
     ///                               for a bad source flag to be returned.
     function setDivergenceFlags(
-        uint256 maxCautionDivergence, 
+        uint256 maxCautionDivergence,
         uint256 maxBadSourceDivergence
     ) external {
         _checkElevatedPermissions();
 
         // Validate that the caution divergence flag does not occur after
-        // the bad source divergence flag as bad source is a more 
+        // the bad source divergence flag as bad source is a more
         // significant error than caution.
         if (maxCautionDivergence >= maxBadSourceDivergence) {
             _revert(_INVALID_PARAMETER_SELECTOR);
@@ -538,7 +531,9 @@ contract OracleRouter {
 
         // Validate that the feed returns a usable price for us with a sample query.
         PriceReturnData memory sampleData = IOracleAdaptor(feed).getPrice(
-            asset, true, true
+            asset,
+            true,
+            true
         );
 
         if (sampleData.price == 0 || sampleData.hadError) {
@@ -559,7 +554,7 @@ contract OracleRouter {
             _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
-        // If theres two feeds, figure out which to remove, 
+        // If theres two feeds, figure out which to remove,
         // otherwise we know the feed to remove is the first entry.
         if (numFeeds > 1) {
             // Check whether `feed` is a currently supported feed for `asset`.
@@ -651,7 +646,7 @@ contract OracleRouter {
         // If the feed denomination is not in the proper form, modify it.
         if (data.inUSD != inUSD) {
             uint256 newPrice;
-            (newPrice, data.hadError) = _getETHUSD();
+            (newPrice, data.hadError) = _getETHUSD(getLower);
             if (data.hadError) {
                 return (0, BAD_SOURCE);
             }
@@ -702,7 +697,7 @@ contract OracleRouter {
         // If the feed denomination is not in the proper form, modify it.
         if (data.inUSD != inUSD) {
             uint256 newPrice;
-            (newPrice, data.hadError) = _getETHUSD();
+            (newPrice, data.hadError) = _getETHUSD(getLower);
             if (data.hadError) {
                 return FeedData({ price: 0, hadError: true });
             }
@@ -719,27 +714,40 @@ contract OracleRouter {
     ///         ETH/USD feed.
     /// @dev The price is deemed valid if the data from Chainlink is fresh
     ///      and positive.
+    /// @param getLower Whether the lower or higher price should be returned
+    ///                 if two feeds are available.
     /// @return A tuple containing the price of ETH in USD and an error flag.
     ///         If the Chainlink data is stale or negative,
     ///         it returns (answer, true).
     ///         Where true corresponded to hasError = true.
-    function _getETHUSD() internal view returns (uint256, bool) {
+    function _getETHUSD(bool getLower) internal view returns (uint256, bool) {
         if (!_isSequencerValid()) {
             return (0, true);
         }
 
-        (, int256 answer, , uint256 updatedAt, ) = IChainlink(
-            CHAINLINK_ETH_USD
-        ).latestRoundData();
-
-        // If data is stale or negative we have a problem to bubble up.
-        if (
-            answer <= 0 || (block.timestamp - updatedAt > CHAINLINK_MAX_DELAY)
-        ) {
-            return (uint256(answer), true);
+        uint256 numFeeds = assetPriceFeeds[ETH].length;
+        // Validate we have a feed or feeds to price `asset`.
+        if (numFeeds == 0) {
+            _revert(_NOT_SUPPORTED_SELECTOR);
         }
 
-        return (uint256(answer), false);
+        uint256 price;
+        uint256 errorCode;
+
+        // Route pricing to a single feed source or dual feed source.
+        if (numFeeds < 2) {
+            (price, errorCode) = _getPriceSingleFeed(ETH, true, getLower);
+        } else {
+            (price, errorCode) = _getPriceDualFeed(ETH, true, getLower);
+        }
+
+        // If somehow a feed returns a price of 0,
+        // make sure we trigger the BAD_SOURCE flag.
+        if (price == 0 && errorCode < BAD_SOURCE) {
+            errorCode = BAD_SOURCE;
+        }
+
+        return (price, errorCode == BAD_SOURCE);
     }
 
     /// @notice Check whether sequencer is valid or down.
@@ -782,10 +790,10 @@ contract OracleRouter {
     ) internal view returns (uint256) {
         if (!currentlyInUSD) {
             // The price denomination is in ETH and we want USD.
-            return (currentPrice * conversionRate) / CHAINLINK_DECIMALS;
+            return (currentPrice * conversionRate) / WAD;
         }
 
-        return (currentPrice * CHAINLINK_DECIMALS) / conversionRate;
+        return (currentPrice * WAD) / conversionRate;
     }
 
     /// @notice Processes the price data from two different feeds.
@@ -816,7 +824,7 @@ contract OracleRouter {
                 // the accepted range of divergence.
                 return (a, CAUTION);
             }
-            
+
             return (a, NO_ERROR);
         }
 
@@ -880,7 +888,7 @@ contract OracleRouter {
             if (((a * badSourceDivergenceFlag) / DENOMINATOR) < b) {
                 return (b, BAD_SOURCE);
             }
-            
+
             // Return the price, but, notify that the price should be
             // taken with caution because we are outside
             // the accepted range of divergence.

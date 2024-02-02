@@ -10,29 +10,17 @@ contract OracleRouterDeploymentTest is TestBaseOracleRouter {
         public
     {
         vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
-        new OracleRouter(ICentralRegistry(address(1)), _CHAINLINK_ETH_USD);
-    }
-
-    function test_oracleRouterDeployment_fail_whenEthUsdFeedIsZeroAddress()
-        public
-    {
-        vm.expectRevert(OracleRouter.OracleRouter__InvalidParameter.selector);
-        new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            address(0)
-        );
+        new OracleRouter(ICentralRegistry(address(1)));
     }
 
     function test_oracleRouterDeployment_success() public {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            _CHAINLINK_ETH_USD
+            ICentralRegistry(address(centralRegistry))
         );
 
         assertEq(
             address(oracleRouter.centralRegistry()),
             address(centralRegistry)
         );
-        assertEq(oracleRouter.CHAINLINK_ETH_USD(), _CHAINLINK_ETH_USD);
     }
 }

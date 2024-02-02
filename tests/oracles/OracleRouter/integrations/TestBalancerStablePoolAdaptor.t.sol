@@ -15,8 +15,6 @@ contract TestBalancerStablePoolAdaptor is TestBaseOracleRouter {
     address private WETH = 0x4200000000000000000000000000000000000006;
     address private RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
 
-    address private CHAINLINK_PRICE_FEED_ETH =
-        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private CHAINLINK_PRICE_FEED_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
 
@@ -60,9 +58,19 @@ contract TestBalancerStablePoolAdaptor is TestBaseOracleRouter {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
-        chainlinkAdaptor.addAsset(RETH, CHAINLINK_PRICE_FEED_RETH_ETH, 0, false);
+        chainlinkAdaptor.addAsset(_ETH_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
+        chainlinkAdaptor.addAsset(WETH, _CHAINLINK_ETH_USD, 0, true);
+        chainlinkAdaptor.addAsset(
+            RETH,
+            CHAINLINK_PRICE_FEED_RETH_ETH,
+            0,
+            false
+        );
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(RETH, address(chainlinkAdaptor));
 

@@ -29,6 +29,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract TestBaseMarket is TestBase {
+    address internal constant _ETH_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address internal constant _WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant _USDC_ADDRESS =
@@ -200,8 +202,7 @@ contract TestBaseMarket is TestBase {
 
     function _deployOracleRouter() internal {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            address(chainlinkEthUsd)
+            ICentralRegistry(address(centralRegistry))
         );
 
         centralRegistry.setOracleRouter(address(oracleRouter));
@@ -246,6 +247,12 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(
+            _ETH_ADDRESS,
+            address(chainlinkEthUsd),
+            0,
+            true
+        );
+        chainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(chainlinkEthUsd),
             0,
@@ -283,6 +290,10 @@ contract TestBaseMarket is TestBase {
         );
 
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)

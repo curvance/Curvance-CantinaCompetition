@@ -184,8 +184,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     function _deployOracleRouter() internal {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            address(chainlinkEthUsd)
+            ICentralRegistry(address(centralRegistry))
         );
 
         centralRegistry.setOracleRouter(address(oracleRouter));
