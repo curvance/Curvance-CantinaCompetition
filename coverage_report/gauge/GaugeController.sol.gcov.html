@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-01 22:47:15</td>
+            <td class="headerValue">2024-02-01 22:51:55</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">10</td>
@@ -199,7 +199,7 @@
 <a name="137"><span class="lineNum">     137 </span>            : </a>
 <a name="138"><span class="lineNum">     138 </span>            :     /// @notice Returns current epoch number.</a>
 <a name="139"><span class="lineNum">     139 </span>            :     function currentEpoch() public view returns (uint256) {</a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      10416 :         return epochOfTimestamp(block.timestamp);</span></a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      10337 :         return epochOfTimestamp(block.timestamp);</span></a>
 <a name="141"><span class="lineNum">     141 </span>            :     }</a>
 <a name="142"><span class="lineNum">     142 </span>            : </a>
 <a name="143"><span class="lineNum">     143 </span>            :     /// @notice Returns epoch number of `timestamp`.</a>
@@ -207,8 +207,8 @@
 <a name="145"><span class="lineNum">     145 </span>            :     function epochOfTimestamp(</a>
 <a name="146"><span class="lineNum">     146 </span>            :         uint256 timestamp</a>
 <a name="147"><span class="lineNum">     147 </span>            :     ) public view returns (uint256) {</a>
-<a name="148"><span class="lineNum">     148 </span><span class="lineCov">      20782 :         _checkGaugeHasStarted();</span></a>
-<a name="149"><span class="lineNum">     149 </span><span class="lineCov">      20782 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
+<a name="148"><span class="lineNum">     148 </span><span class="lineCov">      20624 :         _checkGaugeHasStarted();</span></a>
+<a name="149"><span class="lineNum">     149 </span><span class="lineCov">      20624 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
 <a name="150"><span class="lineNum">     150 </span>            :     }</a>
 <a name="151"><span class="lineNum">     151 </span>            : </a>
 <a name="152"><span class="lineNum">     152 </span>            :     /// @notice Returns start time of `epoch`.</a>
@@ -246,7 +246,7 @@
 <a name="184"><span class="lineNum">     184 </span>            : </a>
 <a name="185"><span class="lineNum">     185 </span>            :     /// @dev Checks whether the gauge controller has started or not.</a>
 <a name="186"><span class="lineNum">     186 </span>            :     function _checkGaugeHasStarted() internal view {</a>
-<a name="187"><span class="lineNum">     187 </span><span class="lineCov">      20887 :         if (startTime == 0) {</span></a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">      20729 :         if (startTime == 0) {</span></a>
 <a name="188"><span class="lineNum">     188 </span><span class="lineNoCov">          0 :             revert GaugeErrors.NotStarted();</span></a>
 <a name="189"><span class="lineNum">     189 </span>            :         }</a>
 <a name="190"><span class="lineNum">     190 </span>            :     }</a>
