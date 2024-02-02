@@ -69,12 +69,10 @@ contract DeployCurvance is
         _setWormholeRelayer(
             _readConfigAddress(".centralRegistry.wormholeRelayer")
         );
-        _setCircleRelayer(
-            _readConfigAddress(".centralRegistry.circleRelayer")
+        _setCircleTokenMessenger(
+            _readConfigAddress(".centralRegistry.circleTokenMessenger")
         );
-        _setTokenBridgeRelayer(
-            _readConfigAddress(".centralRegistry.tokenBridgeRelayer")
-        );
+        _setTokenBridge(_readConfigAddress(".centralRegistry.tokenBridge"));
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
 
         // Deploy CVE

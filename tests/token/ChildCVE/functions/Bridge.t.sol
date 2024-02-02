@@ -2,13 +2,9 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseChildCVE } from "../TestBaseChildCVE.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 contract BridgeTest is TestBaseChildCVE {
-    ITokenBridgeRelayer public tokenBridgeRelayer =
-        ITokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
-
     uint256[] public chainIDs;
     uint16[] public wormholeChainIDs;
 
@@ -24,20 +20,6 @@ contract BridgeTest is TestBaseChildCVE {
         wormholeChainIDs.push(5);
 
         centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
-
-        ITokenBridgeRelayer.SwapRateUpdate[]
-            memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
-                1
-            );
-        swapRateUpdate[0] = ITokenBridgeRelayer.SwapRateUpdate({
-            token: address(childCVE),
-            value: 10e8
-        });
-
-        vm.startPrank(tokenBridgeRelayer.owner());
-        tokenBridgeRelayer.registerToken(2, address(childCVE));
-        tokenBridgeRelayer.updateSwapRate(2, swapRateUpdate);
-        vm.stopPrank();
 
         vm.prank(centralRegistry.protocolMessagingHub());
         childCVE.mintGaugeEmissions(user1, _ONE);
@@ -64,21 +46,12 @@ contract BridgeTest is TestBaseChildCVE {
         childCVE.bridge(137, address(0), _ONE);
     }
 
-    function test_bridge_fail_whenAmountIsNotEnoughToCoverFee() public {
-        uint256 relayerFee = childCVE.relayerFee(137);
-
-        vm.prank(user1);
-
-        vm.expectRevert("insufficient amount");
-        childCVE.bridge(137, user1, relayerFee - 1);
-    }
-
     function test_bridge_success() public {
         vm.prank(user1);
 
         childCVE.bridge(137, user1, _ONE);
 
         assertEq(childCVE.balanceOf(user1), 0);
-        assertEq(childCVE.balanceOf(tokenBridgeRelayer.tokenBridge()), _ONE);
+        assertEq(childCVE.balanceOf(_TOKEN_BRIDGE), _ONE);
     }
 }

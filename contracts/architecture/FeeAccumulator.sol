@@ -339,10 +339,10 @@ contract FeeAccumulator is ReentrancyGuard {
             centralRegistry.protocolMessagingHub()
         );
 
-        (uint256 gas, ) = messagingHub.quoteWormholeFee(dstChainId, false);
+        (uint256 gas, ) = messagingHub.quoteWormholeFee(gethChainId, false);
 
         messagingHub.sendWormholeMessages{ value: gas }(
-            dstChainId,
+            gethChainId,
             toAddress,
             payload
         );
@@ -445,12 +445,12 @@ contract FeeAccumulator is ReentrancyGuard {
                 );
 
                 (gas, ) = messagingHub.quoteWormholeFee(
-                    messagingChainId,
+                    uint256(lockData.chainId),
                     false
                 );
 
                 messagingHub.sendWormholeMessages{ value: gas }(
-                    messagingChainId,
+                    uint256(lockData.chainId),
                     chainData.messagingHub,
                     abi.encode(epochRewardsPerCVE)
                 );

@@ -71,10 +71,10 @@ contract TestBaseMarket is TestBase {
         0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
     address internal constant _WORMHOLE_RELAYER =
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
-    address internal constant _CIRCLE_RELAYER =
-        0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
-    address internal constant _TOKEN_BRIDGE_RELAYER =
-        0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
+    address internal constant _CIRCLE_TOKEN_MESSENGER =
+        0xBd3fa81B58Ba92a82136038B25aDec7066af3155;
+    address internal constant _TOKEN_BRIDGE =
+        0x3ee18B2214AFF97000D974cf647E7C347E8fa585;
     address internal constant _GELATO_ONE_BALANCE =
         0x7506C12a824d73D9b08564d5Afc22c949434755e;
 
@@ -164,21 +164,18 @@ contract TestBaseMarket is TestBase {
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
-        centralRegistry.setCircleRelayer(_CIRCLE_RELAYER);
+        centralRegistry.setCircleTokenMessenger(_CIRCLE_TOKEN_MESSENGER);
         centralRegistry.setWormholeRelayer(_WORMHOLE_RELAYER);
         centralRegistry.setWormholeCore(_WORMHOLE_CORE);
-        centralRegistry.setTokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+        centralRegistry.setTokenBridge(_TOKEN_BRIDGE);
         centralRegistry.setGelatoSponsor(address(1));
     }
 
     function _deployCVE() internal {
         // If TokenBridgeRelayer doesn't exist on the address,
         // deploy mock TokenBridgeRelayer on the address.
-        if (_TOKEN_BRIDGE_RELAYER.code.length == 0) {
-            vm.etch(
-                _TOKEN_BRIDGE_RELAYER,
-                address(new MockTokenBridgeRelayer()).code
-            );
+        if (_TOKEN_BRIDGE.code.length == 0) {
+            vm.etch(_TOKEN_BRIDGE, address(new MockTokenBridgeRelayer()).code);
         }
 
         cve = new CVE(ICentralRegistry(address(centralRegistry)), address(0));

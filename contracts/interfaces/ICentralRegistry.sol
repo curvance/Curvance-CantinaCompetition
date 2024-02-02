@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
-import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMessenger.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 
 /// TYPES ///
 
@@ -86,15 +86,19 @@ interface ICentralRegistry {
     /// @notice Returns WormholeRelayer contract address.
     function wormholeRelayer() external view returns (IWormholeRelayer);
 
-    /// @notice Returns Wormhole CircleRelayer contract address.
-    function circleRelayer() external view returns (ICircleRelayer);
+    /// @notice Returns Circle Token Messenger contract address.
+    function circleTokenMessenger() external view returns (ITokenMessenger);
 
-    /// @notice Returns Wormhole TokenBridgeRelayer contract address.
-    function tokenBridgeRelayer() external view returns (ITokenBridgeRelayer);
+    /// @notice Returns Wormhole TokenBridge contract address.
+    function tokenBridge() external view returns (ITokenBridge);
 
     /// @notice Returns wormhole specific chain ID for evm chain ID.
     /// @param chainId Evm chain ID.
     function wormholeChainId(uint256 chainId) external view returns (uint16);
+
+    /// @notice Returns CCTP domain for evm chain ID.
+    /// @param chainId Evm chain ID.
+    function cctpDomain(uint256 chainId) external view returns (uint16);
 
     /// @notice Returns Gelato sponsor address.
     function gelatoSponsor() external view returns (address);

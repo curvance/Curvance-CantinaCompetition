@@ -3,11 +3,10 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 
 contract BridgeVeCVELockTest is TestBaseVeCVE {
-    ITokenBridgeRelayer public tokenBridgeRelayer =
-        ITokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+    ITokenBridge public tokenBridge = ITokenBridge(_TOKEN_BRIDGE);
 
     uint256[] public chainIDs;
     uint16[] public wormholeChainIDs;
@@ -31,20 +30,6 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         wormholeChainIDs.push(23);
 
         centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
-
-        ITokenBridgeRelayer.SwapRateUpdate[]
-            memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
-                1
-            );
-        swapRateUpdate[0] = ITokenBridgeRelayer.SwapRateUpdate({
-            token: address(cve),
-            value: 10e8
-        });
-
-        vm.startPrank(tokenBridgeRelayer.owner());
-        tokenBridgeRelayer.registerToken(2, address(cve));
-        tokenBridgeRelayer.updateSwapRate(2, swapRateUpdate);
-        vm.stopPrank();
 
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);

@@ -4,12 +4,12 @@ pragma solidity ^0.8.17;
 interface IProtocolMessagingHub {
     /// @notice Quotes gas cost and token fee for executing crosschain
     ///         wormhole deposit and messaging.
-    /// @param dstChainId Wormhole specific destination chain ID.
+    /// @param dstChainId Destination chain ID.
     /// @param transferToken Whether deliver token or not.
     /// @return Total gas cost.
     /// @return Deliverying fee.
     function quoteWormholeFee(
-        uint16 dstChainId,
+        uint256 dstChainId,
         bool transferToken
     ) external view returns (uint256, uint256);
 
@@ -22,7 +22,7 @@ interface IProtocolMessagingHub {
     ///      in the function, calls with this function will have
     ///      messageType = 1, 2 or 3
     function sendWormholeMessages(
-        uint16 dstChainId,
+        uint256 dstChainId,
         address toAddress,
         bytes calldata payload
     ) external payable;

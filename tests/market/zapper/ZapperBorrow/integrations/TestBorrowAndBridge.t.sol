@@ -9,15 +9,14 @@ import { ZapperBorrow } from "contracts/market/zapper/ZapperBorrow.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 
 contract TestBorrowAndBridge is TestBaseMarket {
     address private _UNISWAP_V3_SWAP_ROUTER =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
-    ITokenBridgeRelayer public tokenBridgeRelayer =
-        ITokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+    ITokenBridge public tokenBridge = ITokenBridge(_TOKEN_BRIDGE);
 
     address public owner;
 
@@ -125,20 +124,6 @@ contract TestBorrowAndBridge is TestBaseMarket {
         wormholeChainIDs.push(23);
 
         centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
-
-        ITokenBridgeRelayer.SwapRateUpdate[]
-            memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
-                1
-            );
-        swapRateUpdate[0] = ITokenBridgeRelayer.SwapRateUpdate({
-            token: address(cve),
-            value: 10e8
-        });
-
-        vm.startPrank(tokenBridgeRelayer.owner());
-        tokenBridgeRelayer.registerToken(2, address(cve));
-        tokenBridgeRelayer.updateSwapRate(2, swapRateUpdate);
-        vm.stopPrank();
 
         deal(user1, _ONE);
 

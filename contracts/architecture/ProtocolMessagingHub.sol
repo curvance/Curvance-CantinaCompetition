@@ -12,7 +12,6 @@ import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAcc
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 
 contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// CONSTANTS ///
@@ -250,11 +249,12 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         _checkMessagingHubStatus();
         _checkPermissions();
 
+        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
+            dstChainId
+        );
+
         {
             // Avoid stack too deep
-            uint256 gethChainId = centralRegistry.messagingToGETHChainId(
-                dstChainId
-            );
             OmnichainData memory operator = centralRegistry
                 .getOmnichainOperators(to, gethChainId);
 
@@ -314,20 +314,13 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
         _checkMessagingHubStatus();
 
-        ITokenBridgeRelayer tokenBridgeRelayer = centralRegistry
-            .tokenBridgeRelayer();
-
-        cve.approve(address(tokenBridgeRelayer), amount);
-
-        return
-            tokenBridgeRelayer.transferTokensWithRelay{ value: msg.value }(
-                address(cve),
-                amount,
-                0,
-                centralRegistry.wormholeChainId(dstChainId),
-                bytes32(uint256(uint160(recipient))),
-                0
-            );
+        _transferTokenViaWormhole(
+            address(cve),
+            dstChainId,
+            recipient,
+            amount,
+            msg.value
+        );
     }
 
     /// @notice Send wormhole message to bridge VeCVE lock.
@@ -364,13 +357,13 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
+    /// @param dstChainId Destination chain ID where the message data
+    ///                   should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payload The payload data that is sent along with the message.
     /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function sendWormholeMessages(
-        uint16 dstChainId,
+        uint256 dstChainId,
         address toAddress,
         bytes calldata payload
     ) external payable returns (uint64) {
@@ -389,24 +382,15 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             );
     }
 
-    /// @notice Returns required amount of CVE for relayer fee.
+    /// @notice Returns required amount of native asset for message fee.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @return Required fee.
-    function cveRelayerFee(
-        uint256 dstChainId
-    ) external view returns (uint256) {
+    function cveBridgeFee(uint256 dstChainId) external view returns (uint256) {
         return
-            centralRegistry.tokenBridgeRelayer().calculateRelayerFee(
+            _quoteWormholeFee(
                 centralRegistry.wormholeChainId(dstChainId),
-                address(cve),
-                18
+                true
             );
-    }
-
-    /// @notice Returns required amount of native asset for message fee.
-    /// @return Required fee.
-    function cveBridgeFee() external view returns (uint256) {
-        return centralRegistry.wormholeCore().messageFee();
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///
@@ -451,27 +435,21 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
+    /// @param dstChainId Destination chain ID where the message data
+    ///                   should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     /// @param payloadId The id of payload.
     /// @param payload The payload data that is sent along with the message.
     /// @return Wormhole sequence for emitted TransferTokensWithRelay message.
     function _sendWormholeMessages(
-        uint16 dstChainId,
+        uint256 dstChainId,
         address toAddress,
         uint256 messageFee,
         uint8 payloadId,
         bytes memory payload
     ) internal returns (uint64) {
         // Validate that we are aiming for a supported chain.
-        if (
-            centralRegistry
-                .supportedChainData(
-                    centralRegistry.messagingToGETHChainId(dstChainId)
-                )
-                .isSupported < 2
-        ) {
+        if (centralRegistry.supportedChainData(dstChainId).isSupported < 2) {
             revert ProtocolMessagingHub__ChainIsNotSupported();
         }
 
@@ -479,7 +457,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             centralRegistry.wormholeRelayer().sendPayloadToEvm{
                 value: messageFee
             }(
-                dstChainId,
+                centralRegistry.wormholeChainId(dstChainId),
                 toAddress,
                 abi.encode(payloadId, payload), // payload
                 0, // no receiver value needed since we're just passing a message
