@@ -17,7 +17,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 /// @notice Manages risk within the Curvance DAO markets.
 /// @dev There are two types of tokens inside Curvance:
 ///      Collateral tokens, aka cTokens that can be posted as collateral.
-///      Debt tokens, aka dTokens that can be lent out to cToken depositers.
+///      Debt tokens, aka dTokens that can be lent out to cToken depositors.
 ///      Unique to Curvance, rehypothecation of collateral token deposits
 ///      is disabled, this decision was made to allow for vastly improved
 ///      market risk modeling and the expansion of supportable assets to
@@ -28,7 +28,20 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 ///      or mTokens. All cTokens and dTokens are mTokens but not all cTokens
 ///      are dTokens, and vice versa. 
 ///
-///      Curvance also employs a 20 minute minimum duration of posting of
+///      Curvance offers the ability to store unlimited collateral inside
+///      cToken contracts while restricting the scale of exogenous risk. 
+///      Every collateral asset as a "Collateral Cap", measured in shares.
+///      As collateral is posted, the `collateralPosted` invariant increases,
+///      and is compared to `collateralCaps`. By measuring collateral posted
+///      in shares, this allows collateral caps to grow proportionally with
+///      any auto compounding mechanism strategy attached to the token.
+///
+///      It is important to note that, in theory, collateral caps can be
+///      decreased below current market collateral posted levels. This would
+///      restrict the addition of new exogenous risk being added to the
+///      system, but will not result in forced unwinding of user positions.
+///
+///      Curvance also employs a 20-minute minimum duration of posting of
 ///      cToken collateral, and lending of dTokens. This restriction improves
 ///      the security model of Curvance and allows for more mature interest
 ///      rate models. 
@@ -37,13 +50,13 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 ///      allows for more nuanced position management inside the system.
 ///      The DLE facilitates aggressive asset support and elevated
 ///      collateralization ratios paired with reduced base liquidation
-///      penalties. In periods of low volatility users will experience soft
-///      liquidations, but when volatility is elevated, users may experience 
+///      penalties. In periods of low volatility, users will experience soft
+///      liquidations. But, when volatility is elevated, users may experience 
 ///      more aggressive or complete liquidation of positions.
 ///      
-///      Bad debt is also minimized via a "Bad Debt Socialization" system.
-///      When a users debt is greater than their collateral assets, 
-///      the entire account can be liquidated with lenders paying the
+///      Bad debt is minimized via a "Bad Debt Socialization" system.
+///      When a user's debt is greater than their collateral assets, 
+///      the entire user's account can be liquidated with lenders paying any
 ///      collateral shortfall.
 ///      
 contract MarketManager is LiquidityManager, ERC165 {
@@ -118,7 +131,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     mapping(address => uint256) public borrowPaused;
 
     /// COLLATERAL POSTING INVARIANTS
-    /// @notice Amount of cToken that this account has posted as collateral,
+    /// @notice Amount of cToken that has been posted as collateral,
     ///         in shares.
     /// @dev Token => Collateral Posted.
     mapping(address => uint256) public collateralPosted;
@@ -1424,7 +1437,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         AccountMetadata storage accountData = tokenData[cToken].accountData[
             account
         ];
-        
+
         // Check if they want to force a collateral redemption of `cToken`.
         if (forceReduce) {
             _removeCollateral(account, accountData, cToken, tokens, false);
