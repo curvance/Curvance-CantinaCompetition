@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 13:08:35</td>
+            <td class="headerValue">2024-02-01 22:18:36</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">12</td>
@@ -161,11 +161,11 @@
 <a name="99"><span class="lineNum">      99 </span>            :     ///                  configured.</a>
 <a name="100"><span class="lineNum">     100 </span>            :     /// @param amount The amount of gauge emissions to be minted.</a>
 <a name="101"><span class="lineNum">     101 </span>            :     function mintGaugeEmissions(address gaugePool, uint256 amount) external {</a>
-<a name="102"><span class="lineNum">     102 </span><span class="lineCov">         10 :         if (msg.sender != centralRegistry.protocolMessagingHub()) {</span></a>
+<a name="102"><span class="lineNum">     102 </span><span class="lineCov">         14 :         if (msg.sender != centralRegistry.protocolMessagingHub()) {</span></a>
 <a name="103"><span class="lineNum">     103 </span><span class="lineCov">          1 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="104"><span class="lineNum">     104 </span>            :         }</a>
 <a name="105"><span class="lineNum">     105 </span>            : </a>
-<a name="106"><span class="lineNum">     106 </span><span class="lineCov">          9 :         _mint(gaugePool, amount);</span></a>
+<a name="106"><span class="lineNum">     106 </span><span class="lineCov">         13 :         _mint(gaugePool, amount);</span></a>
 <a name="107"><span class="lineNum">     107 </span>            :     }</a>
 <a name="108"><span class="lineNum">     108 </span>            : </a>
 <a name="109"><span class="lineNum">     109 </span>            :     /// @notice Mints CVE to the calling gauge pool to fund the users</a>

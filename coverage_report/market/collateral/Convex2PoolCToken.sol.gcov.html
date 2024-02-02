@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 13:08:35</td>
+            <td class="headerValue">2024-02-01 22:18:36</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">4</td>
@@ -309,9 +309,9 @@
 <a name="247"><span class="lineNum">     247 </span>            :     /// @notice Deposits specified amount of assets into Convex booster contract</a>
 <a name="248"><span class="lineNum">     248 </span>            :     /// @param assets The amount of assets to deposit</a>
 <a name="249"><span class="lineNum">     249 </span>            :     function _afterDeposit(uint256 assets, uint256) internal override {</a>
-<a name="250"><span class="lineNum">     250 </span><span class="lineCov">         10 :         IBooster booster = strategyData.booster;</span></a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineCov">         10 :         SafeTransferLib.safeApprove(asset(), address(booster), assets);</span></a>
-<a name="252"><span class="lineNum">     252 </span><span class="lineCov">         10 :         booster.deposit(strategyData.pid, assets, true);</span></a>
+<a name="250"><span class="lineNum">     250 </span><span class="lineCov">         15 :         IBooster booster = strategyData.booster;</span></a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">         15 :         SafeTransferLib.safeApprove(asset(), address(booster), assets);</span></a>
+<a name="252"><span class="lineNum">     252 </span><span class="lineCov">         15 :         booster.deposit(strategyData.pid, assets, true);</span></a>
 <a name="253"><span class="lineNum">     253 </span>            :     }</a>
 <a name="254"><span class="lineNum">     254 </span>            : </a>
 <a name="255"><span class="lineNum">     255 </span>            :     /// @notice Withdraws specified amount of assets from Convex reward pool</a>

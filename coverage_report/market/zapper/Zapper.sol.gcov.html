@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 13:08:35</td>
+            <td class="headerValue">2024-02-01 22:18:36</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">9</td>
@@ -154,7 +154,7 @@
 <a name="92"><span class="lineNum">      92 </span>            :         address recipient</a>
 <a name="93"><span class="lineNum">      93 </span>            :     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {</a>
 <a name="94"><span class="lineNum">      94 </span>            :         // swap input token for underlyings</a>
-<a name="95"><span class="lineNum">      95 </span><span class="lineCov">          5 :         _swapForUnderlyings(</span></a>
+<a name="95"><span class="lineNum">      95 </span><span class="lineCov">          7 :         _swapForUnderlyings(</span></a>
 <a name="96"><span class="lineNum">      96 </span>            :             zapData.inputToken,</a>
 <a name="97"><span class="lineNum">      97 </span>            :             zapData.inputAmount,</a>
 <a name="98"><span class="lineNum">      98 </span>            :             tokenSwaps,</a>
@@ -162,7 +162,7 @@
 <a name="100"><span class="lineNum">     100 </span>            :         );</a>
 <a name="101"><span class="lineNum">     101 </span>            : </a>
 <a name="102"><span class="lineNum">     102 </span>            :         // enter curve</a>
-<a name="103"><span class="lineNum">     103 </span><span class="lineCov">          5 :         uint256 lpOutAmount = CurveLib.enterCurve(</span></a>
+<a name="103"><span class="lineNum">     103 </span><span class="lineCov">          7 :         uint256 lpOutAmount = CurveLib.enterCurve(</span></a>
 <a name="104"><span class="lineNum">     104 </span>            :             lpMinter,</a>
 <a name="105"><span class="lineNum">     105 </span>            :             zapData.outputToken,</a>
 <a name="106"><span class="lineNum">     106 </span>            :             tokens,</a>
@@ -170,7 +170,7 @@
 <a name="108"><span class="lineNum">     108 </span>            :         );</a>
 <a name="109"><span class="lineNum">     109 </span>            : </a>
 <a name="110"><span class="lineNum">     110 </span>            :         // enter curvance</a>
-<a name="111"><span class="lineNum">     111 </span><span class="lineCov">          5 :         cTokenOutAmount = _enterCurvance(</span></a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineCov">          7 :         cTokenOutAmount = _enterCurvance(</span></a>
 <a name="112"><span class="lineNum">     112 </span>            :             cToken,</a>
 <a name="113"><span class="lineNum">     113 </span>            :             zapData.outputToken,</a>
 <a name="114"><span class="lineNum">     114 </span>            :             lpOutAmount,</a>
@@ -406,11 +406,11 @@
 <a name="344"><span class="lineNum">     344 </span>            :         SwapperLib.Swap[] calldata tokenSwaps,</a>
 <a name="345"><span class="lineNum">     345 </span>            :         bool depositInputAsWETH</a>
 <a name="346"><span class="lineNum">     346 </span>            :     ) private {</a>
-<a name="347"><span class="lineNum">     347 </span><span class="lineCov">          9 :         if (CommonLib.isETH(inputToken)) {</span></a>
-<a name="348"><span class="lineNum">     348 </span><span class="lineCov">          6 :             if (inputAmount != msg.value) {</span></a>
+<a name="347"><span class="lineNum">     347 </span><span class="lineCov">         11 :         if (CommonLib.isETH(inputToken)) {</span></a>
+<a name="348"><span class="lineNum">     348 </span><span class="lineCov">          8 :             if (inputAmount != msg.value) {</span></a>
 <a name="349"><span class="lineNum">     349 </span><span class="lineNoCov">          0 :                 revert Zapper__ExecutionError();</span></a>
 <a name="350"><span class="lineNum">     350 </span>            :             }</a>
-<a name="351"><span class="lineNum">     351 </span><span class="lineCov">          6 :             if (depositInputAsWETH) {</span></a>
+<a name="351"><span class="lineNum">     351 </span><span class="lineCov">          8 :             if (depositInputAsWETH) {</span></a>
 <a name="352"><span class="lineNum">     352 </span><span class="lineCov">          4 :                 IWETH(WETH).deposit{ value: inputAmount }();</span></a>
 <a name="353"><span class="lineNum">     353 </span>            :             }</a>
 <a name="354"><span class="lineNum">     354 </span>            :         } else {</a>
@@ -422,10 +422,10 @@
 <a name="360"><span class="lineNum">     360 </span>            :             );</a>
 <a name="361"><span class="lineNum">     361 </span>            :         }</a>
 <a name="362"><span class="lineNum">     362 </span>            : </a>
-<a name="363"><span class="lineNum">     363 </span><span class="lineCov">          9 :         uint256 numTokenSwaps = tokenSwaps.length;</span></a>
+<a name="363"><span class="lineNum">     363 </span><span class="lineCov">         11 :         uint256 numTokenSwaps = tokenSwaps.length;</span></a>
 <a name="364"><span class="lineNum">     364 </span>            : </a>
 <a name="365"><span class="lineNum">     365 </span>            :         // prepare tokens to mint LP</a>
-<a name="366"><span class="lineNum">     366 </span><span class="lineCov">          9 :         for (uint256 i; i &lt; numTokenSwaps; ) {</span></a>
+<a name="366"><span class="lineNum">     366 </span><span class="lineCov">         11 :         for (uint256 i; i &lt; numTokenSwaps; ) {</span></a>
 <a name="367"><span class="lineNum">     367 </span><span class="lineNoCov">          0 :             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {</span></a>
 <a name="368"><span class="lineNum">     368 </span><span class="lineNoCov">          0 :                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);</span></a>
 <a name="369"><span class="lineNum">     369 </span>            :             }</a>
@@ -448,10 +448,10 @@
 <a name="386"><span class="lineNum">     386 </span>            :         uint256 amount,</a>
 <a name="387"><span class="lineNum">     387 </span>            :         address recipient</a>
 <a name="388"><span class="lineNum">     388 </span>            :     ) private returns (uint256) {</a>
-<a name="389"><span class="lineNum">     389 </span><span class="lineCov">          9 :         if (cToken == address(0)) {</span></a>
+<a name="389"><span class="lineNum">     389 </span><span class="lineCov">         11 :         if (cToken == address(0)) {</span></a>
 <a name="390"><span class="lineNum">     390 </span>            :             // transfer LP token to recipient</a>
-<a name="391"><span class="lineNum">     391 </span><span class="lineCov">          9 :             SafeTransferLib.safeTransfer(lpToken, recipient, amount);</span></a>
-<a name="392"><span class="lineNum">     392 </span><span class="lineCov">          9 :             return amount;</span></a>
+<a name="391"><span class="lineNum">     391 </span><span class="lineCov">         11 :             SafeTransferLib.safeTransfer(lpToken, recipient, amount);</span></a>
+<a name="392"><span class="lineNum">     392 </span><span class="lineCov">         11 :             return amount;</span></a>
 <a name="393"><span class="lineNum">     393 </span>            :         }</a>
 <a name="394"><span class="lineNum">     394 </span>            : </a>
 <a name="395"><span class="lineNum">     395 </span>            :         // check valid cToken</a>

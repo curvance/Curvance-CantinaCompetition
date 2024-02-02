@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">23</td>
+            <td class="headerCovTableEntry">24</td>
             <td class="headerCovTableEntry">27</td>
-            <td class="headerCovTableEntryMed">85.2 %</td>
+            <td class="headerCovTableEntryMed">88.9 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 13:08:35</td>
+            <td class="headerValue">2024-02-01 22:18:36</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">5</td>
@@ -101,47 +101,47 @@
 <a name="39"><span class="lineNum">      39 </span>            :         ICentralRegistry centralRegistry,</a>
 <a name="40"><span class="lineNum">      40 </span>            :         Swap memory swapData</a>
 <a name="41"><span class="lineNum">      41 </span>            :     ) internal returns (uint256) {</a>
-<a name="42"><span class="lineNum">      42 </span><span class="lineCov">        521 :         address callDataChecker = centralRegistry.externalCallDataChecker(</span></a>
+<a name="42"><span class="lineNum">      42 </span><span class="lineCov">        522 :         address callDataChecker = centralRegistry.externalCallDataChecker(</span></a>
 <a name="43"><span class="lineNum">      43 </span>            :             swapData.target</a>
 <a name="44"><span class="lineNum">      44 </span>            :         );</a>
 <a name="45"><span class="lineNum">      45 </span>            : </a>
 <a name="46"><span class="lineNum">      46 </span>            :         // Make sure we know how to validate this calldata.</a>
-<a name="47"><span class="lineNum">      47 </span><span class="lineCov">        521 :         if (callDataChecker == address(0)) {</span></a>
+<a name="47"><span class="lineNum">      47 </span><span class="lineCov">        522 :         if (callDataChecker == address(0)) {</span></a>
 <a name="48"><span class="lineNum">      48 </span><span class="lineNoCov">          0 :             revert SwapperLib__UnknownCalldata();</span></a>
 <a name="49"><span class="lineNum">      49 </span>            :         }</a>
 <a name="50"><span class="lineNum">      50 </span>            : </a>
-<a name="51"><span class="lineNum">      51 </span><span class="lineCov">        521 :         IExternalCallDataChecker(callDataChecker).checkCallData(</span></a>
+<a name="51"><span class="lineNum">      51 </span><span class="lineCov">        522 :         IExternalCallDataChecker(callDataChecker).checkCallData(</span></a>
 <a name="52"><span class="lineNum">      52 </span>            :             swapData,</a>
 <a name="53"><span class="lineNum">      53 </span>            :             address(this)</a>
 <a name="54"><span class="lineNum">      54 </span>            :         );</a>
 <a name="55"><span class="lineNum">      55 </span>            : </a>
-<a name="56"><span class="lineNum">      56 </span><span class="lineCov">        521 :         _approveTokenIfNeeded(</span></a>
+<a name="56"><span class="lineNum">      56 </span><span class="lineCov">        522 :         _approveTokenIfNeeded(</span></a>
 <a name="57"><span class="lineNum">      57 </span>            :             swapData.inputToken,</a>
 <a name="58"><span class="lineNum">      58 </span>            :             swapData.target,</a>
 <a name="59"><span class="lineNum">      59 </span>            :             swapData.inputAmount</a>
 <a name="60"><span class="lineNum">      60 </span>            :         );</a>
 <a name="61"><span class="lineNum">      61 </span>            : </a>
 <a name="62"><span class="lineNum">      62 </span>            :         // Cache output token from struct for easier querying.</a>
-<a name="63"><span class="lineNum">      63 </span><span class="lineCov">        521 :         address outputToken = swapData.outputToken;</span></a>
-<a name="64"><span class="lineNum">      64 </span><span class="lineCov">        521 :         uint256 balance = CommonLib.getTokenBalance(outputToken);</span></a>
+<a name="63"><span class="lineNum">      63 </span><span class="lineCov">        522 :         address outputToken = swapData.outputToken;</span></a>
+<a name="64"><span class="lineNum">      64 </span><span class="lineCov">        522 :         uint256 balance = CommonLib.getTokenBalance(outputToken);</span></a>
 <a name="65"><span class="lineNum">      65 </span>            : </a>
-<a name="66"><span class="lineNum">      66 </span><span class="lineCov">        521 :         uint256 value = CommonLib.isETH(swapData.inputToken)</span></a>
+<a name="66"><span class="lineNum">      66 </span><span class="lineCov">        522 :         uint256 value = CommonLib.isETH(swapData.inputToken)</span></a>
 <a name="67"><span class="lineNum">      67 </span>            :             ? swapData.inputAmount</a>
 <a name="68"><span class="lineNum">      68 </span>            :             : 0;</a>
 <a name="69"><span class="lineNum">      69 </span>            : </a>
-<a name="70"><span class="lineNum">      70 </span><span class="lineCov">        521 :         (bool success, bytes memory auxData) = swapData.target.call{</span></a>
+<a name="70"><span class="lineNum">      70 </span><span class="lineCov">        522 :         (bool success, bytes memory auxData) = swapData.target.call{</span></a>
 <a name="71"><span class="lineNum">      71 </span>            :             value: value</a>
 <a name="72"><span class="lineNum">      72 </span>            :         }(swapData.call);</a>
 <a name="73"><span class="lineNum">      73 </span>            : </a>
-<a name="74"><span class="lineNum">      74 </span><span class="lineCov">        521 :         propagateError(success, auxData, &quot;SwapperLib: swap&quot;);</span></a>
+<a name="74"><span class="lineNum">      74 </span><span class="lineCov">        522 :         propagateError(success, auxData, &quot;SwapperLib: swap&quot;);</span></a>
 <a name="75"><span class="lineNum">      75 </span>            : </a>
-<a name="76"><span class="lineNum">      76 </span><span class="lineCov">        521 :         if (!success) {</span></a>
+<a name="76"><span class="lineNum">      76 </span><span class="lineCov">        522 :         if (!success) {</span></a>
 <a name="77"><span class="lineNum">      77 </span><span class="lineNoCov">          0 :             revert SwapperLib__SwapError();</span></a>
 <a name="78"><span class="lineNum">      78 </span>            :         }</a>
 <a name="79"><span class="lineNum">      79 </span>            : </a>
-<a name="80"><span class="lineNum">      80 </span><span class="lineCov">        521 :         _removeApprovalIfNeeded(swapData.inputToken, swapData.target);</span></a>
+<a name="80"><span class="lineNum">      80 </span><span class="lineCov">        522 :         _removeApprovalIfNeeded(swapData.inputToken, swapData.target);</span></a>
 <a name="81"><span class="lineNum">      81 </span>            : </a>
-<a name="82"><span class="lineNum">      82 </span><span class="lineCov">        521 :         return CommonLib.getTokenBalance(outputToken) - balance;</span></a>
+<a name="82"><span class="lineNum">      82 </span><span class="lineCov">        522 :         return CommonLib.getTokenBalance(outputToken) - balance;</span></a>
 <a name="83"><span class="lineNum">      83 </span>            :     }</a>
 <a name="84"><span class="lineNum">      84 </span>            : </a>
 <a name="85"><span class="lineNum">      85 </span>            :     /// @notice Zaps an input token into an output token.</a>
@@ -154,19 +154,19 @@
 <a name="92"><span class="lineNum">      92 </span>            :     ///                   address, the calldata for the `zap` function,</a>
 <a name="93"><span class="lineNum">      93 </span>            :     ///                   the input token address and the input amount.</a>
 <a name="94"><span class="lineNum">      94 </span>            :     function zap(ZapperCall memory zapperCall) internal {</a>
-<a name="95"><span class="lineNum">      95 </span><span class="lineCov">          3 :         SwapperLib._approveTokenIfNeeded(</span></a>
+<a name="95"><span class="lineNum">      95 </span><span class="lineCov">          5 :         SwapperLib._approveTokenIfNeeded(</span></a>
 <a name="96"><span class="lineNum">      96 </span>            :             zapperCall.inputToken,</a>
 <a name="97"><span class="lineNum">      97 </span>            :             zapperCall.target,</a>
 <a name="98"><span class="lineNum">      98 </span>            :             zapperCall.inputAmount</a>
 <a name="99"><span class="lineNum">      99 </span>            :         );</a>
-<a name="100"><span class="lineNum">     100 </span><span class="lineCov">          3 :         uint256 value = 0;</span></a>
-<a name="101"><span class="lineNum">     101 </span><span class="lineCov">          3 :         if (CommonLib.isETH(zapperCall.inputToken)) {</span></a>
-<a name="102"><span class="lineNum">     102 </span><span class="lineNoCov">          0 :             value = zapperCall.inputAmount;</span></a>
+<a name="100"><span class="lineNum">     100 </span><span class="lineCov">          5 :         uint256 value = 0;</span></a>
+<a name="101"><span class="lineNum">     101 </span><span class="lineCov">          5 :         if (CommonLib.isETH(zapperCall.inputToken)) {</span></a>
+<a name="102"><span class="lineNum">     102 </span><span class="lineCov">          2 :             value = zapperCall.inputAmount;</span></a>
 <a name="103"><span class="lineNum">     103 </span>            :         }</a>
-<a name="104"><span class="lineNum">     104 </span><span class="lineCov">          3 :         (bool success, bytes memory auxData) = zapperCall.target.call{</span></a>
+<a name="104"><span class="lineNum">     104 </span><span class="lineCov">          5 :         (bool success, bytes memory auxData) = zapperCall.target.call{</span></a>
 <a name="105"><span class="lineNum">     105 </span>            :             value: value</a>
 <a name="106"><span class="lineNum">     106 </span>            :         }(zapperCall.call);</a>
-<a name="107"><span class="lineNum">     107 </span><span class="lineCov">          3 :         SwapperLib.propagateError(success, auxData, &quot;SwapperLib: zapper&quot;);</span></a>
+<a name="107"><span class="lineNum">     107 </span><span class="lineCov">          5 :         SwapperLib.propagateError(success, auxData, &quot;SwapperLib: zapper&quot;);</span></a>
 <a name="108"><span class="lineNum">     108 </span>            :     }</a>
 <a name="109"><span class="lineNum">     109 </span>            : </a>
 <a name="110"><span class="lineNum">     110 </span>            :     /// @notice Approve `token` spending allowance if needed.</a>
@@ -178,8 +178,8 @@
 <a name="116"><span class="lineNum">     116 </span>            :         address spender,</a>
 <a name="117"><span class="lineNum">     117 </span>            :         uint256 amount</a>
 <a name="118"><span class="lineNum">     118 </span>            :     ) internal {</a>
-<a name="119"><span class="lineNum">     119 </span><span class="lineCov">        575 :         if (!CommonLib.isETH(token)) {</span></a>
-<a name="120"><span class="lineNum">     120 </span><span class="lineCov">        571 :             SafeTransferLib.safeApprove(token, spender, amount);</span></a>
+<a name="119"><span class="lineNum">     119 </span><span class="lineCov">        585 :         if (!CommonLib.isETH(token)) {</span></a>
+<a name="120"><span class="lineNum">     120 </span><span class="lineCov">        577 :             SafeTransferLib.safeApprove(token, spender, amount);</span></a>
 <a name="121"><span class="lineNum">     121 </span>            :         }</a>
 <a name="122"><span class="lineNum">     122 </span>            :     }</a>
 <a name="123"><span class="lineNum">     123 </span>            : </a>
@@ -188,8 +188,8 @@
 <a name="126"><span class="lineNum">     126 </span>            :     /// @param spender The spender address.</a>
 <a name="127"><span class="lineNum">     127 </span>            :     function _removeApprovalIfNeeded(address token, address spender) internal {</a>
 <a name="128"><span class="lineNum">     128 </span>            :         if (</a>
-<a name="129"><span class="lineNum">     129 </span><span class="lineCov">        536 :             !CommonLib.isETH(token) &amp;&amp;</span></a>
-<a name="130"><span class="lineNum">     130 </span><span class="lineCov">        536 :             IERC20(token).allowance(address(this), spender) &gt; 0</span></a>
+<a name="129"><span class="lineNum">     129 </span><span class="lineCov">        540 :             !CommonLib.isETH(token) &amp;&amp;</span></a>
+<a name="130"><span class="lineNum">     130 </span><span class="lineCov">        540 :             IERC20(token).allowance(address(this), spender) &gt; 0</span></a>
 <a name="131"><span class="lineNum">     131 </span>            :         ) {</a>
 <a name="132"><span class="lineNum">     132 </span><span class="lineCov">          4 :             SafeTransferLib.safeApprove(token, spender, 0);</span></a>
 <a name="133"><span class="lineNum">     133 </span>            :         }</a>
@@ -204,7 +204,7 @@
 <a name="142"><span class="lineNum">     142 </span>            :         bytes memory data,</a>
 <a name="143"><span class="lineNum">     143 </span>            :         string memory errorMessage</a>
 <a name="144"><span class="lineNum">     144 </span>            :     ) internal pure {</a>
-<a name="145"><span class="lineNum">     145 </span><span class="lineCov">        524 :         if (!success) {</span></a>
+<a name="145"><span class="lineNum">     145 </span><span class="lineCov">        527 :         if (!success) {</span></a>
 <a name="146"><span class="lineNum">     146 </span><span class="lineNoCov">          0 :             if (data.length == 0) revert(errorMessage);</span></a>
 <a name="147"><span class="lineNum">     147 </span>            :             assembly {</a>
 <a name="148"><span class="lineNum">     148 </span>            :                 revert(add(32, data), mload(data))</a>
