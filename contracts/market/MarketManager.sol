@@ -23,10 +23,10 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 ///      market risk modeling and the expansion of supportable assets to
 ///      nearly any erc20 in existence. 
 ///      
-///      All management of both cTokens and dTokens are handled by the
-///      Market Manager, they are collectively referred to as Market Tokens,
-///      or mTokens. All cTokens and dTokens are mTokens but not all cTokens
-///      are dTokens, and vice versa. 
+///      All management of both cTokens and dTokens actions are managed by
+///      the Market Manager. These tokens are collectively referred to as
+///      Market Tokens, or mTokens. All cTokens and dTokens are mTokens but,
+///      not all cTokens are dTokens, and vice versa. 
 ///
 ///      Curvance offers the ability to store unlimited collateral inside
 ///      cToken contracts while restricting the scale of exogenous risk. 

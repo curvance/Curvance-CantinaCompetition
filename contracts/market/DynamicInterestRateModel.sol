@@ -222,7 +222,7 @@ contract DynamicInterestRateModel {
     }
 
     /// @notice Calculates the current borrow rate per compound,
-    ///          and updates the vertex multiplier if necessary.
+    ///         and updates the vertex multiplier if necessary.
     /// @param cash The amount of cash in the market.
     /// @param borrows The amount of borrows in the market.
     /// @param reserves The amount of reserves in the market.
@@ -438,11 +438,11 @@ contract DynamicInterestRateModel {
         uint256 reserves,
         uint256 interestFee
     ) public view returns (uint256) {
-        /// RateToPool = (borrowRate * oneMinusReserveFactor) / WAD.
+        // RateToPool = (borrowRate * oneMinusReserveFactor) / WAD.
         uint256 rateToPool = (getBorrowRate(cash, borrows, reserves) *
             (WAD - interestFee)) / WAD;
 
-        /// Supply Rate = (utilizationRate * rateToPool) / WAD;
+        // Supply Rate = (utilizationRate * rateToPool) / WAD.
         return (utilizationRate(cash, borrows, reserves) * rateToPool) / WAD;
     }
 

@@ -5,7 +5,6 @@ import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 interface IMarketManager {
-
     /// @notice Whether mToken minting is paused. 
     /// @dev Token => 0 or 1 = unpaused; 2 = paused.
     function mintPaused(address mToken) external view returns (uint256);

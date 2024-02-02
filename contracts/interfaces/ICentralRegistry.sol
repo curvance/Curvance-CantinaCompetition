@@ -71,9 +71,6 @@ interface ICentralRegistry {
     /// @notice Returns Oracle Router address.
     function oracleRouter() external view returns (address);
 
-    /// @notice Returns ZRO Payment address.
-    function zroAddress() external view returns (address);
-
     /// @notice Returns feeAccumulator address.
     function feeAccumulator() external view returns (address);
 
