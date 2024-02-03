@@ -17,6 +17,35 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
+/// @dev Curvance's cTokens are ERC4626 compliant. However, they follow their
+///      own design flow modifying underlying mechanisms such as totalAssets
+///      following a vesting mechanism in compounding vaults but a direct
+///      conversion in basic or "primitive" vaults.
+///
+///      The "cToken" employs two different methods of engaging with the
+///      Curvance protocol. Users can deposit an unlimited amount of assets,
+///      which may or may not benefit from some form of auto compounded yield.
+///
+///      Users can at any time, choose to "post" their cTokens as collateral
+///      inside the Curvance Protocol, unlocking their ability to borrow
+///      against these assets. Posting collateral carries restrictions,
+///      not all assets inside Curvance can be collateralized, and if they can
+///      they have a "Collateral Cap" which restricts the total amount of
+///      exogeneous risk introduced by each asset into the system.
+///      Rehypothecation of collateral assets has also been removed from the
+///      system, reducing the likelihood of introducing systematic risk to the
+///      broad DeFi landscape.
+///
+///      These caps can be updated as needed by the DAO and should be
+///      configured based on "sticky" onchain liquidity in the corresponding
+///      asset. The vaults have theability to have their compounding, minting,
+///      or redemption functionality paused, modifying the maximum mint,
+///      deposit,withdrawal, or redemptions possible.
+///     
+///      "Safe" versions of functions have been added that introduce
+///      additional reentry and update protection logic to minimize risks
+///      when integrating Curvance into external protocols.
+///
 abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// CONSTANTS ///
 
@@ -39,7 +68,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// ```
     uint256 internal constant _BALANCE_SLOT_SEED = 0x87a211a2;
 
-    /// @notice Lending Market controller
+    /// @notice Money Market Manager.
     IMarketManager public immutable marketManager;
     /// @notice Curvance DAO Hub.
     ICentralRegistry public immutable centralRegistry;
@@ -55,7 +84,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     string internal _name;
     /// @notice Token symbol metadata.
     string internal _symbol;
-    /// @notice Total CToken underlying token assets, minus vesting.
+    /// @notice Total CToken underlying token assets, minus pending vesting.
     uint256 internal _totalAssets;
 
     /// ERRORS ///
@@ -482,14 +511,11 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Returns the total number of assets backing shares, safely.
     function totalAssetsSafe() public view virtual nonReadReentrant returns (uint256) {
-        // Returns stored internal balance.
-        // Has added re-entry lock for protocols building ontop of us to have confidence in data quality
         return _totalAssets;
     }
 
     /// @notice Returns the total number of assets backing shares.
     function totalAssets() public view virtual override returns (uint256) {
-        // Returns stored internal balance.
         return _totalAssets;
     }
 

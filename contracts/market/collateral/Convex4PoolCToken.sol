@@ -25,8 +25,8 @@ contract Convex4PoolCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    /// @notice This address is for ethereum mainnet so make sure to update
-    ///         it if curve/convex is being supported on another chain
+    /// @dev This address is for ethereum mainnet so make sure to update
+    ///      it if curve/convex is being supported on another chain
     address private constant _CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     /// STORAGE ///

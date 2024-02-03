@@ -34,6 +34,9 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 ///      that will not result in active positions for themselves, more general
 ///      terms are used such as "Liquidator", "Minter", or "Payer".
 ///
+///      "Safe" versions of functions have been added that introduce
+///      additional reentry and update protection logic to minimize risks
+///      when integrating Curvance into external protocols.
 contract DToken is ERC165, ReentrancyGuard {
     /// TYPES ///
 
@@ -749,7 +752,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ///         of `account`, in underlying assets, safely.
     /// @param account The account address to have their balance measured.
     /// @return The amount of underlying owned by `account`.
-    function balanceOfUnderlying(address account) external returns (uint256) {
+    function balanceOfUnderlyingSafe(address account) external returns (uint256) {
         return ((exchangeRateWithUpdate() * balanceOf[account]) / WAD);
     }
 
@@ -846,7 +849,7 @@ contract DToken is ERC165, ReentrancyGuard {
     ///         total borrows, safely.
     /// @dev Used for third party integrations.
     /// @return Total borrows underlying token, with pending interest applied.
-    function totalBorrowsWithUpdate() external nonReentrant returns (uint256) {
+    function totalBorrowsWithUpdateSafe() external nonReentrant returns (uint256) {
         // Update pending interest.
         accrueInterest();
 
@@ -858,7 +861,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The address whose balance should be calculated.
     /// @return The current balance index of `account`, with pending interest
     ///         applied.
-    function debtBalanceWithUpdate(
+    function debtBalanceWithUpdateSafe(
         address account
     ) external nonReentrant returns (uint256) {
         // Update pending interest.
@@ -918,7 +921,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice Updates pending interest and returns the up-to-date exchange
     ///         rate from the underlying to the dToken, safely.
     /// @return Calculated exchange rate, in `WAD`.
-    function exchangeRateWithUpdate() public nonReentrant returns (uint256) {
+    function exchangeRateWithUpdateSafe() public nonReentrant returns (uint256) {
         // Update pending interest.
         accrueInterest();
         return exchangeRateCached();
