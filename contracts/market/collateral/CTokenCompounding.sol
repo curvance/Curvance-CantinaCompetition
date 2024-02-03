@@ -119,7 +119,7 @@ abstract contract CTokenCompounding is CTokenBase {
         // No need to check for rounding error, previewWithdraw rounds up.
         uint256 shares = _previewWithdraw(assets, ta);
 
-        // Emit withdraw events on gauge pool.
+        // Update gauge pool values.
         _gaugePool().withdraw(address(this), owner, shares);
         // Process withdraw on behalf of `owner`.
         _processWithdraw(
@@ -295,7 +295,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Execute deposit.
         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -326,7 +326,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Execute deposit.
         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -366,7 +366,7 @@ abstract contract CTokenCompounding is CTokenBase {
             forceRedeemCollateral
         );
 
-        // Emit withdraw events on gauge pool.
+        // Update gauge pool values.
         _gaugePool().withdraw(address(this), owner, shares);
         // Execute withdrawal.
         _processWithdraw(
@@ -419,7 +419,7 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroAssets();
         }
 
-        // Emit withdraw events on gauge pool.
+        // Update gauge pool values.
         _gaugePool().withdraw(address(this), owner, shares);
         // Execute withdrawal.
         _processWithdraw(

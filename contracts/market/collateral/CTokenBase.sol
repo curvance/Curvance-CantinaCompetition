@@ -107,7 +107,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Caller deposits assets into the market, receives shares,
     ///         and turns on collateralization of the assets.
-    /// @param assets The amount of the underlying asset to supply.
+    /// @param assets The amount of the underlying assets to deposit.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function depositAsCollateral(
@@ -125,7 +125,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Caller withdraws assets from the market and burns their shares.
     /// @dev   Forces collateral to be withdrawn from `owner` collateralPosted.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw assets.
     /// @return shares the amount of cToken shares redeemed by `owner`.
@@ -280,7 +280,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// TOKEN ACTION FUNCTIONS ///
 
     /// @notice Caller deposits assets into the market and receives shares.
-    /// @param assets The amount of the underlying asset to deposit.
+    /// @param assets The amount of the underlying assets to deposit.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function deposit(
@@ -305,7 +305,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Withdraws `assets` from the market, and burns `owner` shares.
     /// @dev   Does not force collateral posted to be withdrawn.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.
@@ -346,13 +346,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Fails if transfer not allowed.
         marketManager.canTransfer(address(this), msg.sender, amount);
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for caller.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), msg.sender, amount);
 
         // Execute transfer.
         super.transfer(to, amount);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `to`.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
@@ -373,13 +373,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Fails if transfer not allowed.
         marketManager.canTransfer(address(this), from, amount);
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for `from`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), from, amount);
 
         // Execute transfer.
         super.transferFrom(from, to, amount);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `to`.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
@@ -413,20 +413,20 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Calculate tokens to transfer to `liquidator`.
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for `account`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), account, liquidatedTokens);
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, liquidatorTokens);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `liquidator`.
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
             // Efficiently transfer token balances from `account` to `daoAddress`.
             _transferFromWithoutAllowance(account, daoAddress, protocolTokens);
-            // Emit deposit events on gauge pool.
+            // Update gauge pool values for new reserves.
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
     }
@@ -453,13 +453,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values, for `account`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), account, shares);
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, shares);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `liquidator`.
         gaugePool.deposit(address(this), liquidator, shares);
     }
 
@@ -751,7 +751,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// INTERNAL CONVERSION FUNCTIONS TO OVERRIDE ///
 
     /// @notice Deposits `assets` and mints shares to `receiver`.
-    /// @param assets The amount of the underlying asset to supply.
+    /// @param assets The amount of the underlying assets to supply.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function _deposit(
@@ -772,7 +772,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Withdraws `assets` to `receiver` from the market and burns
     ///         `owner` shares.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.

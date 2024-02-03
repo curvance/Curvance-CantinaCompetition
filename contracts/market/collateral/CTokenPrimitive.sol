@@ -56,7 +56,7 @@ contract CTokenPrimitive is CTokenBase {
         // No need to check for rounding error, previewWithdraw rounds up
         uint256 shares = _previewWithdraw(assets, ta);
 
-        // emit events on gauge pool
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         _processWithdraw(msg.sender, msg.sender, owner, assets, shares, ta);
 
@@ -116,7 +116,7 @@ contract CTokenPrimitive is CTokenBase {
         }
 
         _processDeposit(msg.sender, receiver, assets, shares, ta);
-        // emit events on gauge pool
+        // Update gauge pool values for `receiver`.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -143,7 +143,7 @@ contract CTokenPrimitive is CTokenBase {
         assets = _previewMint(shares, ta);
 
         _processDeposit(msg.sender, receiver, assets, shares, ta);
-        // emit events on gauge pool
+        // Update gauge pool values for `receiver`.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -178,7 +178,7 @@ contract CTokenPrimitive is CTokenBase {
             forceRedeemCollateral
         );
 
-        // emit events on gauge pool
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         _processWithdraw(msg.sender, receiver, owner, assets, shares, ta);
     }
@@ -216,7 +216,7 @@ contract CTokenPrimitive is CTokenBase {
             revert CTokenPrimitive__ZeroAssets();
         }
 
-        // emit events on gauge pool
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         _processWithdraw(msg.sender, receiver, owner, assets, shares, ta);
     }

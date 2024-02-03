@@ -1286,6 +1286,8 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
 
         // Check account liquidity with hypothetical redemption.
+        // We check liquidity even for dToken redemptions to prevent any
+        // potential invariant manipulation creating a scenario of insolvency.
         (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             account,
             mToken,
