@@ -153,7 +153,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.
-    /// @dev   Forces collateral to be withdrawn from `owner` collateralPosted.
+    /// @dev Forces collateral to be withdrawn from `owner` collateralPosted.
     /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw assets.
@@ -167,7 +167,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.
-    /// @dev   Forces collateral to be withdrawn from `owner` collateralPosted.
+    /// @dev Forces collateral to be withdrawn from `owner` collateralPosted.
     /// @param shares The amount of shares to redeemed.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw assets.
@@ -180,7 +180,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         assets = _redeem(shares, receiver, owner, true);
     }
 
-    /// @notice Get the underlying balance of the `account`, safely.
+    /// @notice Returns the underlying balance of the `account`, safely.
     /// @param account The address of the account to query.
     /// @return The amount of underlying owned by `account`.
     function balanceOfUnderlyingSafe(
@@ -189,7 +189,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return ((convertToAssetsSafe(WAD) * balanceOf(account)) / WAD);
     }
 
-    /// @notice Get the underlying balance of the `account`.
+    /// @notice Returns the underlying balance of the `account`.
     /// @param account The address of the account to query.
     /// @return The amount of underlying owned by `account`.
     function balanceOfUnderlying(
@@ -198,13 +198,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
-    /// @notice Queries share -> asset exchange rate, in `WAD`, safely.
+    /// @notice Returns share -> asset exchange rate, in `WAD`, safely.
     /// @dev Oracle router calculates CToken value from this exchange rate.
     function exchangeRateSafe() external view returns (uint256) {
         return convertToAssetsSafe(WAD);
     }
 
-    /// @notice Queries share -> asset exchange rate, in `WAD`.
+    /// @notice Returns share -> asset exchange rate, in `WAD`.
     /// @dev Oracle router calculates CToken value from this exchange rate.
     function exchangeRateCached() external view returns (uint256) {
         return convertToAssets(WAD);
@@ -224,7 +224,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return (balanceOf(account), 0, convertToAssets(WAD));
     }
 
-    /// @notice Get a snapshot of the cToken and `account` data.
+    /// @notice Returns a snapshot of the cToken and `account` data.
     /// @dev Used by MarketManager to efficiently perform liquidity checks.
     /// NOTE: debtBalance always return 0 to runtime gas in MarketManager
     ///       since it is unused.
@@ -236,7 +236,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                debtBalance: 0, // This is a cToken so always 0
+                debtBalance: 0, // This is a cToken so always 0.
                 exchangeRate: convertToAssets(WAD)
             })
         );
@@ -261,17 +261,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Returns the address of the underlying asset.
+    /// @dev We have both asset() and underlying() for composability.
     function asset() public view override returns (address) {
         return address(_asset);
     }
 
     /// @notice Returns the address of the underlying asset.
+    /// @dev We have both asset() and underlying() for composability.
     function underlying() external view returns (address) {
         return address(_asset);
     }
 
     /// @notice Returns the maximum assets that can be deposited at a time.
-    /// @dev if depositing is disabled maxAssets should be equal to 0,
+    /// @dev If depositing is disabled maxAssets should be equal to 0,
     ///      according to ERC4626 spec.
     /// @param to The address who would receive minted shares.
     function maxDeposit(
@@ -289,7 +291,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Returns the maximum shares that can be minted at a time.
-    /// @dev if depositing is disabled minMint should be equal to 0,
+    /// @dev If depositing is disabled minMint should be equal to 0,
     ///      according to ERC4626 spec.
     /// @param to The address who would receive minted shares.
     function maxMint(
@@ -333,7 +335,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Withdraws `assets` from the market, and burns `owner` shares.
-    /// @dev   Does not force collateral posted to be withdrawn.
+    /// @dev Does not force collateral posted to be withdrawn.
     /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
@@ -349,7 +351,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Withdraws assets, quoted in `shares` from the market,
     ///         and burns `owner` shares.
-    /// @dev   Does not force collateral to be withdrawn.
+    /// @dev Does not force collateral to be withdrawn.
     /// @param shares The amount of shares to be redeemed.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
@@ -363,7 +365,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         assets = _redeem(shares, receiver, owner, false);
     }
 
-    /// @notice Transfer `amount` tokens from caller to `to`.
+    /// @notice Transfers `amount` tokens from caller to `to`.
     /// @param to The address of the destination account to receive `amount`
     ///           shares.
     /// @param amount The number of tokens to transfer from caller to `to`.
@@ -387,7 +389,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Transfer `amount` tokens from `from` to `to`.
+    /// @notice Transfers `amount` tokens from `from` to `to`.
     /// @param from The address of the account transferring `amount`
     ///             shares from.
     /// @param to The address of the destination account to receive `amount`
@@ -560,7 +562,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @param shares The number of shares to theoretically use
     ///               for conversion to assets.
     /// @return The number of assets a user would receive for converting
-    ///         `assets`.
+    ///         `shares`.
     function convertToAssets(
         uint256 shares
     ) public view override returns (uint256) {
@@ -611,9 +613,10 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Efficiently transfers cToken balances without checking approvals.
+    /// @notice Helper function to efficiently transfers cToken balances
+    ///         without checking approvals.
     /// @dev This is only used in liquidations where maximal gas
-    ///      optimization improves protocol mempool competitiveness,
+    ///      optimization improves protocol MEV competitiveness,
     ///      improving protocol safety.
     /// @param from The address of the account transferring `amount`
     ///             shares from.
@@ -658,11 +661,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Used to start a CToken market, executed via marketManager.
+    /// @notice Helper function to start a cToken market,
+    ///         executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
-    ///      although, we protect against it in many ways,
+    ///      although, we protect against them in many ways,
     ///      better safe than sorry.
-    /// @param by The account initializing the market.
+    /// @param by The account initializing the cToken market.
     function _startMarket(address by) internal {
         if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -695,11 +699,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @dev Returns the decimals of the underlying asset.
+    /// @dev Helper function to return the decimals of the underlying asset.
     function _underlyingDecimals() internal view override returns (uint8) {
         return _decimals;
     }
 
+    /// @notice Helper function to return the amount of shares that would
+    ///         be exchanged by the vault for `assets` provided.
+    /// @param assets The number of assets to theoretically use
+    ///               for conversion to shares.
+    /// @param ta The total number of assets to theoretically use
+    ///           for conversion to shares.
+    /// @return shares The number of shares a user would receive for
+    ///                converting `assets`.
     function _convertToShares(
         uint256 assets,
         uint256 ta
@@ -711,6 +723,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(assets, totalShares, ta);
     }
 
+    /// @notice Helper function to return the amount of assets that would
+    ///         be exchanged by the vault for `shares` provided.
+    /// @param shares The number of shares to theoretically use
+    ///               for conversion to assets.
+    /// @param ta The total number of assets to theoretically use
+    ///           for conversion to assets.
+    /// @return assets The number of assets a user would receive for
+    ///                converting `shares`.
     function _convertToAssets(
         uint256 shares,
         uint256 ta
@@ -722,6 +742,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(shares, ta, totalShares);
     }
 
+    /// @notice Helper function to simulate the effects of a user deposit at
+    ///         the current block.
+    /// @param assets The number of assets to preview a deposit call.
+    /// @param ta The total number of assets to simulate a deposit at the
+    ///           current block.
+    /// @return The shares received for depositing `assets`.
     function _previewDeposit(
         uint256 assets,
         uint256 ta
@@ -729,24 +755,50 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToShares(assets, ta);
     }
 
+    /// @notice Helper function to simulate the effects of a user mint at
+    ///         the current block.
+    /// @param shares The number of shares to preview a mint call.
+    /// @param ta The total number of assets to simulate a mint at the
+    ///           current block.
+    /// @return assets The assets received for minting `shares`.
     function _previewMint(
         uint256 shares,
         uint256 ta
     ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
-        assets = totalShares == 0 ? shares : FixedPointMathLib.mulDivUp(shares, ta, totalShares);
+        assets = totalShares == 0 ? shares : FixedPointMathLib.mulDivUp(
+            shares, 
+            ta, 
+            totalShares
+        );
     }
 
+    /// @notice Helper function to simulate the effects of a user withdrawal
+    ///         at the current block.
+    /// @param assets The number of assets to preview a withdrawal call.
+    /// @param ta The total number of assets to simulate a withdrawal at the
+    ///           current block.
+    /// @return shares The shares received for withdrawing `assets`.
     function _previewWithdraw(
         uint256 assets,
         uint256 ta
     ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        shares = totalShares == 0 ? assets : FixedPointMathLib.mulDivUp(assets, totalShares, ta);
+        shares = totalShares == 0 ? assets : FixedPointMathLib.mulDivUp(
+            assets, 
+            totalShares, 
+            ta
+        );
     }
 
+    /// @notice Helper function to simulate the effects of a user redemption
+    ///         at the current block.
+    /// @param shares The number of shares to preview a redemption call.
+    /// @param ta The total number of assets to simulate a redemption at the
+    ///           current block.
+    /// @return The assets received for redeeming `shares`.
     function _previewRedeem(
         uint256 shares,
         uint256 ta
@@ -754,7 +806,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, ta);
     }
 
-    /// @notice Returns gauge pool contract address.
+    /// @notice Internal helper for getting gauge pool contract address.
     /// @return The gauge controller contract address, in `IGaugePool` form.
     function _gaugePool() internal view returns (IGaugePool) {
         return marketManager.gaugePool();

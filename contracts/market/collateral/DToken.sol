@@ -1365,7 +1365,7 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Internal helper for getting gauge pool contract address.
-    /// @return The gauge controller contract address.
+    /// @return The gauge controller contract address, in `IGaugePool` form.
     function _gaugePool() internal view returns (GaugePool) {
         return marketManager.gaugePool();
     }
