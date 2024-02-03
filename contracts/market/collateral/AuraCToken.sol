@@ -15,14 +15,21 @@ import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.
 contract AuraCToken is CTokenCompounding {
     /// TYPES ///
 
+    /// @param balancerVault Address for Balancer Vault.
+    /// @param balancerPoolId Bytes32 encoded Balancer pool id.
+    /// @param pid Aura pool id value.
+    /// @param rewarder Address for Aura Rewarder contract.
+    /// @param booster Address for Aura Booster contract.
+    /// @param rewardTokens Array of Aura reward tokens.
+    /// @param underlyingTokens Balancer LP underlying tokens
     struct StrategyData {
-        IBalancerVault balancerVault; // Balancer vault contract
-        bytes32 balancerPoolId; // Balancer Pool Id
-        uint256 pid; // Aura Pool Id
-        IBaseRewardPool rewarder; // Aura Rewarder contract
-        IBooster booster; // Aura Booster contract
-        address[] rewardTokens; // Aura reward assets
-        address[] underlyingTokens; // Balancer LP underlying assets
+        IBalancerVault balancerVault;
+        bytes32 balancerPoolId;
+        uint256 pid;
+        IBaseRewardPool rewarder;
+        IBooster booster;
+        address[] rewardTokens;
+        address[] underlyingTokens;
     }
 
     /// CONSTANTS ///
@@ -34,10 +41,12 @@ contract AuraCToken is CTokenCompounding {
 
     /// STORAGE ///
 
-    /// @notice StrategyData packed configuration data.
+    //// @notice StrategyData packed configuration data.
     StrategyData public strategyData;
 
-    /// @notice Token => underlying token of the BPT or not
+    /// @notice Whether a particular token address is an underlying token
+    ///         of this BPT.
+    /// @dev Token => Is underlying token.
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -62,13 +71,13 @@ contract AuraCToken is CTokenCompounding {
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 
-        // query actual aura pool configuration data
+        // Query actual aura pool configuration data.
         (address pidToken, , , address balRewards, , bool shutdown) = IBooster(
             booster_
         ).poolInfo(strategyData.pid);
 
-        // validate that the pool is still active and that the lp token
-        // and rewarder in aura matches what we are configuring for
+        // Validate that the pool is still active and that the lp token
+        // and rewarder in aura matches what we are configuring for.
         if (pidToken != asset() || shutdown || balRewards != rewarder_) {
             revert AuraCToken__InvalidVaultConfig();
         }
@@ -79,11 +88,11 @@ contract AuraCToken is CTokenCompounding {
         );
         strategyData.balancerPoolId = IBalancerPool(pidToken).getPoolId();
 
-        // add BAL as a reward token, then let aura tell you what rewards
-        // the vault will receive
+        // Add BAL as a reward token, then let aura tell you what rewards
+        // the vault will receive.
         strategyData.rewardTokens.push() = BAL;
-        // add AURA as a reward token, since some vaults do not list AURA
-        // as a reward token
+        // Add AURA as a reward token, since some vaults do not list AURA
+        // as a reward token.
         strategyData.rewardTokens.push() = AURA;
 
         uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
@@ -101,7 +110,7 @@ contract AuraCToken is CTokenCompounding {
             }
         }
 
-        // query liquidity pools underlying tokens from the balancer vault
+        // Query liquidity pools underlying tokens from the balancer vault.
         (address[] memory underlyingTokens, , ) = strategyData
             .balancerVault
             .getPoolTokens(strategyData.balancerPoolId);
@@ -119,18 +128,22 @@ contract AuraCToken is CTokenCompounding {
 
     // PERMISSIONED FUNCTIONS
 
+    /// @notice Requeries reward tokens directly from Aura smart contracts.
+    /// @dev This can be permissionless since this data is 1:1 with dependent
+    ///      contracts  and takes no parameters.
     function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
-        // add BAL as a reward token, then let aura tell you what rewards
-        // the vault will receive
+        // Add BAL as a reward token, then let aura tell you what rewards
+        // the vault will receive.
         strategyData.rewardTokens.push() = BAL;
-        // add AURA as a reward token, since some vaults do not list AURA
-        // as a reward token
+        // Add AURA as a reward token, since some vaults do not list AURA
+        // as a reward token.
         strategyData.rewardTokens.push() = AURA;
+        
         IBaseRewardPool rewarder = strategyData.rewarder;
-
         uint256 extraRewardsLength = rewarder.extraRewardsLength();
+
         for (uint256 i; i < extraRewardsLength; ) {
             unchecked {
                 address rewardToken = IStashWrapper(
@@ -144,26 +157,45 @@ contract AuraCToken is CTokenCompounding {
         }
     }
 
+    /// @notice Requeries underlying tokens directly from Aura smart contracts.
+    /// @dev This can be permissionless since this data is 1:1 with dependent
+    ///      contracts  and takes no parameters.
     function reQueryUnderlyingTokens() external {
-        address[] memory underlyingTokens = strategyData.underlyingTokens;
-        uint256 numUnderlyingTokens = underlyingTokens.length;
-        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+        address[] memory currentTokens = strategyData.underlyingTokens;
+        uint256 numCurrentTokens = currentTokens.length;
+
+        // Remove `isUnderlyingToken` mapping value from current
+        // flagged underlying tokens.
+        for (uint256 i; i < numCurrentTokens; ) {
             unchecked {
-                isUnderlyingToken[underlyingTokens[i++]] = false;
+                isUnderlyingToken[currentTokens[i++]] = false;
             }
         }
 
-        (underlyingTokens, , ) = strategyData.balancerVault.getPoolTokens(
+        // Query underlying tokens from Balancer contracts.
+        (currentTokens, , ) = strategyData.balancerVault.getPoolTokens(
             strategyData.balancerPoolId
         );
-        strategyData.underlyingTokens = underlyingTokens;
+        strategyData.underlyingTokens = currentTokens;
+        numCurrentTokens = currentTokens.length;
 
-        numUnderlyingTokens = underlyingTokens.length;
-        for (uint256 i = 0; i < numUnderlyingTokens; ) {
+        // Add `isUnderlyingToken` mapping value to new
+        // flagged underlying tokens.
+        for (uint256 i = 0; i < numCurrentTokens; ) {
             unchecked {
-                isUnderlyingToken[underlyingTokens[i++]] = true;
+                isUnderlyingToken[strategyData.underlyingTokens[i++]] = true;
             }
         }
+    }
+
+    /// @notice Returns this strategies reward tokens.
+    function rewardTokens() external view returns (address[] memory) {
+        return strategyData.rewardTokens;
+    }
+
+    /// @notice Returns this strategies base assets underlying tokens.
+    function underlyingTokens() external view returns (address[] memory) {
+        return strategyData.underlyingTokens;
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -171,39 +203,41 @@ contract AuraCToken is CTokenCompounding {
     // REWARD AND HARVESTING LOGIC
 
     /// @notice Harvests and compounds outstanding vault rewards
-    ///         and vests pending rewards
-    /// @dev Only callable by Gelato Network bot
-    /// @param data Bytes array for aggregator swap data
-    /// @return yield The amount of new assets acquired from compounding vault yield
+    ///         and vests pending rewards.
+    /// @dev Only callable by Gelato Network bot.
+    /// @param data Bytes array for aggregator swap data.
+    /// @return yield The amount of new assets acquired from compounding
+    ///               vault yield.
     function harvest(
         bytes calldata data
     ) external override returns (uint256 yield) {
-        // Checks whether the caller can compound the vault yield
+        // Checks whether the caller can compound the vault yield.
         _canCompound();
 
-        // Vest pending rewards if there are any
+        // Vest pending rewards if there are any.
         _vestIfNeeded();
 
-        // can only harvest once previous reward period is done
+        // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
             _updateVestingPeriodIfNeeded();
 
-            // cache strategy data
+            // Cache strategy data.
             StrategyData memory sd = strategyData;
 
-            // claim aura rewards
+            // Claim pending Aura rewards.
             sd.rewarder.getReward(address(this), true);
 
             (SwapperLib.Swap[] memory swapDataArray, uint256 minLPAmount) = abi
                 .decode(data, (SwapperLib.Swap[], uint256));
 
             {
-                // Use scoping to avoid stack too deep
+                // Use scoping to avoid stack too deep.
                 uint256 numRewardTokens = sd.rewardTokens.length;
                 address rewardToken;
                 uint256 rewardAmount;
                 uint256 protocolFee;
-                // Cache Central registry values so we dont pay gas multiple times
+                // Cache DAO Central Registry values to minimize runtime
+                // gas costs.
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
 
@@ -213,12 +247,19 @@ contract AuraCToken is CTokenCompounding {
                         address(this)
                     );
 
+                    // If there are no pending rewards for this token,
+                    // can skip to next reward token.
                     if (rewardAmount == 0) {
                         continue;
                     }
 
-                    // take protocol fee
-                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
+                    // Take protocol fee for veCVE lockers and auto
+                    // compounding bot.
+                    protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmount, 
+                        harvestFee, 
+                        1e18
+                    );
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -226,7 +267,7 @@ contract AuraCToken is CTokenCompounding {
                         protocolFee
                     );
 
-                    // swap from rewardToken to underlying LP token if necessary
+                    // Swap from rewardToken to underlying LP token, if necessary.
                     if (!isUnderlyingToken[rewardToken]) {
                         if (
                             !centralRegistry.isSwapper(swapDataArray[i].target)
@@ -242,9 +283,9 @@ contract AuraCToken is CTokenCompounding {
                 }
             }
 
-            // prep adding liquidity to balancer
+            // Prep liquidity for Balancer Pool.
             {
-                // Use scoping to avoid stack too deep
+                // Use scoping to avoid stack too deep.
                 uint256 numUnderlyingTokens = sd.underlyingTokens.length;
                 address[] memory assets = new address[](numUnderlyingTokens);
                 uint256[] memory maxAmountsIn = new uint256[](
@@ -266,7 +307,7 @@ contract AuraCToken is CTokenCompounding {
                     );
                 }
 
-                // deposit assets into balancer
+                // Deposit assets into Balancer Pool.
                 sd.balancerVault.joinPool(
                     sd.balancerPoolId,
                     address(this),
@@ -286,7 +327,7 @@ contract AuraCToken is CTokenCompounding {
                 );
             }
 
-            // deposit assets into aura
+            // Deposit assets into Aura.
             yield = IERC20(asset()).balanceOf(address(this));
             _afterDeposit(yield, 0);
 
@@ -295,21 +336,20 @@ contract AuraCToken is CTokenCompounding {
 
             emit Harvest(yield);
         }
-        // else yield is zero
     }
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Deposits specified amount of assets into Aura booster contract
-    /// @param assets The amount of assets to deposit
+    /// @notice Deposits specified amount of assets into Aura booster contract.
+    /// @param assets The amount of assets to deposit.
     function _afterDeposit(uint256 assets, uint256) internal override {
         IBooster booster = strategyData.booster;
         SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(strategyData.pid, assets, true);
     }
 
-    /// @notice Withdraws specified amount of assets from Aura reward pool
-    /// @param assets The amount of assets to withdraw
+    /// @notice Withdraws specified amount of assets from Aura reward pool.
+    /// @param assets The amount of assets to withdraw.
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
     }

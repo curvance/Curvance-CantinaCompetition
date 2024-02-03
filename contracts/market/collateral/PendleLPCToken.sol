@@ -74,12 +74,18 @@ contract PendleLPCToken is CTokenCompounding {
 
     // PERMISSIONED FUNCTIONS
 
+    /// @notice Requeries reward tokens directly from Pendle smart contracts.
+    /// @dev This can be permissionless since this data is 1:1 with dependent
+    ///      contracts  and takes no parameters.
     function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
         strategyData.rewardTokens = strategyData.lp.getRewardTokens();
     }
 
+    /// @notice Requeries underlying tokens directly from Pendle smart contracts.
+    /// @dev This can be permissionless since this data is 1:1 with dependent
+    ///      contracts  and takes no parameters.
     function reQueryUnderlyingTokens() external {
         address[] memory currentTokens = strategyData.underlyingTokens;
         uint256 numCurrentTokens = currentTokens.length;
@@ -92,6 +98,7 @@ contract PendleLPCToken is CTokenCompounding {
             }
         }
 
+        // Query underlying tokens from Pendle contracts.
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
         numCurrentTokens = strategyData.underlyingTokens.length;
 
@@ -104,10 +111,12 @@ contract PendleLPCToken is CTokenCompounding {
         }
     }
 
+    /// @notice Returns this strategies reward tokens.
     function rewardTokens() external view returns (address[] memory) {
         return strategyData.rewardTokens;
     }
 
+    /// @notice Returns this strategies base assets underlying tokens.
     function underlyingTokens() external view returns (address[] memory) {
         return strategyData.underlyingTokens;
     }
