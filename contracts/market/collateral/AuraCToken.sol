@@ -111,10 +111,10 @@ contract AuraCToken is CTokenCompounding {
         }
 
         // Query liquidity pools underlying tokens from the Balancer vault.
-        (address[] memory underlyingTokens, , ) = strategyData
+        (address[] memory queriedTokens, , ) = strategyData
             .balancerVault
             .getPoolTokens(strategyData.balancerPoolId);
-        strategyData.underlyingTokens = underlyingTokens;
+        strategyData.underlyingTokens = queriedTokens;
 
         uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
         for (uint256 i; i < numUnderlyingTokens; ) {

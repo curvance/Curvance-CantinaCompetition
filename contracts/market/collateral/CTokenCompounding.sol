@@ -366,6 +366,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // No need to check for rounding error, previewWithdraw rounds up.
         shares = _previewWithdraw(assets, ta);
+        // Validate that `owner` can redeem `shares`.
         marketManager.canRedeemWithCollateralRemoval(
             address(this),
             owner,
@@ -477,6 +478,7 @@ abstract contract CTokenCompounding is CTokenBase {
             _totalAssets = ta;
         }
 
+        // Mint `shares` to `to`.
         _mint(to, shares);
 
         /// @solidity memory-safe-assembly
