@@ -18,20 +18,20 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 abstract contract CTokenCompounding is CTokenBase {
     /// TYPES ///
 
+    /// @param rewardRate The rate that the vault vests fresh rewards.
+    /// @param vestingPeriodEnd When the current vesting period ends.
+    /// @param lastVestClaim Last time vesting rewards were claimed.
     struct VaultData {
-        /// @notice The rate that the vault vests fresh rewards.
         uint128 rewardRate;
-        /// @notice When the current vesting period ends.
         uint64 vestingPeriodEnd;
-        /// @notice Last time vesting rewards were claimed.
         uint64 lastVestClaim;
     }
 
+    /// @param updateNeeded Whether there is a pending update to vault
+    ///                     vesting schedule.
+    /// @param newVestPeriod The pending new compounding vesting schedule.
     struct NewVestingData {
-        /// @notice Whether there is a pending update to vault vesting
-        ///         schedule.
         bool updateNeeded;
-        /// @notice The pending new compounding vesting schedule.
         uint248 newVestPeriod;
     }
 
@@ -58,14 +58,14 @@ abstract contract CTokenCompounding is CTokenBase {
     ///         after this vesting period ends.
     NewVestingData public pendingVestUpdate;
     /// @notice Whether compounding is currently paused. 
-    /// @dev    Starts paused until market started, 1 = unpaused; 2 = paused.
+    /// @dev Starts paused until market started, 1 = unpaused; 2 = paused.
     uint256 public compoundingPaused = 2;
 
-    // Internal packed vault accounting data.
-    // Bits Layout:
-    // - [0..127]    `rewardRate`
-    // - [128..191]  `vestingPeriodEnd`
-    // - [192..255] `lastVestClaim`
+    /// Internal packed vault accounting data.
+    /// @dev Bits Layout:
+    /// - [0..127]    `rewardRate`
+    /// - [128..191]  `vestingPeriodEnd`
+    /// - [192..255] `lastVestClaim`
     uint256 internal _vaultData;
 
     /// EVENTS ///
@@ -119,7 +119,7 @@ abstract contract CTokenCompounding is CTokenBase {
         // No need to check for rounding error, previewWithdraw rounds up.
         uint256 shares = _previewWithdraw(assets, ta);
 
-        // Update gauge pool values.
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         // Process withdraw on behalf of `owner`.
         _processWithdraw(
@@ -152,7 +152,7 @@ abstract contract CTokenCompounding is CTokenBase {
         marketManager.canRedeem(address(this), owner, 0);
     }
 
-    /// @notice Returns current position vault yield information in the form:
+    /// @notice Returns the current cToken yield status information.
     /// @return rewardRate: Yield per second in underlying asset.
     ///         vestingPeriodEnd: When the current vesting period ends and
     ///                           a new harvest can execute.
@@ -161,28 +161,28 @@ abstract contract CTokenCompounding is CTokenBase {
         return _unpackedVaultData(_vaultData);
     }
 
-    /// @notice Returns cToken vault compound fee, in basis points.
+    /// @notice Returns cToken vault compound fee, in `basis points`.
     function vaultCompoundFee() external view returns (uint256) {
         return centralRegistry.protocolCompoundFee();
     }
 
-    /// @notice Returns cToken vault yield fee, in basis points.
+    /// @notice Returns cToken vault yield fee, in `basis points`.
     function vaultYieldFee() external view returns (uint256) {
         return centralRegistry.protocolYieldFee();
     }
 
-    /// @notice Returns cToken vault harvest fee, in basis points.
+    /// @notice Returns cToken vault harvest fee, in `basis points`.
     function vaultHarvestFee() external view returns (uint256) {
         return centralRegistry.protocolHarvestFee();
     }
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Used to start a CToken market, executed via marketManager.
+    /// @notice Starts a CToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
-    /// @param by The account initializing the market.
+    /// @param by The account initializing the cToken market.
     /// @return Returns with true when successful.
     function startMarket(
         address by
@@ -195,8 +195,8 @@ abstract contract CTokenCompounding is CTokenBase {
     }
 
     /// @notice Permissioned function to set a new compounding vesting period.
-    /// @dev Requires dao authority, 
-    ///      and vesting period cannot be longer than a week (7 days).
+    /// @dev Requires dao authority, `newVestingPeriod` cannot be longer
+    ///      than a week (7 days).
     /// @param newVestingPeriod New vesting period, in seconds.
     function setVestingPeriod(uint256 newVestingPeriod) external {
         _checkDaoPermissions();
@@ -239,29 +239,37 @@ abstract contract CTokenCompounding is CTokenBase {
     // ACCOUNTING LOGIC
 
     /// @notice Returns the current per second yield of the vault.
+    /// @return The yield received per second in this vault,
+    ///         in assets with `WAD` precision.
     function rewardRate() public view returns (uint256) {
         return _vaultData & _BITMASK_REWARD_RATE;
     }
 
     /// @notice Returns the timestamp when the current vesting period ends.
+    /// @return The timestamp when the current vesting period ends,
+    ///         in Unix time.
     function vestingPeriodEnd() public view returns (uint256) {
         return (_vaultData >> _BITPOS_VEST_END) & _BITMASK_TIMESTAMP;
     }
 
     /// @notice Returns the timestamp of the last claim during
     ///         the current vesting period.
+    /// @return The timestamp when the last claim occurred,
+    ///         in Unix time.
     function lastVestClaim() public view returns (uint256) {
         return uint64(_vaultData >> _BITPOS_LAST_VEST);
     }
 
     /// @notice Returns the total amount of the underlying asset in the vault,
     ///         including pending rewards that are vested, safely.
+    /// @return The total number of underlying assets.
     function totalAssetsSafe() public view override nonReadReentrant returns (uint256) {
         return _totalAssets + _calculatePendingRewards();
     }
 
     /// @notice Returns the total amount of the underlying asset in the vault,
     ///         including pending rewards that are vested.
+    /// @return The total number of underlying assets.
     function totalAssets() public view override returns (uint256) {
         return _totalAssets + _calculatePendingRewards();
     }
@@ -295,7 +303,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Execute deposit.
         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
-        // Update gauge pool values.
+        // Update gauge pool values for `receiver`.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -326,7 +334,7 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Execute deposit.
         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);
-        // Update gauge pool values.
+        // Update gauge pool values for `receiver`.
         _gaugePool().deposit(address(this), receiver, shares);
     }
 
@@ -366,7 +374,7 @@ abstract contract CTokenCompounding is CTokenBase {
             forceRedeemCollateral
         );
 
-        // Update gauge pool values.
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         // Execute withdrawal.
         _processWithdraw(
@@ -380,7 +388,7 @@ abstract contract CTokenCompounding is CTokenBase {
         );
     }
 
-    /// @notice Withdraws assets to `receiver` from the market and burns
+    /// @notice Redeems assets to `receiver` from the market and burns
     ///         `owner` `shares`.
     /// @param shares The amount of shares to burn to withdraw assets.
     /// @param receiver The account that should receive the assets.
@@ -419,7 +427,7 @@ abstract contract CTokenCompounding is CTokenBase {
             revert CTokenCompounding__ZeroAssets();
         }
 
-        // Update gauge pool values.
+        // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
         // Execute withdrawal.
         _processWithdraw(
@@ -434,13 +442,14 @@ abstract contract CTokenCompounding is CTokenBase {
     }
 
     /// @notice Processes a deposit of `assets` from the market and mints
-    ///         shares to `owner`, then increases `ta` by `assets`, 
+    ///         shares to `owner`, then increases `ta` by `assets`,
     ///         and vests rewards if `pending` > 0.
     /// @param by The account that is executing the deposit.
     /// @param to The account that should receive `shares`.
     /// @param assets The amount of the underlying asset to deposit.
     /// @param shares The amount of shares minted to `to`.
-    /// @param ta The current total number of assets for assets to shares conversion.
+    /// @param ta The current total number of assets for assets to shares
+    ///           conversion.
     /// @param pending The current rewards that are pending and will be vested
     ///                during this deposit.
     function _processDeposit(
@@ -485,13 +494,16 @@ abstract contract CTokenCompounding is CTokenBase {
 
     /// @notice Processes a withdrawal of `shares` from the market by burning
     ///         `owner` shares and transferring `assets` to `to`, then
-    ///         decreases `ta` by `assets`, and vests rewards if `pending` > 0.
+    ///         decreases `ta` by `assets`, and vests rewards if
+    ///         `pending` > 0.
     /// @param by The account that is executing the withdrawal.
     /// @param to The account that should receive `assets`.
-    /// @param owner The account that will have `shares` burned to withdraw `assets`.
+    /// @param owner The account that will have `shares` burned to withdraw
+    ///              `assets`.
     /// @param assets The amount of the underlying asset to withdraw.
     /// @param shares The amount of shares redeemed from `owner`.
-    /// @param ta The current total number of assets for assets to shares conversion.
+    /// @param ta The current total number of assets for assets to shares
+    ///           conversion.
     /// @param pending The current rewards that are pending and will be vested
     ///                during this withdrawal.
     function _processWithdraw(
@@ -518,7 +530,8 @@ abstract contract CTokenCompounding is CTokenBase {
         // Document removal of `assets` from `ta` due to withdrawal.
         ta = ta - assets;
 
-        // Vest rewards, if there are any, then update `_totalAssets` invariant.
+        // Vest rewards, if there are any, then update `_totalAssets`
+        // invariant.
         if (pending > 0) {
             _vestRewards(ta);
         } else {
@@ -565,8 +578,8 @@ abstract contract CTokenCompounding is CTokenBase {
             );
     }
 
-    /// @notice Packs parameters together with current block timestamp
-    ///         to calculate the new packed vault data value.
+    /// @notice Packs parameters together with current block timestamp to
+    ///         calculate the new packed vault data value.
     /// @param newRewardRate The new rate, per second, that the vault vests
     ///                      fresh rewards.
     /// @param newVestPeriod The timestamp of when the new vesting period
@@ -591,8 +604,8 @@ abstract contract CTokenCompounding is CTokenBase {
         }
     }
 
-    /// @notice Returns the unpacked `VaultData` struct from
-    ///         `packedVaultData`.
+    /// @notice Returns the unpacked `VaultData` struct
+    ///         from `packedVaultData`.
     /// @param packedVaultData The current packed vault data value.
     /// @return vault The current vault data value, but unpacked into
     ///               a VaultData struct.
@@ -653,11 +666,14 @@ abstract contract CTokenCompounding is CTokenBase {
             vaultData.rewardRate > 0 &&
             vaultData.lastVestClaim < vaultData.vestingPeriodEnd
         ) {
+            // When calculating pending rewards:
+            // pendingRewards = 
             // If the vesting period has not ended:
-            // pendingRewards = rewardRate * (block.timestamp - lastTimeVestClaimed).
+            // PR = rewardRate * (block.timestamp - lastTimeVestClaimed).
             // If the vesting period has ended:
-            // rewardRate * (vestingPeriodEnd - lastTimeVestClaimed)).
-            // Divide the pending rewards by `WAD` (1e18).
+            // PR = rewardRate * (vestingPeriodEnd - lastTimeVestClaimed)).
+            // Then in either case:
+            // Divide the pending rewards by `WAD` (1e18) for precision.
             pendingRewards =
                 (
                     block.timestamp < vaultData.vestingPeriodEnd
@@ -671,7 +687,7 @@ abstract contract CTokenCompounding is CTokenBase {
         }
     }
 
-    /// @notice Checks if the caller can compound the vaults rewards.
+    /// @notice Checks if the caller can compound pending vaults rewards.
     function _canCompound() internal view {
         if (!centralRegistry.isHarvester(msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -682,7 +698,7 @@ abstract contract CTokenCompounding is CTokenBase {
         }
     }
 
-    /// @notice Vests the pending rewards, and updates vault data.
+    /// @notice Vests pending rewards, and updates vault data.
     /// @param currentAssets The current assets of the vault.
     function _vestRewards(uint256 currentAssets) internal {
         // Update the lastVestClaim timestamp.
@@ -692,7 +708,8 @@ abstract contract CTokenCompounding is CTokenBase {
         _totalAssets = currentAssets;
     }
 
-    /// @notice Vests the pending rewards, and updates vault data, if needed.
+    /// @notice Vests pending rewards, and updates vault data,
+    ///         but only if needed.
     function _vestIfNeeded() internal {
         uint256 pending = _calculatePendingRewards();
         // Check whether there are pending rewards to vest.

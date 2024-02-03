@@ -661,8 +661,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Helper function to start a cToken market,
-    ///         executed via marketManager.
+    /// @notice Starts a cToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
@@ -699,13 +698,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @dev Helper function to return the decimals of the underlying asset.
+    /// @dev Returns the decimals of the underlying asset.
     function _underlyingDecimals() internal view override returns (uint8) {
         return _decimals;
     }
 
-    /// @notice Helper function to return the amount of shares that would
-    ///         be exchanged by the vault for `assets` provided.
+    /// @notice Returns the amount of shares that would be exchanged by the
+    ///         vault for `assets` provided.
     /// @param assets The number of assets to theoretically use
     ///               for conversion to shares.
     /// @param ta The total number of assets to theoretically use
@@ -723,8 +722,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(assets, totalShares, ta);
     }
 
-    /// @notice Helper function to return the amount of assets that would
-    ///         be exchanged by the vault for `shares` provided.
+    /// @notice Returns the amount of assets that would be exchanged by the
+    ///         vault for `shares` provided.
     /// @param shares The number of shares to theoretically use
     ///               for conversion to assets.
     /// @param ta The total number of assets to theoretically use
@@ -742,8 +741,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(shares, ta, totalShares);
     }
 
-    /// @notice Helper function to simulate the effects of a user deposit at
-    ///         the current block.
+    /// @notice Simulates the effects of a user deposit at the current
+    ///         block.
     /// @param assets The number of assets to preview a deposit call.
     /// @param ta The total number of assets to simulate a deposit at the
     ///           current block.
@@ -755,8 +754,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToShares(assets, ta);
     }
 
-    /// @notice Helper function to simulate the effects of a user mint at
-    ///         the current block.
+    /// @notice Simulates the effects of a user mint at the current
+    ///         block.
     /// @param shares The number of shares to preview a mint call.
     /// @param ta The total number of assets to simulate a mint at the
     ///           current block.
@@ -774,8 +773,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         );
     }
 
-    /// @notice Helper function to simulate the effects of a user withdrawal
-    ///         at the current block.
+    /// @notice Simulates the effects of a user withdrawal at the current
+    ///         block.
     /// @param assets The number of assets to preview a withdrawal call.
     /// @param ta The total number of assets to simulate a withdrawal at the
     ///           current block.
@@ -793,8 +792,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         );
     }
 
-    /// @notice Helper function to simulate the effects of a user redemption
-    ///         at the current block.
+    /// @notice Simulates the effects of a user redemption at the current
+    ///         block.
     /// @param shares The number of shares to preview a redemption call.
     /// @param ta The total number of assets to simulate a redemption at the
     ///           current block.
@@ -806,7 +805,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, ta);
     }
 
-    /// @notice Internal helper for getting gauge pool contract address.
+    /// @notice Returns the gauge pool contract address.
     /// @return The gauge controller contract address, in `IGaugePool` form.
     function _gaugePool() internal view returns (IGaugePool) {
         return marketManager.gaugePool();

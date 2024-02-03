@@ -1024,7 +1024,7 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Helper function to update the interest rate model.
+    /// @notice Updates the interest rate model.
     /// @dev Emits a {NewMarketInterestRateModel} event.
     /// @param newInterestRateModel The new interest rate model for this
     ///                             dToken to use.
@@ -1048,7 +1048,7 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Helper function to update the interest factor.
+    /// @notice Updates the interest factor.
     /// @dev Emits a {NewInterestFactor} event.
     /// @param newInterestFactor The new interest factor for this
     ///                          dToken to use.
@@ -1069,8 +1069,8 @@ contract DToken is ERC165, ReentrancyGuard {
         emit NewInterestFactor(oldInterestFactor, newInterestFactor);
     }
 
-    /// @notice Helper function for transferring `tokens` tokens from
-    ///         `from` to `to`, executed by `spender`.
+    /// @notice Transfers `tokens` tokens from `from` to `to`, executed by
+    ///         `spender`.
     /// @dev Emits a {Transfer} event.
     /// @param spender The address of the account executing the transfer.
     /// @param from The address of to transfer `amount` dTokens.
@@ -1114,9 +1114,8 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(from, to, tokens);
     }
 
-    /// @notice Helper function for minting of dTokens to `recipient`, based
-    ///         on the deposit of underlying assets into the market
-    ///         by `minter`.
+    /// @notice Mints dTokens to `recipient`, based on the deposit of
+    ///         underlying assets into the market by `minter`.
     /// @dev Updates pending interest before executing the mint.
     ///      Emits a {Transfer} event.
     /// @param minter The address of the account which is supplying the assets.
@@ -1160,8 +1159,7 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(address(0), recipient, tokens);
     }
 
-    /// @notice Helper function for redemption of dTokens, in exchange
-    ///         for the underlying asset.
+    /// @notice Redeems dTokens, in exchange for the underlying asset.
     /// @dev Emits a {Transfer} event.
     /// @param account The address of the account which is redeeming the dTokens.
     /// @param recipient The address of the account which will receive the
@@ -1200,8 +1198,7 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Transfer(account, address(0), tokens);
     }
 
-    /// @notice Helper function for `account` to borrow assets from
-    ///         the protocol.
+    /// @notice Executes borrowing of assets for `account` from lenders.
     /// @dev Emits a {Borrow} event.
     /// @param account The account borrowing assets.
     /// @param amount The amount of the underlying asset to borrow.
@@ -1233,8 +1230,8 @@ contract DToken is ERC165, ReentrancyGuard {
         emit Borrow(account, amount);
     }
 
-    /// @notice Helper function for payer to repay a loan on behalf of the
-    ///         account, usually themselves.
+    /// @notice Repays an outstanding loan of `account` through repayment
+    ///         by `payer`, who usually is themselves.
     /// @dev Emits a {Repay} event.
     /// @param payer The address paying down the account debt.
     /// @param account The account with the debt being paid down.
@@ -1364,13 +1361,13 @@ contract DToken is ERC165, ReentrancyGuard {
         );
     }
 
-    /// @notice Internal helper for getting gauge pool contract address.
+    /// @notice Returns the gauge pool contract address.
     /// @return The gauge controller contract address, in `IGaugePool` form.
     function _gaugePool() internal view returns (GaugePool) {
         return marketManager.gaugePool();
     }
 
-    /// @dev Internal helper for reverting efficiently.
+    /// @dev Helper function for reverting efficiently.
     function _revert(uint256 s) internal pure {
         /// @solidity memory-safe-assembly
         assembly {
