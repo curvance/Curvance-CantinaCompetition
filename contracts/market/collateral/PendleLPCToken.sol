@@ -85,7 +85,7 @@ contract PendleLPCToken is CTokenCompounding {
 
     /// @notice Requeries underlying tokens directly from Pendle smart contracts.
     /// @dev This can be permissionless since this data is 1:1 with dependent
-    ///      contracts  and takes no parameters.
+    ///      contracts and takes no parameters.
     function reQueryUnderlyingTokens() external {
         address[] memory currentTokens = strategyData.underlyingTokens;
         uint256 numCurrentTokens = currentTokens.length;

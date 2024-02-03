@@ -14,27 +14,35 @@ import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 contract Convex2PoolCToken is CTokenCompounding {
     /// TYPES ///
 
+    /// @param curvePool Address for Curve Pool.
+    /// @param pid Convex pool id value.
+    /// @param rewarder Address for Convex Rewarder contract.
+    /// @param booster Address for Convex Booster contract.
+    /// @param rewardTokens Array of Convex reward tokens.
+    /// @param underlyingTokens Curve LP underlying tokens.
     struct StrategyData {
-        ICurveFi curvePool; // Curve Pool Address
-        uint256 pid; // Convex Pool Id
-        IBaseRewardPool rewarder; // Convex Rewarder contract
-        IBooster booster; // Convex Booster contract
-        address[] rewardTokens; // Convex reward assets
-        address[] underlyingTokens; // Curve LP underlying assets
+        ICurveFi curvePool;
+        uint256 pid;
+        IBaseRewardPool rewarder;
+        IBooster booster;
+        address[] rewardTokens;
+        address[] underlyingTokens;
     }
 
     /// CONSTANTS ///
 
-    /// @dev This address is for ethereum mainnet so make sure to update
-    ///      it if curve/convex is being supported on another chain
+    /// @dev This address is for Ethereum mainnet so make sure to update
+    ///      it if Curve/Convex is being supported on another chain
     address private constant _CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     /// STORAGE ///
 
-    /// @notice StrategyData packed configuration data
+    //// @notice StrategyData packed configuration data.
     StrategyData public strategyData;
 
-    /// @notice Token => underlying token of the Curve 2Pool LP or not
+    /// @notice Whether a particular token address is an underlying token
+    ///         of this Curve 2Pool LP.
+    /// @dev Token => Is underlying token.
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -62,7 +70,8 @@ contract Convex2PoolCToken is CTokenCompounding {
         address rewarder_,
         address booster_
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
-        // we only support Curves new ng pools with read only reentry protection
+        // We only support Curves new ng pools with read only
+        // reentry protection. This may be adjusted in the future.
         if (pid_ <= 176) {
             revert Convex2PoolCToken__UnsafePool();
         }
@@ -70,13 +79,13 @@ contract Convex2PoolCToken is CTokenCompounding {
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 
-        // query actual convex pool configuration data
+        // Query actual Convex pool configuration data.
         (address pidToken, , , address crvRewards, , bool shutdown) = IBooster(
             booster_
         ).poolInfo(strategyData.pid);
 
-        // validate that the pool is still active and that the lp token
-        // and rewarder in convex matches what we are configuring for
+        // Validate that the pool is still active and that the lp token
+        // and rewarder in Convex matches what we are configuring for.
         if (
             pidToken != address(asset_) || shutdown || crvRewards != rewarder_
         ) {
@@ -88,7 +97,7 @@ contract Convex2PoolCToken is CTokenCompounding {
         uint256 coinsLength;
         address token;
 
-        // figure out how many tokens are in the curve pool
+        // Figure out how many tokens are in the Curve pool.
         while (true) {
             try ICurveFi(pidToken).coins(coinsLength) {
                 ++coinsLength;
@@ -97,15 +106,15 @@ contract Convex2PoolCToken is CTokenCompounding {
             }
         }
 
-        // validate that the liquidity pool is actually a 2Pool
+        // Validate that the liquidity pool is actually a 2Pool.
         if (coinsLength != 2) {
             revert Convex2PoolCToken__InvalidCoinLength();
         }
 
         strategyData.rewarder = IBaseRewardPool(rewarder_);
 
-        // add CRV as a reward token, then let convex tell you what rewards
-        // the vault will receive
+        // Add CRV as a reward token, then let Convex tell you what rewards
+        // the vault will receive.
         strategyData.rewardTokens.push() = _CRV;
         uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
             .extraRewardsLength();
@@ -115,7 +124,7 @@ contract Convex2PoolCToken is CTokenCompounding {
             ).rewardToken();
         }
 
-        // let curve lp tell you what its underlying tokens are
+        // Let Curve lp tell you what its underlying tokens are.
         strategyData.underlyingTokens = new address[](coinsLength);
         for (uint256 i; i < coinsLength; ) {
             token = ICurveFi(pidToken).coins(i);
@@ -132,11 +141,14 @@ contract Convex2PoolCToken is CTokenCompounding {
 
     // PERMISSIONED FUNCTIONS
 
+    /// @notice Requeries reward tokens directly from Convex smart contracts.
+    /// @dev This can be permissionless since this data is 1:1 with dependent
+    ///      contracts and takes no parameters.
     function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
-        // add CRV as a reward token, then let convex tell you what rewards
-        // the vault will receive
+        // Add CRV as a reward token, then let Convex tell you what rewards
+        // the vault will receive.
         strategyData.rewardTokens.push() = _CRV;
         IBaseRewardPool rewarder = strategyData.rewarder;
 
@@ -148,32 +160,43 @@ contract Convex2PoolCToken is CTokenCompounding {
         }
     }
 
+    /// @notice Returns this strategies reward tokens.
+    function rewardTokens() external view returns (address[] memory) {
+        return strategyData.rewardTokens;
+    }
+
+    /// @notice Returns this strategies base assets underlying tokens.
+    function underlyingTokens() external view returns (address[] memory) {
+        return strategyData.underlyingTokens;
+    }
+
     /// PUBLIC FUNCTIONS ///
 
     // REWARD AND HARVESTING LOGIC
 
     /// @notice Harvests and compounds outstanding vault rewards
-    ///         and vests pending rewards
-    /// @dev Only callable by Gelato Network bot
-    /// @param data Bytes array for aggregator swap data
-    /// @return yield The amount of new assets acquired from compounding vault yield
+    ///         and vests pending rewards.
+    /// @dev Only callable by Gelato Network bot.
+    /// @param data Byte array for aggregator swap data.
+    /// @return yield The amount of new assets acquired from compounding
+    ///               vault yield.
     function harvest(
         bytes calldata data
     ) external override returns (uint256 yield) {
-        // Checks whether the caller can compound the vault yield
+        // Checks whether the caller can compound the vault yield.
         _canCompound();
 
-        // Vest pending rewards if there are any
+        // Vest pending rewards if there are any.
         _vestIfNeeded();
 
-        // can only harvest once previous reward period is done
+        // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
             _updateVestingPeriodIfNeeded();
 
-            // cache strategy data
+            // Cache strategy data.
             StrategyData memory sd = strategyData;
 
-            // claim convex rewards
+            // Claim Convex rewards.
             sd.rewarder.getReward(address(this), true);
 
             (SwapperLib.Swap[] memory swapDataArray, uint256 minLPAmount) = abi
@@ -185,7 +208,8 @@ contract Convex2PoolCToken is CTokenCompounding {
             uint256 protocolFee;
 
             {
-                // Cache Central registry values so we dont pay gas multiple times
+                // Cache DAO Central Registry values to minimize runtime
+                // gas costs.
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
 
@@ -195,12 +219,19 @@ contract Convex2PoolCToken is CTokenCompounding {
                         address(this)
                     );
 
+                    // If there are no pending rewards for this token,
+                    // can skip to next reward token.
                     if (rewardAmount == 0) {
                         continue;
                     }
 
-                    // take protocol fee
-                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
+                    // Take protocol fee for veCVE lockers and auto
+                    // compounding bot.
+                    protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmount, 
+                        harvestFee, 
+                        1e18
+                    );
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         address(rewardToken),
@@ -210,6 +241,7 @@ contract Convex2PoolCToken is CTokenCompounding {
                 }
             }
 
+            // Prep liquidity for Curve Pool.
             {
                 uint256 numSwapData = swapDataArray.length;
                 for (uint256 i; i < numSwapData; ++i) {
@@ -223,9 +255,10 @@ contract Convex2PoolCToken is CTokenCompounding {
                 }
             }
 
+            // Deposit assets into Curve Pool.
             _addLiquidityToCurve(minLPAmount);
 
-            // deposit assets into convex
+            // Deposit assets into Convex.
             yield = IERC20(asset()).balanceOf(address(this));
             if (yield == 0) {
                 revert Convex2PoolCToken__NoYield();
@@ -237,28 +270,30 @@ contract Convex2PoolCToken is CTokenCompounding {
 
             emit Harvest(yield);
         }
-        // else yield is zero
     }
 
     /// INTERNAL FUNCTIONS ///
 
     // INTERNAL POSITION LOGIC
 
-    /// @notice Deposits specified amount of assets into Convex booster contract
-    /// @param assets The amount of assets to deposit
+    /// @notice Deposits specified amount of assets into Convex
+    ///         booster contract.
+    /// @param assets The amount of assets to deposit.
     function _afterDeposit(uint256 assets, uint256) internal override {
         IBooster booster = strategyData.booster;
         SafeTransferLib.safeApprove(asset(), address(booster), assets);
         booster.deposit(strategyData.pid, assets, true);
     }
 
-    /// @notice Withdraws specified amount of assets from Convex reward pool
-    /// @param assets The amount of assets to withdraw
+    /// @notice Withdraws specified amount of assets from Convex reward pool.
+    /// @param assets The amount of assets to withdraw.
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.rewarder.withdrawAndUnwrap(assets, false);
     }
 
-    /// @notice Adds underlying tokens to the vaults Curve 2Pool LP
+    /// @notice Adds underlying tokens to the vaults Curve 2Pool LP.
+    /// @param minLPAmount Minimum LP token amount that should be received
+    ///                    on adding liquidity, this acts as a slippage check.
     function _addLiquidityToCurve(uint256 minLPAmount) internal {
         address underlyingToken;
         uint256[2] memory amounts;

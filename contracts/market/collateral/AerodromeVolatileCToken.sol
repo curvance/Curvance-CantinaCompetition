@@ -135,7 +135,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
             // Cache strategy data.
             StrategyData memory sd = strategyData;
 
-            // Claim pending aerodrome rewards.
+            // Claim pending Aerodrome rewards.
             sd.gauge.getReward(address(this));
 
             {
@@ -239,7 +239,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
 
     // INTERNAL POSITION LOGIC
 
-    /// @notice Deposits specified amount of assets into aerodrome gauge pool.
+    /// @notice Deposits specified amount of assets into Aerodrome gauge pool.
     /// @param assets The amount of assets to deposit.
     function _afterDeposit(uint256 assets, uint256) internal override {
         IVeloGauge gauge = strategyData.gauge;
@@ -247,7 +247,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
         gauge.deposit(assets);
     }
 
-    /// @notice Withdraws specified amount of assets from aerodrome gauge pool.
+    /// @notice Withdraws specified amount of assets from Aerodrome gauge pool.
     /// @param assets The amount of assets to withdraw.
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);

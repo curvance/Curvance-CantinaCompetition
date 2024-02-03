@@ -21,7 +21,7 @@ contract AuraCToken is CTokenCompounding {
     /// @param rewarder Address for Aura Rewarder contract.
     /// @param booster Address for Aura Booster contract.
     /// @param rewardTokens Array of Aura reward tokens.
-    /// @param underlyingTokens Balancer LP underlying tokens
+    /// @param underlyingTokens Balancer LP underlying tokens.
     struct StrategyData {
         IBalancerVault balancerVault;
         bytes32 balancerPoolId;
@@ -34,10 +34,10 @@ contract AuraCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    /// @dev These addresses are for ethereum mainnet so make sure to update
-    ///      them if balancer/aura is being supported on another chain
-    address private constant BAL = 0xba100000625a3754423978a60c9317c58a424e3D;
-    address private constant AURA = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
+    /// @dev These addresses are for Ethereum mainnet so make sure to update
+    ///      them if Balancer/Aura is being supported on another chain
+    address private constant _BAL = 0xba100000625a3754423978a60c9317c58a424e3D;
+    address private constant _AURA = 0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF;
 
     /// STORAGE ///
 
@@ -71,13 +71,13 @@ contract AuraCToken is CTokenCompounding {
         strategyData.pid = pid_;
         strategyData.booster = IBooster(booster_);
 
-        // Query actual aura pool configuration data.
+        // Query actual Aura pool configuration data.
         (address pidToken, , , address balRewards, , bool shutdown) = IBooster(
             booster_
         ).poolInfo(strategyData.pid);
 
         // Validate that the pool is still active and that the lp token
-        // and rewarder in aura matches what we are configuring for.
+        // and rewarder in Aura matches what we are configuring for.
         if (pidToken != asset() || shutdown || balRewards != rewarder_) {
             revert AuraCToken__InvalidVaultConfig();
         }
@@ -88,12 +88,12 @@ contract AuraCToken is CTokenCompounding {
         );
         strategyData.balancerPoolId = IBalancerPool(pidToken).getPoolId();
 
-        // Add BAL as a reward token, then let aura tell you what rewards
+        // Add BAL as a reward token, then let Aura tell you what rewards
         // the vault will receive.
-        strategyData.rewardTokens.push() = BAL;
+        strategyData.rewardTokens.push() = _BAL;
         // Add AURA as a reward token, since some vaults do not list AURA
         // as a reward token.
-        strategyData.rewardTokens.push() = AURA;
+        strategyData.rewardTokens.push() = _AURA;
 
         uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
             .extraRewardsLength();
@@ -104,13 +104,13 @@ contract AuraCToken is CTokenCompounding {
                         .rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA && rewardToken != BAL) {
+                if (rewardToken != _AURA && rewardToken != _BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }
         }
 
-        // Query liquidity pools underlying tokens from the balancer vault.
+        // Query liquidity pools underlying tokens from the Balancer vault.
         (address[] memory underlyingTokens, , ) = strategyData
             .balancerVault
             .getPoolTokens(strategyData.balancerPoolId);
@@ -130,17 +130,17 @@ contract AuraCToken is CTokenCompounding {
 
     /// @notice Requeries reward tokens directly from Aura smart contracts.
     /// @dev This can be permissionless since this data is 1:1 with dependent
-    ///      contracts  and takes no parameters.
+    ///      contracts and takes no parameters.
     function reQueryRewardTokens() external {
         delete strategyData.rewardTokens;
 
-        // Add BAL as a reward token, then let aura tell you what rewards
+        // Add BAL as a reward token, then let Aura tell you what rewards
         // the vault will receive.
-        strategyData.rewardTokens.push() = BAL;
+        strategyData.rewardTokens.push() = _BAL;
         // Add AURA as a reward token, since some vaults do not list AURA
         // as a reward token.
-        strategyData.rewardTokens.push() = AURA;
-        
+        strategyData.rewardTokens.push() = _AURA;
+
         IBaseRewardPool rewarder = strategyData.rewarder;
         uint256 extraRewardsLength = rewarder.extraRewardsLength();
 
@@ -150,7 +150,7 @@ contract AuraCToken is CTokenCompounding {
                     IRewards(rewarder.extraRewards(i++)).rewardToken()
                 ).baseToken();
 
-                if (rewardToken != AURA && rewardToken != BAL) {
+                if (rewardToken != _AURA && rewardToken != _BAL) {
                     strategyData.rewardTokens.push() = rewardToken;
                 }
             }
@@ -205,7 +205,7 @@ contract AuraCToken is CTokenCompounding {
     /// @notice Harvests and compounds outstanding vault rewards
     ///         and vests pending rewards.
     /// @dev Only callable by Gelato Network bot.
-    /// @param data Bytes array for aggregator swap data.
+    /// @param data Byte array for aggregator swap data.
     /// @return yield The amount of new assets acquired from compounding
     ///               vault yield.
     function harvest(
@@ -340,7 +340,8 @@ contract AuraCToken is CTokenCompounding {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Deposits specified amount of assets into Aura booster contract.
+    /// @notice Deposits specified amount of assets into Aura
+    ///         booster contract.
     /// @param assets The amount of assets to deposit.
     function _afterDeposit(uint256 assets, uint256) internal override {
         IBooster booster = strategyData.booster;

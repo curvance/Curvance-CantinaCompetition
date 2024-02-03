@@ -140,7 +140,7 @@ contract AerodromeStableCToken is CTokenCompounding {
             // Cache strategy data.
             StrategyData memory sd = strategyData;
 
-            // Claim pending aerodrome rewards.
+            // Claim pending Aerodrome rewards.
             sd.gauge.getReward(address(this));
 
             {
