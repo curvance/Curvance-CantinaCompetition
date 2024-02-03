@@ -445,6 +445,7 @@ abstract contract CTokenCompounding is CTokenBase {
     /// @notice Processes a deposit of `assets` from the market and mints
     ///         shares to `owner`, then increases `ta` by `assets`,
     ///         and vests rewards if `pending` > 0.
+    /// @dev Emits a {Deposit} event.
     /// @param by The account that is executing the deposit.
     /// @param to The account that should receive `shares`.
     /// @param assets The amount of the underlying asset to deposit.
@@ -498,6 +499,7 @@ abstract contract CTokenCompounding is CTokenBase {
     ///         `owner` shares and transferring `assets` to `to`, then
     ///         decreases `ta` by `assets`, and vests rewards if
     ///         `pending` > 0.
+    /// @dev Emits a {Withdraw} event.
     /// @param by The account that is executing the withdrawal.
     /// @param to The account that should receive `assets`.
     /// @param owner The account that will have `shares` burned to withdraw

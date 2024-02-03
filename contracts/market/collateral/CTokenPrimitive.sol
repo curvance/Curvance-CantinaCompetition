@@ -12,6 +12,10 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
+/// @dev Built to support assets that do not generate rewards in external,
+///      claimable tokens. This means CTokenPrimitive is built for assets
+///      such as:
+///      WETH, LSTs, LRTs, PTs, UNI, USDC, sDAI, etc.
 contract CTokenPrimitive is CTokenBase {
     /// ERRORS ///
 
@@ -246,6 +250,7 @@ contract CTokenPrimitive is CTokenBase {
 
     /// @notice Processes a deposit of `assets` from the market and mints
     ///         shares to `owner`, then increases `ta` by `assets`.
+    /// @dev Emits a {Deposit} event.
     /// @param by The account that is executing the deposit.
     /// @param to The account that should receive `shares`.
     /// @param assets The amount of the underlying asset to deposit.
@@ -283,6 +288,7 @@ contract CTokenPrimitive is CTokenBase {
     /// @notice Processes a withdrawal of `shares` from the market by burning
     ///         `owner` shares and transferring `assets` to `to`, then
     ///         decreases `ta` by `assets`.
+    /// @dev Emits a {Withdraw} event.
     /// @param by The account that is executing the withdrawal.
     /// @param to The account that should receive `assets`.
     /// @param owner The account that will have `shares` burned to withdraw

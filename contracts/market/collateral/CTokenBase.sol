@@ -618,6 +618,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @dev This is only used in liquidations where maximal gas
     ///      optimization improves protocol MEV competitiveness,
     ///      improving protocol safety.
+    ///      Emits a {Transfer} event.
     /// @param from The address of the account transferring `amount`
     ///             shares from.
     /// @param to The address of the destination account to receive `amount`
@@ -665,6 +666,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
+    /// @dev Emits a {Deposit} event.
     /// @param by The account initializing the cToken market.
     function _startMarket(address by) internal {
         if (msg.sender != address(marketManager)) {

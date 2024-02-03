@@ -27,7 +27,7 @@ contract GMCToken is CTokenCompounding {
     address gmxDepositHandler;
 
     /// @notice An array of underlying tokens.
-    /// First element is long token and second one is short token.
+    /// @dev First element is long token and second one is short token.
     address[] public underlyingTokens;
 
     mapping(bytes32 => bool) internal _isDepositKey;
@@ -61,6 +61,7 @@ contract GMCToken is CTokenCompounding {
         address gmxDataStore_,
         address gmxDepositHandler_
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
+        // Make sure we are deploying this to Arbitrum.
         if (block.chainid != 42161) {
             revert GMCToken__ChainIsNotSupported();
         }
@@ -76,6 +77,7 @@ contract GMCToken is CTokenCompounding {
             address(asset_)
         );
 
+        // If the market is not properly configured, fail deployment.
         if (
             market.indexToken == address(0) ||
             market.longToken == address(0) ||
@@ -94,32 +96,39 @@ contract GMCToken is CTokenCompounding {
 
     // REWARD AND HARVESTING LOGIC
 
-    /// @notice Harvests and compounds outstanding vault rewards and
-    ///         vests pending rewards.
+    /// @notice Harvests and compounds outstanding vault rewards
+    ///         and vests pending rewards.
     /// @dev Only callable by Gelato Network bot.
+    ///      Emits a {Harvest} event.
+    /// @return yield The amount of new assets acquired from compounding
+    ///               vault yield.
     function harvest(
         bytes calldata
     ) external override returns (uint256 yield) {
-        // Checks whether the caller can compound the vault yield
+        // Checks whether the caller can compound the vault yield.
         _canCompound();
 
-        // Vest pending rewards if there are any
+        // Vest pending rewards if there are any.
         _vestIfNeeded();
 
         // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
             _updateVestingPeriodIfNeeded();
 
-            // Claim GM pool rewards.
+            // Claim pending GM pool rewards.
             uint256[] memory rewardAmounts = _claimReward();
 
-            // Cache Central registry values so we dont pay gas multiple times
+            // Cache DAO Central Registry values to minimize runtime
+            // gas costs.
             address feeAccumulator = centralRegistry.feeAccumulator();
             uint256 harvestFee = centralRegistry.protocolHarvestFee();
 
-            for (uint256 i = 0; i < 2; ++i) {
+            for (uint256 i; i < 2; ++i) {
+                // If there are no pending rewards for this token,
+                // can skip to next reward token.
                 if (rewardAmounts[i] > 0) {
-                    // Take protocol fee.
+                    // Take protocol fee for veCVE lockers and auto
+                    // compounding bot.
                     uint256 protocolFee = FixedPointMathLib.mulDiv(
                         rewardAmounts[i],
                         harvestFee,
@@ -179,12 +188,16 @@ contract GMCToken is CTokenCompounding {
             bytes[] memory results = IGMXExchangeRouter(gmxExchangeRouter)
                 .multicall{ value: 0.01e18 }(data);
             _isDepositKey[bytes32(results[3])] = true;
-            // Return a 1 for harvester to recognize success
+            // Return a 1 for harvester to recognize success.
             yield = 1;
         }
     }
 
-    // @dev Called by GMX deposit handler after a deposit execution.
+    /// @notice Used by GMX deposit handler to execute our desired asset
+    ///         deposit.
+    /// @dev Called by GMX deposit handler after a deposit execution.
+    ///      Emits a {Harvest} event.
+    /// @param key The deposit key.
     function afterDepositExecution(
         bytes32 key,
         IGMXDeposit.Props memory,
@@ -207,35 +220,40 @@ contract GMCToken is CTokenCompounding {
         emit Harvest(yield);
     }
 
-    /// @notice Set GMX Deposit Vault address
+    /// @notice Sets the GMX Deposit Vault address.
+    /// @param newDepositVault The new deposit vault address.
     function setGMXDepositVault(address newDepositVault) external {
         _checkDaoPermissions();
 
         _setGMXDepositVault(newDepositVault);
     }
 
-    /// @notice Set GMX Exchange Router address
+    /// @notice Sets GMX Exchange Router address.
+    /// @param newExchangeRouter The new exchange router address.
     function setGMXExchangeRouter(address newExchangeRouter) external {
         _checkDaoPermissions();
 
         _setGMXExchangeRouter(newExchangeRouter);
     }
 
-    /// @notice Set GMX Router address
+    /// @notice Sets GMX Router address.
+    /// @param newRouter The new GMX router address.
     function setGMXRouter(address newRouter) external {
         _checkDaoPermissions();
 
         _setGMXRouter(newRouter);
     }
 
-    /// @notice Set GMX DataStore address
+    /// @notice Sets GMX Data Store address.
+    /// @param newDataStore The new GMX Data Store address.
     function setGMXDataStore(address newDataStore) external {
         _checkDaoPermissions();
 
         _setGMXDataStore(newDataStore);
     }
 
-    /// @notice Set GMX Deposit Handler address
+    /// @notice Sets GMX Deposit Handler address.
+    /// @param newDepositHandler The new GMX Deposit Handler address.
     function setGMXDepositHandler(address newDepositHandler) external {
         _checkDaoPermissions();
 
@@ -244,7 +262,8 @@ contract GMCToken is CTokenCompounding {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Set GMX Deposit Vault address
+    /// @notice Sets the GMX Deposit Vault address.
+    /// @param newDepositVault The new deposit vault address.
     function _setGMXDepositVault(address newDepositVault) internal {
         if (newDepositVault == address(0)) {
             revert GMCToken__GMXDepositVaultIsZeroAddress();
@@ -253,7 +272,8 @@ contract GMCToken is CTokenCompounding {
         gmxDepositVault = newDepositVault;
     }
 
-    /// @notice Set GMX Exchange Router address
+    /// @notice Sets GMX Exchange Router address.
+    /// @param newExchangeRouter The new exchange router address.
     function _setGMXExchangeRouter(address newExchangeRouter) internal {
         if (newExchangeRouter == address(0)) {
             revert GMCToken__GMXExchangeRouterIsZeroAddress();
@@ -262,7 +282,8 @@ contract GMCToken is CTokenCompounding {
         gmxExchangeRouter = newExchangeRouter;
     }
 
-    /// @notice Set GMX Router address
+    /// @notice Sets GMX Router address.
+    /// @param newRouter The new GMX router address.
     function _setGMXRouter(address newRouter) internal {
         if (newRouter == address(0)) {
             revert GMCToken__GMXRouterIsZeroAddress();
@@ -271,7 +292,8 @@ contract GMCToken is CTokenCompounding {
         gmxRouter = newRouter;
     }
 
-    /// @notice Set GMX DataStore address
+    /// @notice Sets GMX Data Store address.
+    /// @param newDataStore The new GMX Data Store address.
     function _setGMXDataStore(address newDataStore) internal {
         if (newDataStore == address(0)) {
             revert GMCToken__GMXDataStoreIsZeroAddress();
@@ -280,7 +302,8 @@ contract GMCToken is CTokenCompounding {
         gmxDataStore = newDataStore;
     }
 
-    /// @notice Set GMX Deposit Handler address
+    /// @notice Sets GMX Deposit Handler address.
+    /// @param newDepositHandler The new GMX Deposit Handler address.
     function _setGMXDepositHandler(address newDepositHandler) internal {
         if (newDepositHandler == address(0)) {
             revert GMCToken__GMXDepositHandlerIsZeroAddress();
@@ -291,13 +314,15 @@ contract GMCToken is CTokenCompounding {
 
     // INTERNAL POSITION LOGIC
 
-    /// @notice Claim rewards from GM pool.
+    /// @notice Claims rewards from the GM pool.
+    /// @return rewardAmounts The reward amounts claimed from the GM pool.
     function _claimReward() internal returns (uint256[] memory rewardAmounts) {
-        // claim GM pool rewards
+        
         address[] memory markets = new address[](2);
         markets[0] = asset();
         markets[1] = asset();
 
+        // Claim GM pool rewards.
         rewardAmounts = IGMXExchangeRouter(gmxExchangeRouter).claimFundingFees(
             markets,
             underlyingTokens,
