@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
+import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
@@ -271,9 +272,13 @@ contract CentralRegistry is ERC165 {
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
+        bytes32 newSymbol = Bytes32Helper._stringToBytes32(
+            IERC20(newCVE).symbol()
+        );
+
         // Sanity check that the new CVE address is at least an ERC20
         // compliant contract with the expected symbol.
-        if (IERC20(newCVE).symbol() != "CVE") {
+        if (newSymbol != bytes32("CVE")) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -287,9 +292,13 @@ contract CentralRegistry is ERC165 {
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
 
+        bytes32 newSymbol = Bytes32Helper._stringToBytes32(
+            IERC20(newVeCVE).symbol()
+        );
+
         // Sanity check that the new veCVE address is at least an ERC20
         // compliant contract with the expected symbol.
-        if (IERC20(newVeCVE).symbol() != "veCVE") {
+        if (newSymbol != bytes32("veCVE")) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -361,7 +370,7 @@ contract CentralRegistry is ERC165 {
 
         // Sanity check that the new fee accumulator contract at least
         // looks like one.
-        IFeeAccumulator(newFeeAccumulator.getRewardTokenBalances();
+        IFeeAccumulator(newFeeAccumulator).getRewardTokenBalances();
 
         feeAccumulator = newFeeAccumulator;
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);
