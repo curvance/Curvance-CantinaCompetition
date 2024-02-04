@@ -77,7 +77,7 @@ contract CentralRegistry is ERC165 {
     /// @notice The address of gelato sponsor.
     address public gelatoSponsor;
 
-    // PROTOCOL VALUES
+    // PROTOCOL FEES
 
     // Values are always set in `Basis Points` (1e4), fee values are converted
     // and stored in `WAD` while multipliers stay in `DENOMINATOR`.
@@ -92,7 +92,7 @@ contract CentralRegistry is ERC165 {
     /// @notice Protocol fee on leverage usage.
     uint256 public protocolLeverageFee;
 
-    // Multipliers:
+    // ACTION MULTIPLIERS
 
     /// @notice Penalty multiplier for unlocking a veCVE lock early.
     uint256 public earlyUnlockPenaltyMultiplier;
@@ -101,7 +101,7 @@ contract CentralRegistry is ERC165 {
     /// @notice Gauge rewards multiplier for locking gauge emissions.
     uint256 public lockBoostMultiplier;
 
-    // PROTOCOL VALUES DATA
+    // PROTOCOL MONEY MARKET FEES
 
     /// @notice Debt token fee on interest generated.
     /// @dev Market Manager => Protocol Interest Factor, in `WAD`.
@@ -117,10 +117,11 @@ contract CentralRegistry is ERC165 {
     mapping(address => bool) public hasElevatedPermissions;
 
     // MULTICHAIN CONFIGURATION DATA
+
     // We store this data redundantly so that we can quickly get whatever
     // output we need, with low gas overhead.
 
-    /// @notice How many other chains are supported.
+    /// @notice Number of chains supported.
     uint256 public supportedChains;
     /// @notice Address array for all Curvance markets on this chain.
     address[] public marketManagers;
@@ -139,7 +140,7 @@ contract CentralRegistry is ERC165 {
     /// @notice Wormhole specific chain ID for evm chain ID.
     mapping(uint256 => uint16) public wormholeChainId;
 
-    // DAO CONTRACT MAPPINGS
+    // APPROVED DAO CONTRACT MAPPINGS
 
     mapping(address => bool) public isZapper;
     mapping(address => bool) public isSwapper;
@@ -416,7 +417,6 @@ contract CentralRegistry is ERC165 {
         _checkElevatedPermissions();
 
         uint256 numChainIds = chainIds.length;
-
         for (uint256 i; i < numChainIds; ++i) {
             wormholeChainId[chainIds[i]] = wormholeChainIds[i];
         }
@@ -585,47 +585,63 @@ contract CentralRegistry is ERC165 {
 
     /// OWNERSHIP LOGIC
 
+    /// @notice Sets DAO ownership to a new address.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {OwnershipTransferred} event.
+    /// @param newDaoAddress The new DAO address.
     function transferDaoOwnership(address newDaoAddress) external {
         _checkElevatedPermissions();
 
+        // Cache old dao address for event emission.
         address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
 
+        // Delete permission data.
         delete hasDaoPermissions[previousDaoAddress];
-
+        // Add new permission data.
         hasDaoPermissions[newDaoAddress] = true;
 
         emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
     }
 
+    /// @notice Sets timelock ownership to a new address.
+    /// @dev Only callable by the Emergency Council.
+    ///      Emits a {NewTimelockConfiguration} event.
+    /// @param newTimelock The new timelock address.
     function migrateTimelockConfiguration(address newTimelock) external {
         _checkEmergencyCouncilPermissions();
 
+        // Cache old timelock for event emission.
         address previousTimelock = timelock;
         timelock = newTimelock;
 
-        // Delete permission data
+        // Delete permission data.
         delete hasDaoPermissions[previousTimelock];
         delete hasElevatedPermissions[previousTimelock];
 
-        // Add new permission data
+        // Add new permission data.
         hasDaoPermissions[newTimelock] = true;
         hasElevatedPermissions[newTimelock] = true;
 
         emit NewTimelockConfiguration(previousTimelock, newTimelock);
     }
 
+    /// @notice Sets emergency council ownership to a new address.
+    /// @dev Only callable by the Emergency Council.
+    ///      Emits a {NewTimelockConfiguration} event.
+    /// @param newEmergencyCouncil The new emergency council address.
     function transferEmergencyCouncil(address newEmergencyCouncil) external {
         _checkEmergencyCouncilPermissions();
 
+        // Cache old emergency council for event emission.
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
 
-        // Delete permission data
+        // Delete permission data.
         delete hasDaoPermissions[previousEmergencyCouncil];
         delete hasElevatedPermissions[previousEmergencyCouncil];
 
-        // Add new permission data
+        // Add new permission data.
         hasDaoPermissions[newEmergencyCouncil] = true;
         hasElevatedPermissions[newEmergencyCouncil] = true;
 
@@ -721,6 +737,12 @@ contract CentralRegistry is ERC165 {
 
     /// CONTRACT MAPPING LOGIC
 
+    /// @notice Sets an external calldata checker contract.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    /// @param target The target contract for external calldata
+    ///               such as 1Inch V5.
+    /// @param callDataChecker The contract that will check call data prior
+    ///                        to execution in `target`.
     function setExternalCallDataChecker(
         address target,
         address callDataChecker
@@ -730,11 +752,17 @@ contract CentralRegistry is ERC165 {
         externalCallDataChecker[target] = callDataChecker;
     }
 
+    /// @notice Adds a Zapper contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Cannot be a supported Zapper contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newZapper The new Zapper contract to support for use
+    ///                  in Curvance.
     function addZapper(address newZapper) external {
         _checkElevatedPermissions();
 
+        // Validate `newZapper` is not currently supported.
         if (isZapper[newZapper]) {
-            // Zapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -743,11 +771,17 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Zapper", newZapper);
     }
 
+    /// @notice Removes a Zapper contract from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Zapper contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentZapper The supported Zapper contract to remove from
+    ///                      Curvance.
     function removeZapper(address currentZapper) external {
         _checkElevatedPermissions();
 
+        // Validate `currentZapper` is currently supported.
         if (!isZapper[currentZapper]) {
-            // Not a Zapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -756,11 +790,17 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Zapper", currentZapper);
     }
 
+    /// @notice Adds a Swapper contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Cannot be a supported Swapper contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newSwapper The new Swapper contract to support for use
+    ///                   in Curvance.
     function addSwapper(address newSwapper) external {
         _checkElevatedPermissions();
 
+        // Validate `newSwapper` is not currently supported.
         if (isSwapper[newSwapper]) {
-            // Swapper already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -769,11 +809,17 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Swapper", newSwapper);
     }
 
+    /// @notice Removes a Swapper contract from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Swapper contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentSwapper The supported Swapper contract to remove from
+    ///                       Curvance.
     function removeSwapper(address currentSwapper) external {
         _checkElevatedPermissions();
 
+        // Validate `currentSwapper` is currently supported.
         if (!isSwapper[currentSwapper]) {
-            // Not a Swapper
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -782,11 +828,17 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Swapper", currentSwapper);
     }
 
+    /// @notice Adds an approved VeCVE locker contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Cannot be an approved VeCVE locker contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newVeCVELocker The new VeCVE locker contract to approve for use
+    ///                       in Curvance.
     function addVeCVELocker(address newVeCVELocker) external {
         _checkElevatedPermissions();
 
+        // Validate `newVeCVELocker` is not currently supported.
         if (isVeCVELocker[newVeCVELocker]) {
-            // VeCVE locker already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -795,11 +847,17 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("VeCVELocker", newVeCVELocker);
     }
 
+    /// @notice Removes an approved VeCVE locker contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be an approved VeCVE locker contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentVeCVELocker The approved VeCVE locker contract to remove
+    ///                           from Curvance.
     function removeVeCVELocker(address currentVeCVELocker) external {
         _checkElevatedPermissions();
 
+        // Validate `currentVeCVELocker` is currently supported.
         if (!isVeCVELocker[currentVeCVELocker]) {
-            // Not a VeCVE locker
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -808,11 +866,17 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("VeCVELocker", currentVeCVELocker);
     }
 
+    /// @notice Adds a Gauge Controller contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Cannot be a supported Gauge Controller contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newGaugeController The new Gauge Controller contract to support
+    ///                           for use in Curvance.
     function addGaugeController(address newGaugeController) external {
         _checkElevatedPermissions();
 
+        // Validate `newGaugeController` is not currently supported.
         if (isGaugeController[newGaugeController]) {
-            // Gauge Controller already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -821,11 +885,17 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Gauge Controller", newGaugeController);
     }
 
+    /// @notice Removes a Gauge Controller contract from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Gauge Controller contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentGaugeController The supported Gauge Controller contract
+    ///                               to remove from Curvance.
     function removeGaugeController(address currentGaugeController) external {
         _checkElevatedPermissions();
 
+        // Validate `currentGaugeController` is currently supported.
         if (!isGaugeController[currentGaugeController]) {
-            // Not a Gauge Controller
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -837,11 +907,17 @@ contract CentralRegistry is ERC165 {
         );
     }
 
+    /// @notice Adds a Harvester contract for use in Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Cannot be a supported Harvester contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newHarvester The new Harvester contract to support for use
+    ///                     in Curvance.
     function addHarvester(address newHarvester) external {
         _checkElevatedPermissions();
 
+        // Validate `newHarvester` is not currently supported.
         if (isHarvester[newHarvester]) {
-            // Harvestor already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -850,11 +926,17 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Harvestor", newHarvester);
     }
 
+    /// @notice Removes a Harvester contract from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Harvester contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentHarvester The supported Harvester contract to remove
+    ///                         from Curvance.
     function removeHarvester(address currentHarvester) external {
         _checkElevatedPermissions();
 
+        // Validate `currentHarvester` is currently supported.
         if (!isHarvester[currentHarvester]) {
-            // Not a Harvestor
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -863,10 +945,13 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
-    /// @notice Adds a new market manager and associated fee configurations.
+    /// @notice Adds a new Market Manager and associated fee configurations.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      and 50% for interest generated.
-    /// @param newMarketManager The address of new market manager to be added.
+    ///      can only have a maximum value of 50% interest fee.
+    ///      Cannot be a supported Market Manager contract prior.
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newMarketManager The new Market Manager contract to support
+    ///                         for use in Curvance.
     /// @param marketInterestFactor The interest factor associated with
     ///                             the market manager.
     function addMarketManager(
@@ -875,7 +960,7 @@ contract CentralRegistry is ERC165 {
     ) external {
         _checkElevatedPermissions();
 
-        // Validate that `newMarketManager` is not already added.
+        // Validate `newMarketManager` is not currently supported.
         if (isMarketManager[newMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -890,8 +975,7 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Validate that desired interest factored is within
-        // acceptable bounds.
+        /// Interest fee cannot be more than 50%.
         if (marketInterestFactor > 5000) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -899,6 +983,8 @@ contract CentralRegistry is ERC165 {
         isMarketManager[newMarketManager] = true;
         // We store supported markets semi redundantly for offchain querying.
         marketManagers.push(newMarketManager);
+        // Convert interest factor parameter from basis points to `WAD`
+        // for precision calculations.
         protocolInterestFactor[newMarketManager] = _bpToWad(
             marketInterestFactor
         );
@@ -908,12 +994,14 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a current market manager from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param currentMarketManager The address of the market manager
-    ///                             to be removed.
+    ///      Has to be a supported Market Manager contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentMarketManager The supported Market Manager contract
+    ///                             to remove from Curvance.
     function removeMarketManager(address currentMarketManager) external {
         _checkElevatedPermissions();
 
-        // Validate that `newMarketManager` is currently supported.
+        // Validate `currentMarketManager` is currently supported.
         if (!isMarketManager[currentMarketManager]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -947,14 +1035,16 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Market Manager", currentMarketManager);
     }
 
-    /// @notice Add a new crosschain endpoint.
+    /// @notice Adds an Endpoint contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param newEndpoint The address of the new crosschain endpoint
-    ///                    to be added.
+    ///      Cannot be a supported Endpoint contract prior. 
+    ///      Emits a {NewCurvanceContract} event.
+    /// @param newEndpoint The new Endpoint contract to support for use
+    ///                    in Curvance.
     function addEndpoint(address newEndpoint) external {
         _checkElevatedPermissions();
 
-        // Validate that `newEndpoint` is not currently supported.
+        // Validate `newEndpoint` is not currently supported.
         if (isEndpoint[newEndpoint]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
@@ -964,14 +1054,16 @@ contract CentralRegistry is ERC165 {
         emit NewCurvanceContract("Endpoint", newEndpoint);
     }
 
-    /// @notice Removes a current crosschain endpoint.
+    /// @notice Removes an Endpoint contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    /// @param currentEndpoint The address of the crosschain endpoint
-    ///                        to be removed.
+    ///      Has to be a supported Endpoint contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentEndpoint The supported Endpoint contract to remove
+    ///                        from Curvance.
     function removeEndpoint(address currentEndpoint) external {
         _checkElevatedPermissions();
 
-        // Validate that `currentEndpoint` is currently supported.
+        // Validate `currentEndpoint` is currently supported.
         if (!isEndpoint[currentEndpoint]) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
