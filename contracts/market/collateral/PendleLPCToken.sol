@@ -14,6 +14,13 @@ import { IStandardizedYield } from "contracts/interfaces/external/pendle/IStanda
 contract PendleLPCToken is CTokenCompounding {
     /// TYPES ///
 
+    /// @param router Address of Pendle Router.
+    /// @param lp Address of CToken underlying Pendle lp token.
+    /// @param sy Address of Standardized Yield for minting pt/yt.
+    /// @param pt Address of Pendle principal token.
+    /// @param yt Address of Pendle yield token.
+    /// @param rewardTokens Array of Pendle reward tokens.
+    /// @param underlyingTokens Pendle LP underlying tokens.
     struct StrategyData {
         IPendleRouter router;
         IPMarket lp;
@@ -28,10 +35,12 @@ contract PendleLPCToken is CTokenCompounding {
 
     /// STORAGE ///
 
-    /// @notice StrategyData packed configuration data
+    /// @notice StrategyData packed configuration data.
     StrategyData public strategyData;
 
-    /// @notice token => is underlying token
+    /// @notice Whether a particular token address is an underlying token
+    ///         of this Curve 2Pool LP.
+    /// @dev Token => Is underlying token.
     mapping(address => bool) public isUnderlyingToken;
 
     /// EVENTS ///
@@ -55,12 +64,15 @@ contract PendleLPCToken is CTokenCompounding {
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         strategyData.router = router_;
         strategyData.lp = IPMarket(address(asset_));
+        // Query actual Pendle pool configuration data.
         (strategyData.sy, strategyData.pt, strategyData.yt) = strategyData
             .lp
             .readTokens();
 
         strategyData.rewardTokens = strategyData.lp.getRewardTokens();
 
+        // Query liquidity pools underlying tokens from the
+        // standardized yield contract.
         strategyData.underlyingTokens = strategyData.sy.getTokensIn();
         uint256 numUnderlyingTokens = strategyData.underlyingTokens.length;
         for (uint256 i; i < numUnderlyingTokens; ) {
@@ -135,20 +147,20 @@ contract PendleLPCToken is CTokenCompounding {
     function harvest(
         bytes calldata data
     ) external override returns (uint256 yield) {
-        // Checks whether the caller can compound the vault yield
+        // Checks whether the caller can compound the vault yield.
         _canCompound();
 
-        // Vest pending rewards if there are any
+        // Vest pending rewards if there are any.
         _vestIfNeeded();
 
-        // can only harvest once previous reward period is done
+        // Can only harvest once previous reward period is done.
         if (_checkVestStatus(_vaultData)) {
             _updateVestingPeriodIfNeeded();
 
-            // cache strategy data
+            // Cache strategy data.
             StrategyData memory sd = strategyData;
 
-            // claim Pendle rewards
+            // Claim pending Pendle rewards.
             sd.lp.redeemRewards(address(this));
 
             (
@@ -158,12 +170,13 @@ contract PendleLPCToken is CTokenCompounding {
             ) = abi.decode(data, (SwapperLib.Swap[], uint256, ApproxParams));
 
             {
-                // Use scoping to avoid stack too deep
+                // Use scoping to avoid stack too deep.
                 uint256 numRewardTokens = sd.rewardTokens.length;
                 address rewardToken;
                 uint256 rewardAmount;
                 uint256 protocolFee;
-                // Cache Central registry values so we dont pay gas multiple times
+                // Cache DAO Central Registry values to minimize runtime
+                // gas costs.
                 address feeAccumulator = centralRegistry.feeAccumulator();
                 uint256 harvestFee = centralRegistry.protocolHarvestFee();
 
@@ -173,12 +186,19 @@ contract PendleLPCToken is CTokenCompounding {
                         address(this)
                     );
 
+                    // If there are no pending rewards for this token,
+                    // can skip to next reward token.
                     if (rewardAmount == 0) {
                         continue;
                     }
 
-                    // take protocol fee
-                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
+                    // Take protocol fee for veCVE lockers and auto
+                    // compounding bot.
+                    protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmount, 
+                        harvestFee, 
+                        1e18
+                    );
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         rewardToken,
@@ -186,7 +206,7 @@ contract PendleLPCToken is CTokenCompounding {
                         protocolFee
                     );
 
-                    // swap from rewardToken to underlying LP token if necessary
+                    // Swap from reward token to underlying tokens, if necessary.
                     if (!isUnderlyingToken[rewardToken]) {
                         if (
                             !centralRegistry.isSwapper(swapDataArray[i].target)
@@ -202,7 +222,7 @@ contract PendleLPCToken is CTokenCompounding {
                 }
             }
 
-            // mint SY
+            
             {
                 uint256 numUnderlyingTokens = sd.underlyingTokens.length;
                 address underlyingToken;
@@ -213,6 +233,7 @@ contract PendleLPCToken is CTokenCompounding {
                     if (underlyingToken == address(0)) {
                         balance = address(this).balance;
                         if (balance > 0) {
+                            // Mint SY in gas tokens.
                             sd.sy.deposit{ value: balance }(
                                 address(this),
                                 underlyingToken,
@@ -230,6 +251,7 @@ contract PendleLPCToken is CTokenCompounding {
                                 address(sd.sy),
                                 balance
                             );
+                            // Mint SY in ERC20s.
                             sd.sy.deposit(
                                 address(this),
                                 underlyingToken,
@@ -241,7 +263,6 @@ contract PendleLPCToken is CTokenCompounding {
                 }
             }
 
-            // add liquidity with SY
             {
                 uint256 balance = sd.sy.balanceOf(address(this));
                 SwapperLib._approveTokenIfNeeded(
@@ -250,6 +271,7 @@ contract PendleLPCToken is CTokenCompounding {
                     balance
                 );
 
+                // Add liquidity to Pendle lp via SY.
                 (yield, ) = sd.router.addLiquiditySingleSy(
                     address(this),
                     address(sd.lp),
@@ -264,6 +286,5 @@ contract PendleLPCToken is CTokenCompounding {
 
             emit Harvest(yield);
         }
-        // else yield is zero
     }
 }

@@ -14,10 +14,10 @@ import { ICurveFi } from "contracts/interfaces/external/curve/ICurveFi.sol";
 contract Convex4PoolCToken is CTokenCompounding {
     /// TYPES ///
 
-    /// @param curvePool Address for Curve Pool.
+    /// @param curvePool Address of Curve Pool.
     /// @param pid Convex pool id value.
-    /// @param rewarder Address for Convex Rewarder contract.
-    /// @param booster Address for Convex Booster contract.
+    /// @param rewarder Address of Convex Rewarder.
+    /// @param booster Address of Convex Booster.
     /// @param rewardTokens Array of Convex reward tokens.
     /// @param underlyingTokens Curve LP underlying tokens.
     struct StrategyData {
@@ -37,7 +37,7 @@ contract Convex4PoolCToken is CTokenCompounding {
 
     /// STORAGE ///
 
-    //// @notice StrategyData packed configuration data.
+    /// @notice StrategyData packed configuration data.
     StrategyData public strategyData;
 
     /// @notice Whether a particular token address is an underlying token

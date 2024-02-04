@@ -15,11 +15,11 @@ import { IStashWrapper } from "contracts/interfaces/external/aura/IStashWrapper.
 contract AuraCToken is CTokenCompounding {
     /// TYPES ///
 
-    /// @param balancerVault Address for Balancer Vault.
+    /// @param balancerVault Address of Balancer Vault.
     /// @param balancerPoolId Bytes32 encoded Balancer pool id.
     /// @param pid Aura pool id value.
-    /// @param rewarder Address for Aura Rewarder contract.
-    /// @param booster Address for Aura Booster contract.
+    /// @param rewarder Address of Aura Rewarder.
+    /// @param booster Address of Aura Booster.
     /// @param rewardTokens Array of Aura reward tokens.
     /// @param underlyingTokens Balancer LP underlying tokens.
     struct StrategyData {
@@ -41,7 +41,7 @@ contract AuraCToken is CTokenCompounding {
 
     /// STORAGE ///
 
-    //// @notice StrategyData packed configuration data.
+    /// @notice StrategyData packed configuration data.
     StrategyData public strategyData;
 
     /// @notice Whether a particular token address is an underlying token
@@ -110,7 +110,7 @@ contract AuraCToken is CTokenCompounding {
             }
         }
 
-        // Query liquidity pools underlying tokens from the Balancer vault.
+        // Query liquidity pool's underlying tokens from the Balancer vault.
         (address[] memory queriedTokens, , ) = strategyData
             .balancerVault
             .getPoolTokens(strategyData.balancerPoolId);

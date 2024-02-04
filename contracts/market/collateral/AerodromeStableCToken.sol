@@ -14,13 +14,13 @@ import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol
 contract AerodromeStableCToken is CTokenCompounding {
     /// TYPES ///
 
-    /// @param gauge Address for Aerodrome Gauge.
-    /// @param pairFactory Address for Aerodrome Pair Factory.
-    /// @param router Address for Aerodrome Router.
-    /// @param token0 Address for first underlying token.
-    /// @param token1 Address for second underlying token.
-    /// @param decimalsA Token decimals for Token0.
-    /// @param decimalsB Token decimals for Token1.
+    /// @param gauge Address of Aerodrome Gauge.
+    /// @param pairFactory Address of Aerodrome Pair Factory.
+    /// @param router Address of Aerodrome Router.
+    /// @param token0 Address of first underlying token.
+    /// @param token1 Address of second underlying token.
+    /// @param decimalsA Token decimals of Token0.
+    /// @param decimalsB Token decimals of Token1.
     struct StrategyData {
         IVeloGauge gauge;
         IVeloPairFactory pairFactory;
@@ -86,6 +86,7 @@ contract AerodromeStableCToken is CTokenCompounding {
             );
         }
 
+        // Validate the desired underlying lp token is an sAMM.
         if (!IVeloPool(_asset).stable()) {
             revert AerodromeStableCToken__AssetIsNotStable();
         }
@@ -146,6 +147,8 @@ contract AerodromeStableCToken is CTokenCompounding {
 
             {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
+
+                // If there are no pending rewards, skip swapping logic.
                 if (rewardAmount > 0) {
                     // Take protocol fee for veCVE lockers and auto
                     // compounding bot.
@@ -161,7 +164,7 @@ contract AerodromeStableCToken is CTokenCompounding {
                         protocolFee
                     );
 
-                    // Swap from AERO to underlying LP token, if necessary.
+                    // Swap from AERO to underlying tokens, if necessary.
                     if (!rewardTokenIsUnderlying) {
                         SwapperLib.Swap memory swapData = abi.decode(
                             data,
