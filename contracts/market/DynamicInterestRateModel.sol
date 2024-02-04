@@ -492,6 +492,7 @@ contract DynamicInterestRateModel {
     /// @dev This function sets various parameters for the dynamic interest
     ///      rate model, adjusting how interest rates are calculated based
     ///      on system utilization.
+    ///      Emits a {NewDynamicInterestRateModel} event.
     /// @param baseRatePerYear The base interest rate per year,
     ///                        in `basis points`.
     /// @param vertexRatePerYear The vertex interest rate per year,

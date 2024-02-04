@@ -241,7 +241,6 @@ contract VelodromeStableCToken is CTokenCompounding {
 
             emit Harvest(yield);
         }
-        // else yield is zero
     }
 
     /// INTERNAL FUNCTIONS ///

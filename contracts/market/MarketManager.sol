@@ -665,7 +665,8 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @notice Liquidates an entire account by partially paying down debts,
     ///         distributing all `account` collateral and recognize remaining
     ///         debt as bad debt.
-    /// @dev    Updates `account` DToken interest before solvency is checked.
+    /// @dev Updates `account` DToken interest before solvency is checked.
+    ///      Emits a {CollateralRemoved} event.
     /// @param account The address to liquidate completely.
     function liquidateAccount(address account) external {
         // Make sure `account` is not trying to liquidate themselves.
@@ -756,6 +757,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Add the market token to the market and set it as listed.
     /// @dev Admin function to set isListed and add support for the market.
+    ///      Emits a {TokenListed} event.
     /// @param mToken The address of the market token to list.
     function listToken(address mToken) external {
         _checkElevatedPermissions();
@@ -792,6 +794,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     }
 
     /// @notice Sets the collRatio for a market token.
+    /// @dev Emits a {CollateralTokenUpdated} event.
     /// @param mToken The market to set the collateralization ratio on.
     /// @param collRatio The ratio at which $1 of collateral can be borrowed
     ///                  against, for `mToken`, in basis points.
@@ -952,6 +955,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     }
 
     /// @notice Set `newCollateralizationCaps` for the given `mTokens`.
+    /// @dev Emits a {NewCollateralCap} event.
     /// @param mTokens The addresses of the markets (tokens) to
     ///                change the borrow caps for.
     /// @param newCollateralCaps The new collateral cap values in underlying
@@ -998,6 +1002,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Admin function to set market token mint status.
     /// @dev Requires timelock authority if unpausing.
+    ///      Emits a {TokenActionPaused} event.
     /// @param mToken The market token to set minting status for.
     /// @param state Whether the desired action is pausing or unpausing.
     function setMintPaused(address mToken, bool state) external {
@@ -1013,6 +1018,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Admin function to set market token borrow status.
     /// @dev Requires timelock authority if unpausing.
+    ///      Emits a {TokenActionPaused} event.
     /// @param mToken The market token to set borrowing status for.
     /// @param state Whether the desired action is pausing or unpausing.
     function setBorrowPaused(address mToken, bool state) external {
@@ -1028,6 +1034,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Admin function to set market-wide redemption status.
     /// @dev Requires timelock authority if unpausing.
+    ///      Emits an {ActionPaused} event.
     /// @param state Whether the desired action is pausing or unpausing.
     function setRedeemPaused(bool state) external {
         _checkAuthorizedPermissions(state);
@@ -1038,6 +1045,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Admin function to set market-wide transfer status.
     /// @dev Requires timelock authority if unpausing.
+    ///      Emits an {ActionPaused} event.
     /// @param state Whether the desired action is pausing or unpausing.
     function setTransferPaused(bool state) external {
         _checkAuthorizedPermissions(state);
@@ -1048,6 +1056,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Admin function to set market-wide seize status.
     /// @dev Requires timelock authority if unpausing.
+    ///      Emits an {ActionPaused} event.
     /// @param state Whether the desired action is pausing or unpausing.
     function setSeizePaused(bool state) external {
         _checkAuthorizedPermissions(state);
@@ -1059,6 +1068,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @notice Used to set the position folding address to allow
     ///         complex position actions.
     /// @dev Requires timelock authority.
+    ///      Emits a {NewPositionFoldingContract} event.
     /// @param newPositionFolding The new position folding address.
     function setPositionFolding(address newPositionFolding) external {
         _checkElevatedPermissions();
@@ -1088,6 +1098,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market.
+    /// @dev May emit a {TokenPositionCreated} event.
     /// @param dToken The debt token to verify the borrow of.
     /// @param account The account which would borrow the asset.
     /// @param amount The amount of underlying the account would borrow.
@@ -1145,6 +1156,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Helper function for posting `tokens` of `cToken`
     ///         as collateral for `account` inside this market.
+    /// @dev Emits {CollateralPosted} and, potentially, {TokenPositionCreated} events.
     /// @param account The account posting collateral.
     /// @param accountData Cached account metadata of `account.`
     /// @param cToken The address of the cToken to post collateral for.
@@ -1177,6 +1189,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Helper function for removing `cToken` collateral posted for
     ///         `account` inside this market.
+    /// @dev Emits a {CollateralRemoved} event.
     /// @param account The address of the account to reduce `mToken`
     ///                collateral posted for.
     /// @param accountData Cached account metadata of `account.`
@@ -1207,6 +1220,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     ///         an account's liquidity calculation.
     /// @dev Sender must not have an outstanding borrow balance in the asset,
     ///      or be providing necessary collateral for an outstanding borrow.
+    ///      Emits a {TokenPositionClosed} event.
     /// @param account The address of the account to close a
     ///        `mToken` position for.
     /// @param accountData Cached account metadata of `account.`
