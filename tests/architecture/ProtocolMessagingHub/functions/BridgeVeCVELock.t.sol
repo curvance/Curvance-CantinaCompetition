@@ -8,9 +8,6 @@ import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHu
 contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
     ITokenBridge public tokenBridge = ITokenBridge(_TOKEN_BRIDGE);
 
-    uint256[] public chainIDs;
-    uint16[] public wormholeChainIDs;
-
     function setUp() public override {
         super.setUp();
 
@@ -23,13 +20,6 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
             1,
             23
         );
-
-        chainIDs.push(1);
-        wormholeChainIDs.push(2);
-        chainIDs.push(42161);
-        wormholeChainIDs.push(23);
-
-        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         deal(address(veCVE), _ONE);
     }
@@ -57,7 +47,10 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
     function test_bridgeVeCVELock_fail_whenNativeTokenIsNotEnoughToCoverFee()
         public
     {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         vm.prank(address(veCVE));
 
@@ -71,7 +64,10 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
     }
 
     function test_bridgeVeCVELock_success() public {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         vm.prank(address(veCVE));
 

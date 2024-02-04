@@ -124,6 +124,10 @@ contract TestBaseMarket is TestBase {
     function setUp() public virtual {
         _fork(18031848);
 
+        _init();
+    }
+
+    function _init() internal {
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
@@ -169,6 +173,23 @@ contract TestBaseMarket is TestBase {
         centralRegistry.setWormholeCore(_WORMHOLE_CORE);
         centralRegistry.setTokenBridge(_TOKEN_BRIDGE);
         centralRegistry.setGelatoSponsor(address(1));
+
+        uint256[] memory chainIds = new uint256[](3);
+        uint16[] memory wormholeChainIds = new uint16[](3);
+        uint32[] memory cctpDomains = new uint32[](3);
+
+        chainIds[0] = 1;
+        wormholeChainIds[0] = 2;
+        cctpDomains[0] = 0;
+        chainIds[1] = 137;
+        wormholeChainIds[1] = 5;
+        cctpDomains[1] = 7;
+        chainIds[2] = 42161;
+        wormholeChainIds[2] = 23;
+        cctpDomains[2] = 3;
+
+        centralRegistry.registerWormholeChainIDs(chainIds, wormholeChainIds);
+        centralRegistry.registerCCTPDomains(chainIds, cctpDomains);
     }
 
     function _deployCVE() internal {

@@ -26,11 +26,10 @@ contract TestBorrowAndBridge is TestBaseMarket {
 
     ZapperBorrow public zapperBorrow;
 
-    uint256[] public chainIDs;
-    uint16[] public wormholeChainIDs;
-
     function setUp() public override {
-        super.setUp();
+        _fork(19140000);
+
+        _init();
 
         owner = address(this);
 
@@ -118,13 +117,6 @@ contract TestBorrowAndBridge is TestBaseMarket {
         // provide enough liquidity
         _provideEnoughLiquidityForLeverage();
 
-        chainIDs.push(1);
-        wormholeChainIDs.push(2);
-        chainIDs.push(42161);
-        wormholeChainIDs.push(23);
-
-        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
-
         deal(user1, _ONE);
 
         zapperBorrow = new ZapperBorrow(
@@ -184,7 +176,7 @@ contract TestBorrowAndBridge is TestBaseMarket {
             params
         );
 
-        uint256 messageFee = zapperBorrow.quoteWormholeFee(23, false);
+        uint256 messageFee = zapperBorrow.quoteWormholeFee(42161, false);
 
         // try borrow()
         vm.startPrank(user1);

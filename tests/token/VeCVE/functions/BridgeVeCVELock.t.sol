@@ -8,9 +8,6 @@ import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridg
 contract BridgeVeCVELockTest is TestBaseVeCVE {
     ITokenBridge public tokenBridge = ITokenBridge(_TOKEN_BRIDGE);
 
-    uint256[] public chainIDs;
-    uint16[] public wormholeChainIDs;
-
     function setUp() public override {
         super.setUp();
 
@@ -23,13 +20,6 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
             1,
             23
         );
-
-        chainIDs.push(1);
-        wormholeChainIDs.push(2);
-        chainIDs.push(42161);
-        wormholeChainIDs.push(23);
-
-        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
 
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
@@ -51,7 +41,10 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         vm.expectRevert();
         veCVE.bridgeVeCVELock{ value: messageFee - 1 }(
@@ -69,7 +62,10 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         centralRegistry.setEarlyUnlockPenaltyMultiplier(3000);
 
