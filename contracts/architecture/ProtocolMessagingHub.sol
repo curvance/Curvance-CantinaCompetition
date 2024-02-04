@@ -40,12 +40,11 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         address to,
         uint256 gethChainId
     );
-    error ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+    error ProtocolMessagingHub__MessagingChainIdIsInvalid(
         uint16 messagingChainId,
         uint256 dstChainId
     );
-    error ProtocolMessagingHub__GETHChainIdIsNotSupported(uint256 gethChainId);
-    error ProtocolMessagingHub__InsufficientGasToken();
+    error ProtocolMessagingHub__ChainIdIsNotSupported(uint256 gethChainId);
     error ProtocolMessagingHub__MessagingHubPaused();
     error ProtocolMessagingHub__MessageHashIsAlreadyDelivered(
         bytes32 messageHash
@@ -129,14 +128,14 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         uint8 payloadId = abi.decode(payload, (uint8));
 
         if (payloadId == 1) {
-            (, bytes32 token, uint256 amount) = abi.decode(
+            (, address token, uint256 amount) = abi.decode(
                 payload,
-                (uint8, bytes32, uint256)
+                (uint8, address, uint256)
             );
 
             address feeToken = centralRegistry.feeToken();
 
-            if (address(uint160(uint256(token))) == feeToken) {
+            if (token == feeToken) {
                 address locker = centralRegistry.cveLocker();
                 SafeTransferLib.safeTransfer(feeToken, locker, amount);
 
@@ -242,46 +241,48 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     }
 
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`.
-    /// @param dstChainId Wormhole specific destination chain ID.
+    /// @param dstChainId Destination chain ID.
     /// @param to The address of Messaging Hub on `dstChainId`.
     /// @param amount The amount of token to transfer.
-    function sendFees(uint16 dstChainId, address to, uint256 amount) external {
+    function sendFees(
+        uint256 dstChainId,
+        address to,
+        uint256 amount
+    ) external {
         _checkMessagingHubStatus();
         _checkPermissions();
 
-        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
+        uint256 messagingChainId = centralRegistry.GETHToMessagingChainId(
             dstChainId
         );
 
         {
             // Avoid stack too deep
             OmnichainData memory operator = centralRegistry
-                .getOmnichainOperators(to, gethChainId);
+                .getOmnichainOperators(to, dstChainId);
 
             // Validate that the operator is authorized.
             if (operator.isAuthorized < 2) {
                 revert ProtocolMessagingHub__OperatorIsNotAuthorized(
                     to,
-                    gethChainId
+                    dstChainId
                 );
             }
 
             // Validate that the operator messaging chain matches.
             // the destination chain id.
-            if (operator.messagingChainId != dstChainId) {
-                revert ProtocolMessagingHub__MessagingChainIdIsNotDstChainId(
+            if (operator.messagingChainId != messagingChainId) {
+                revert ProtocolMessagingHub__MessagingChainIdIsInvalid(
                     operator.messagingChainId,
-                    dstChainId
+                    messagingChainId
                 );
             }
 
             // Validate that we are aiming for a supported chain.
             if (
-                centralRegistry.supportedChainData(gethChainId).isSupported < 2
+                centralRegistry.supportedChainData(dstChainId).isSupported < 2
             ) {
-                revert ProtocolMessagingHub__GETHChainIdIsNotSupported(
-                    gethChainId
-                );
+                revert ProtocolMessagingHub__ChainIdIsNotSupported(dstChainId);
             }
         }
 
@@ -348,7 +349,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
         return
             _sendWormholeMessages(
-                centralRegistry.wormholeChainId(dstChainId),
+                dstChainId,
                 dstMessagingHub,
                 msg.value,
                 5,

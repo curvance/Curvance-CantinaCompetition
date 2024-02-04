@@ -417,6 +417,22 @@ contract CentralRegistry is ERC165 {
         }
     }
 
+    /// @notice Register CCTP domains for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param cctpDomains CCTP domains.
+    function registerCCTPDomains(
+        uint256[] calldata chainIds,
+        uint32[] calldata cctpDomains
+    ) external {
+        _checkElevatedPermissions();
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i; i < numChainIds; ++i) {
+            cctpDomain[chainIds[i]] = cctpDomains[i];
+        }
+    }
+
     /// @notice Sets an address of gelato sponsor.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
     /// @param newGelatoSponsor The new address of new gelato sponsor.

@@ -28,10 +28,10 @@ interface IProtocolMessagingHub {
     ) external payable;
 
     /// @notice Sends fee tokens to the Messaging Hub on `dstChainId`.
-    /// @param dstChainId Wormhole specific destination chain ID .
+    /// @param dstChainId Destination chain ID .
     /// @param to The address of Messaging Hub on `dstChainId`.
     /// @param amount The amount of token to transfer.
-    function sendFees(uint16 dstChainId, address to, uint256 amount) external;
+    function sendFees(uint256 dstChainId, address to, uint256 amount) external;
 
     /// @notice Bridge CVE to destination chain.
     /// @param dstChainId Chain ID of the target blockchain.

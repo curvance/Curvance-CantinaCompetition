@@ -29,4 +29,9 @@ interface ITokenMessenger {
         address burnToken,
         bytes32 destinationCaller
     ) external returns (uint64 nonce);
+
+    /// @notice Return TokenMessenger on remote domain.
+    function remoteTokenMessengers(
+        uint32 domain
+    ) external view returns (bytes32);
 }

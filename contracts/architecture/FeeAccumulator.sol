@@ -63,7 +63,7 @@ contract FeeAccumulator is ReentrancyGuard {
     mapping(address => RewardToken) public rewardTokenInfo;
 
     /// @notice ChainID => Epoch => 2 = yes; 0 = no.
-    mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
+    mapping(uint256 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
 
@@ -291,11 +291,11 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
+    /// @param dstChainId Destination chain ID where the message data
+    ///                   should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     function sendWormholeMessages(
-        uint16 dstChainId,
+        uint256 dstChainId,
         address toAddress
     ) external {
         if (!centralRegistry.isHarvester(msg.sender)) {
@@ -311,11 +311,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
         lockedTokenDataSent[dstChainId][epoch] = 2;
 
-        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
-            dstChainId
-        );
         ChainData memory chainData = centralRegistry.supportedChainData(
-            gethChainId
+            dstChainId
         );
 
         if (chainData.isSupported < 2) {
@@ -339,10 +336,10 @@ contract FeeAccumulator is ReentrancyGuard {
             centralRegistry.protocolMessagingHub()
         );
 
-        (uint256 gas, ) = messagingHub.quoteWormholeFee(gethChainId, false);
+        (uint256 gas, ) = messagingHub.quoteWormholeFee(dstChainId, false);
 
         messagingHub.sendWormholeMessages{ value: gas }(
-            gethChainId,
+            dstChainId,
             toAddress,
             payload
         );
@@ -773,7 +770,6 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
 
         uint256 chainId;
-        uint16 messagingChainId;
         uint256 feeTokenBalanceForChain;
 
         // Messaging Hub can pull fee token directly so we do not
@@ -781,13 +777,12 @@ contract FeeAccumulator is ReentrancyGuard {
         for (uint256 i; i < numChains; ) {
             chainId = crossChainLockData[i].chainId;
             chainData = centralRegistry.supportedChainData(chainId);
-            messagingChainId = centralRegistry.GETHToMessagingChainId(chainId);
             feeTokenBalanceForChain =
                 (feeTokenBalance * crossChainLockData[i].lockAmount) /
                 totalLockedTokens;
 
             messagingHub.sendFees(
-                messagingChainId,
+                chainId,
                 chainData.messagingHub,
                 feeTokenBalanceForChain
             );

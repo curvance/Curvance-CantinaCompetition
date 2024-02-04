@@ -5,7 +5,6 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
@@ -85,8 +84,23 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
             revert FeeTokenBridgingHub__InsufficientGasToken();
         }
 
-        if (address(centralRegistry.circleTokenMessenger()) != address(0)) {
-            _transferFeeTokenViaCCTP(dstChainId, to, amount, wormholeFee);
+        ITokenMessenger circleTokenMessenger = centralRegistry
+            .circleTokenMessenger();
+
+        if (
+            address(circleTokenMessenger) != address(0) &&
+            circleTokenMessenger.remoteTokenMessengers(
+                centralRegistry.cctpDomain(dstChainId)
+            ) !=
+            bytes32(0)
+        ) {
+            _transferFeeTokenViaCCTP(
+                circleTokenMessenger,
+                dstChainId,
+                to,
+                amount,
+                wormholeFee
+            );
         } else {
             _transferTokenViaWormhole(
                 feeToken,
@@ -99,13 +113,12 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
     }
 
     function _transferFeeTokenViaCCTP(
+        ITokenMessenger circleTokenMessenger,
         uint256 dstChainId,
         address to,
         uint256 amount,
         uint256 wormholeFee
     ) internal {
-        ITokenMessenger circleTokenMessenger = centralRegistry
-            .circleTokenMessenger();
         IWormholeRelayer wormholeRelayer = centralRegistry.wormholeRelayer();
         uint16 wormholeChainId = centralRegistry.wormholeChainId(dstChainId);
 
@@ -157,7 +170,8 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
     ) internal returns (uint64) {
         ITokenBridge tokenBridge = centralRegistry.tokenBridge();
         uint16 wormholeChainId = centralRegistry.wormholeChainId(dstChainId);
-        uint256 messageFee = centralRegistry.wormholeCore().messageFee();
+        IWormhole wormholeCore = centralRegistry.wormholeCore();
+        uint256 messageFee = wormholeCore.messageFee();
 
         SwapperLib._approveTokenIfNeeded(token, address(tokenBridge), amount);
 
@@ -178,7 +192,7 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
             memory vaaKeys = new IWormholeRelayer.VaaKey[](1);
         vaaKeys[0] = IWormholeRelayer.VaaKey({
             emitterAddress: bytes32(uint256(uint160(address(tokenBridge)))),
-            chainId: centralRegistry.wormholeChainId(block.chainid),
+            chainId: wormholeCore.chainId(),
             sequence: sequence
         });
 
