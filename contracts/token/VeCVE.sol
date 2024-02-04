@@ -96,7 +96,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     constructor(ICentralRegistry centralRegistry_) {
         _name = "Vote Escrowed CVE";
-        _symbol = "VeCVE";
+        _symbol = "veCVE";
 
         if (
             !ERC165Checker.supportsInterface(

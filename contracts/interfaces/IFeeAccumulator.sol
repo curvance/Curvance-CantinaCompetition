@@ -20,4 +20,6 @@ interface IFeeAccumulator {
 
     /// @notice Updates to new messaging hub and moves fee token approval
     function notifyUpdatedMessagingHub() external;
+
+    function getRewardTokenBalances() external view returns (uint256[] memory);
 }
