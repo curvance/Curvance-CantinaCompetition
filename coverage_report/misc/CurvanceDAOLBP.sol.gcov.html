@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-30 13:08:35</td>
+            <td class="headerValue">2024-02-01 22:51:55</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">9</td>
@@ -328,7 +328,7 @@
 <a name="266"><span class="lineNum">     266 </span>            :     /// INTERNAL FUNCTIONS ///</a>
 <a name="267"><span class="lineNum">     267 </span>            : </a>
 <a name="268"><span class="lineNum">     268 </span>            :     /// @notice Preconditional check to determine whether the LBP is active.</a>
-<a name="269"><span class="lineNum">     269 </span>            :     function _canCommit() internal {</a>
+<a name="269"><span class="lineNum">     269 </span>            :     function _canCommit() internal view {</a>
 <a name="270"><span class="lineNum">     270 </span><span class="lineCov">          9 :         SaleStatus saleStatus = currentStatus();</span></a>
 <a name="271"><span class="lineNum">     271 </span><span class="lineCov">          9 :         if (saleStatus == SaleStatus.NotStarted) {</span></a>
 <a name="272"><span class="lineNum">     272 </span><span class="lineCov">          2 :             revert CurvanceDAOLBP__NotStarted();</span></a>
