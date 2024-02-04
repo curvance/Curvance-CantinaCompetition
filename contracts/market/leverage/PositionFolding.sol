@@ -20,33 +20,63 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
 
+    /// @param borrowToken Address of dToken that will be borrowed from.
+    /// @param borrowAmount The amount of underlying tokens from dToken
+    ///                     that will be borrowed.
+    /// @param collateralToken Address of cToken that will borrowed funds
+    ///                        will be routed into.
+    /// @param swapData Swapperlib swapping struct containing instructions
+    ///                 on how to handle the necessary dToken swap
+    ///                 to facilitate leveraging.
+    /// @param zapperCall Swapperlib zapping struct containing instructions
+    ///                   on how to handle the necessary cToken zap
+    ///                   to facilitate leveraging.
     struct LeverageStruct {
         DToken borrowToken;
         uint256 borrowAmount;
         CTokenPrimitive collateralToken;
-        // borrow underlying -> zapper input token
         SwapperLib.Swap swapData;
-        // zapper input token -> enter curvance
         SwapperLib.ZapperCall zapperCall;
     }
 
+    /// @param collateralToken Address of cToken that will be routed into
+    ///                        dToken underlying to repay debt.
+    /// @param collateralAmount The amount of cTokens that will be
+    ///                         deleveraged.
+    /// @param borrowToken Address of dToken that will have its underlying
+    ///                    token debt repaid.
+    /// @param zapperCall Swapperlib zapping struct containing instructions
+    ///                   on how to handle the necessary cToken outward zap
+    ///                   to a single token (e.g. dToken underlying) to
+    ///                   facilitate deleveraging.
+    /// @param swapData Optional Swapperlib swapping struct containing
+    ///                 instructions on how to handle zapping into dToken
+    ///                 underlying to facilitate deleveraging.
+    /// @param repayAmount The amount of underlying tokens from dToken that
+    ///                    will be repaid.
     struct DeleverageStruct {
         CTokenPrimitive collateralToken;
         uint256 collateralAmount;
         DToken borrowToken;
-        // collateral underlying to a single token (can be borrow underlying)
         SwapperLib.ZapperCall zapperCall;
-        // (optional) zapper outout to borrow underlying
         SwapperLib.Swap swapData;
         uint256 repayAmount;
     }
 
     /// CONSTANTS ///
 
-    uint256 public constant MAX_LEVERAGE = 9900; // 99%
+    /// @notice Maximum desired leverage output, we choose 99% of what is
+    ///         possible to minimize reversion from things like price
+    ///         fluctuations, swap fees, and oracle vs pool price divergence,
+    ///         in basis points.
+    ///         9900 = 99% = 0.99.
+    uint256 public constant MAX_LEVERAGE = 9900;
 
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
-    IMarketManager public immutable marketManager; // MarketManager linked
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
+    /// @notice Address of the Market Manager linked to this Position Folding
+    ///         contract.
+    IMarketManager public immutable marketManager;
 
     /// ERRORS ///
 
@@ -67,6 +97,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// MODIFIERS ///
 
+    /// @dev Checks slippage on position folding prior and after
+    ///      leverage/deleverage action, works similar to reentryguard
+    ///      with pre and post checks.
     modifier checkSlippage(address user, uint256 slippage) {
         (uint256 collateralBefore, uint256 debtBefore) = marketManager
             .solvencyOf(user);
@@ -79,7 +112,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         );
 
         uint256 liquidityAfter = sumCollateral - sumDebt;
-        // If there was slippage, make sure its within slippage tolerance
+        // If there was slippage, make sure its within slippage tolerance.
         if (liquidityBefore > liquidityAfter) {
             if (
                 liquidityBefore - liquidityAfter >=
@@ -104,6 +137,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidCentralRegistry();
         }
 
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the Central Registry.
         if (!centralRegistry_.isMarketManager(marketManager_)) {
             revert PositionFolding__InvalidMarketManager();
         }
@@ -112,12 +147,23 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         marketManager = IMarketManager(marketManager_);
     }
 
+
+
+    /// @notice Lightweight getter for any associated leverage fee.
     function getProtocolLeverageFee() public view returns (uint256) {
         return centralRegistry.protocolLeverageFee();
     }
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Leverages an active Curvance position in favor of increasing
+    ///         both collateral and debt inside the system.
+    /// @dev Measures slippage through pre/post conditional slippage check
+    ///      in `checkSlippage` modifier.
+    /// @param leverageData Struct containing instructions on desired
+    ///                     leverage action.
+    /// @param slippage Slippage accepted by the user for execution of
+    ///                 `leverageData` leverage action, in basis points.
     function leverage(
         LeverageStruct calldata leverageData,
         uint256 slippage
@@ -125,6 +171,14 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         _leverage(leverageData);
     }
 
+    /// @notice Deleverages an active Curvance position in favor of decreasing
+    ///         both collateral and debt inside the system.
+    /// @dev Measures slippage through pre/post conditional slippage check
+    ///      in `checkSlippage` modifier.
+    /// @param deleverageData Struct containing instructions on desired
+    ///                       deleverage action.
+    /// @param slippage Slippage accepted by the user for execution of
+    ///                 `deleverageData` deleverage action, in basis points.
     function deleverage(
         DeleverageStruct calldata deleverageData,
         uint256 slippage
@@ -132,15 +186,31 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         _deleverage(deleverageData);
     }
 
+    /// @notice Callback function to execute post borrow of
+    ///         `borrowToken`'s underlying and swap it to deposit
+    ///         new collateral for `borrower`.
+    /// @dev Measures slippage after this callback validating that `borrower`
+    ///      is still within acceptable liquidity requirements.
+    /// @param borrowToken The borrow token borrowed from.
+    /// @param borrower The user borrowing that will be swapped into
+    ///                 collateral assets deposited into Curvance.
+    /// @param borrowAmount The amount of `borrowToken`'s underlying borrowed.
+    /// @param params Swap and deposit instructions.
     function onBorrow(
         address borrowToken,
         address borrower,
         uint256 borrowAmount,
         bytes calldata params
     ) external override {
-        if (
-            !marketManager.isListed(borrowToken) || msg.sender != borrowToken
-        ) {
+        // Validate that the debt token itself is executing
+        // the callback.
+        if (msg.sender != borrowToken) {
+            revert PositionFolding__Unauthorized();
+        }
+
+        // Validate the debt token is actually listed to this
+        // Market Manager.
+        if (!marketManager.isListed(borrowToken)) {
             revert PositionFolding__Unauthorized();
         }
 
@@ -162,7 +232,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidAmount();
         }
 
-        // take protocol fee
+        // Take protocol fee, if any.
         uint256 fee = (borrowAmount * getProtocolLeverageFee()) / WAD;
         if (fee > 0) {
             SafeTransferLib.safeTransfer(
@@ -172,21 +242,25 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
+        // Check to make sure there is calldata attached to execute the swap.
         if (leverageData.swapData.call.length > 0) {
-            // swap borrow underlying to zapper input token
+            // Validate that the target Swapper is approved inside Curvance.
             if (!centralRegistry.isSwapper(leverageData.swapData.target)) {
                 revert PositionFolding__InvalidSwapper(
                     leverageData.swapData.target
                 );
             }
 
+            // Swap borrow underlying to Zapper input token.
             SwapperLib.swap(centralRegistry, leverageData.swapData);
         }
 
-        // prepare LP
+        // Prepare cToken underlying.
         SwapperLib.ZapperCall memory zapperCall = leverageData.zapperCall;
 
+        // Check to make sure there is calldata attached to execute the zap.
         if (zapperCall.call.length > 0) {
+            // Validate that the target Zapper is approved inside Curvance.
             if (!centralRegistry.isZapper(leverageData.zapperCall.target)) {
                 revert PositionFolding__InvalidZapper(
                     leverageData.zapperCall.target
@@ -196,23 +270,31 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             SwapperLib.zap(zapperCall);
         }
 
-        // enter curvance
-        address collateralUnderlying = leverageData
-            .collateralToken
-            .underlying();
+        // We do not need to check whether collateralToken is listed
+        // or not as even if they found a way to input a malicious
+        // token here the post conditional solvency check will revert
+        // the whole operation.
+        CTokenPrimitive collateralToken = leverageData.collateralToken;
+        
+        // Unwrap leverage instructions for collateral deposit.
+        address collateralUnderlying = collateralToken.underlying();
         uint256 amount = IERC20(collateralUnderlying).balanceOf(address(this));
+
+        // Approve `amount` of `collateralUnderlying` to cToken contract.
         SwapperLib._approveTokenIfNeeded(
             collateralUnderlying,
-            address(leverageData.collateralToken),
+            address(collateralToken),
             amount
         );
-        leverageData.collateralToken.depositAsCollateral(amount, borrower);
 
-        // transfer remaining zapper input token back to the user
+        // Enter Curvance.
+        collateralToken.depositAsCollateral(amount, borrower);
+
         uint256 remaining = IERC20(zapperCall.inputToken).balanceOf(
             address(this)
         );
 
+        // Transfer remaining Zapper input token back to the user.
         if (remaining > 0) {
             SafeTransferLib.safeTransfer(
                 zapperCall.inputToken,
@@ -221,9 +303,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
-        // transfer remaining borrow underlying back to the user
         remaining = IERC20(borrowUnderlying).balanceOf(address(this));
 
+        // Transfer remaining borrow underlying back to the user.
         if (remaining > 0) {
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,
@@ -232,22 +314,38 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
+        // Remove any excess approval.
         SwapperLib._removeApprovalIfNeeded(
             borrowUnderlying,
             address(borrowToken)
         );
     }
 
+    /// @notice Callback function to execute post redemption of
+    ///         `collateralToken`'s underlying and swap it to repay
+    ///         active debt for `redeemer`.
+    /// @dev Measures slippage after this callback validating that `redeemer`
+    ///      is still within acceptable liquidity requirements.
+    /// @param collateralToken The cToken redeemed for its underlying.
+    /// @param redeemer The user redeeming collateral that will be used to
+    ///                 repay their active debt.
+    /// @param collateralAmount The amount of `collateralToken` underlying
+    ///                         redeemed.
+    /// @param params Swap and repayment instructions.
     function onRedeem(
         address collateralToken,
         address redeemer,
         uint256 collateralAmount,
         bytes calldata params
     ) external override {
+        // Validate that the collateral token itself is executing
+        // the callback.
         if (msg.sender != collateralToken) {
             revert PositionFolding__Unauthorized();
         }
 
+        // Validate the collateral token is actually listed to this
+        // Market Manager.
         if (!marketManager.isListed(collateralToken)) {
             revert PositionFolding__Unauthorized();
         }
@@ -264,7 +362,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidParam();
         }
 
-        // swap collateral token to borrow token
+        // Swap collateral token (cToken underlying) to
+        // borrow token (dToken underlying).
         address collateralUnderlying = CTokenPrimitive(collateralToken)
             .underlying();
 
@@ -275,7 +374,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             revert PositionFolding__InvalidAmount();
         }
 
-        // take protocol fee
+        // Take protocol fee, if any.
         uint256 fee = (collateralAmount * getProtocolLeverageFee()) / 10000;
         if (fee > 0) {
             collateralAmount -= fee;
@@ -288,10 +387,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
         SwapperLib.ZapperCall memory zapperCall = deleverageData.zapperCall;
 
+        // Check to make sure there is calldata attached to execute the swap.
         if (zapperCall.call.length > 0) {
             if (collateralUnderlying != zapperCall.inputToken) {
                 revert PositionFolding__InvalidZapperParam();
             }
+
+            // Validate that the target Zapper is approved inside Curvance.
             if (!centralRegistry.isZapper(deleverageData.zapperCall.target)) {
                 revert PositionFolding__InvalidZapper(
                     deleverageData.zapperCall.target
@@ -301,35 +403,43 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             SwapperLib.zap(zapperCall);
         }
 
+        // Check to make sure there is calldata attached to execute the swap.
         if (deleverageData.swapData.call.length > 0) {
-            // swap for borrow underlying
+            // Validate that the target Swapper is approved inside Curvance.
             if (!centralRegistry.isSwapper(deleverageData.swapData.target)) {
                 revert PositionFolding__InvalidSwapper(
                     deleverageData.swapData.target
                 );
             }
 
+            // Swap Swapper input token for borrow underlying.
             SwapperLib.swap(centralRegistry, deleverageData.swapData);
         }
 
-        // repay debt
-        uint256 repayAmount = deleverageData.repayAmount;
+        // We do not need to check whether borrowToken is listed
+        // or not as even if they found a way to input a malicious
+        // token here the post conditional solvency check will revert
+        // the whole operation.
         DToken borrowToken = deleverageData.borrowToken;
 
+        // Unwrap deleverage instructions for debt repayment.
         address borrowUnderlying = borrowToken.underlying();
+        uint256 repayAmount = deleverageData.repayAmount;
         uint256 remaining = IERC20(borrowUnderlying).balanceOf(address(this)) -
             repayAmount;
 
+        // Approve `repayAmount` of `borrowUnderlying` to dToken contract.
         SwapperLib._approveTokenIfNeeded(
             borrowUnderlying,
             address(borrowToken),
             repayAmount
         );
 
-        DToken(address(borrowToken)).repayFor(redeemer, repayAmount);
+        // Repay debt.
+        borrowToken.repayFor(redeemer, repayAmount);
 
+        // Transfer remaining borrow underlying back to user.
         if (remaining > 0) {
-            // remaining borrow underlying back to user
             SafeTransferLib.safeTransfer(
                 borrowUnderlying,
                 redeemer,
@@ -337,9 +447,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
-        // transfer remaining collateral underlying back to the user
         remaining = IERC20(collateralUnderlying).balanceOf(address(this));
 
+        // Transfer remaining collateral underlying back to the user.
         if (remaining > 0) {
             SafeTransferLib.safeTransfer(
                 collateralUnderlying,
@@ -348,6 +458,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
+        // Remove any excess approval.
         SwapperLib._removeApprovalIfNeeded(
             borrowUnderlying,
             address(borrowToken)
@@ -356,6 +467,15 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// PUBLIC FUNCTIONS ///
 
+    /// @notice Calculates the maximum amount of `borrowToken` `user` can
+    ///         borrow for maximum leverage.
+    /// @dev Applies a minor dampening effect to calculated maximum leverage
+    ///      via `MAX_LEVERAGE`.
+    /// @param user The user to query maximum borrow amount for.
+    /// @param borrowToken The dToken that `user` will borrow from
+    ///                    to achieve leverage.
+    /// @return The maximum borrow amount allowed from dToken, measured in
+    ///         underlying token amount.
     function queryAmountToBorrowForLeverageMax(
         address user,
         address borrowToken
@@ -365,6 +485,19 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             uint256 maxDebt,
             uint256 sumDebt
         ) = marketManager.statusOf(user);
+
+        // We can calculate terminal leverage by calculating the infinite
+        // series of swapping to maximum LTV over and over, which results
+        // in the equation 1 / (1 - LTV). 
+        // 
+        // For example, 80% LTV will result in terminal maximum leverage of:
+        // 1 / (1 - .8) -> (1 / 0.2) -> 5x leverage. 
+        // The equation below is equal to this equation,
+        // just extrapolated for a user's collateral vs debt.
+        //
+        // We also embed a `MAX_LEVERAGE` dampening effect to minimize
+        // reversion due to imperfect execution due to things such as
+        // price fluctuations, and AMM fees. 
         uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /
@@ -376,6 +509,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             ICentralRegistry(centralRegistry).oracleRouter()
         ).getPrice(address(borrowToken), true, false);
 
+        // Validate we got a price for `borrowToken`.
         if (errorCode != 0) {
             revert PositionFolding__InvalidTokenPrice();
         }
@@ -394,6 +528,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
+    /// @notice Leverages an active Curvance position in favor of increasing
+    ///         both collateral and debt inside the system.
+    /// @param leverageData Struct containing instructions on desired
+    ///                     leverage action.
     function _leverage(LeverageStruct memory leverageData) internal {
         DToken borrowToken = leverageData.borrowToken;
         uint256 borrowAmount = leverageData.borrowAmount;
@@ -418,6 +556,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         );
     }
 
+    /// @notice Deleverages an active Curvance position in favor of decreasing
+    ///         both collateral and debt inside the system.
+    /// @param deleverageData Struct containing instructions on desired
+    ///                       deleverage action.
     function _deleverage(DeleverageStruct memory deleverageData) internal {
         bytes memory params = abi.encode(deleverageData);
         CTokenPrimitive collateralToken = deleverageData.collateralToken;
