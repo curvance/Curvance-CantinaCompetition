@@ -272,7 +272,7 @@ contract CentralRegistry is ERC165 {
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
-        bytes32 newSymbol = Bytes32Helper._stringToBytes32(
+        bytes32 newSymbol = Bytes32Helper.stringToBytes32(
             IERC20(newCVE).symbol()
         );
 
@@ -292,7 +292,7 @@ contract CentralRegistry is ERC165 {
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
 
-        bytes32 newSymbol = Bytes32Helper._stringToBytes32(
+        bytes32 newSymbol = Bytes32Helper.stringToBytes32(
             IERC20(newVeCVE).symbol()
         );
 

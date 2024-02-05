@@ -28,7 +28,8 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Volatile pool address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Volatile pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// ERRORS ///

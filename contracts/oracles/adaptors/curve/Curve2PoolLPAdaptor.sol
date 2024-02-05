@@ -46,7 +46,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Curve lp token address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Curve lp token address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///

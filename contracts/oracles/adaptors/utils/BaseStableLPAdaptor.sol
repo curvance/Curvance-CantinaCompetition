@@ -28,7 +28,8 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Stable pool address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Stable pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// ERRORS ///

@@ -44,7 +44,8 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Curve asset address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Curve asset address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///

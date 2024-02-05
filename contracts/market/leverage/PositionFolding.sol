@@ -17,6 +17,12 @@ import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
+/// @dev The Curvance Position Folding contract enshrines actions that
+///      usually would require multiple looped actions to facilitate,
+///      namely leveraging a position up or deleveraging it for withdrawal.
+///
+///      CToken and DToken contracts facilitate these operations through
+///      integration with Position Foldings callback functions. 
 contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// TYPES ///
 

@@ -14,7 +14,8 @@ abstract contract BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Asset => Supported by adaptor.
+    /// @notice Whether an asset is supported by the Oracle Adaptor or not.
+    /// @dev Asset => Supported by adaptor.
     mapping(address => bool) public isSupportedAsset;
 
     /// ERRORS ///
