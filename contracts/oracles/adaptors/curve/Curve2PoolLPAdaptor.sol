@@ -13,22 +13,28 @@ import { ICurvePool } from "contracts/interfaces/external/curve/ICurvePool.sol";
 contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
     /// TYPES ///
 
+    /// @notice Stores configuration data for Curve LP price sources.
+    /// @param pool The address of the LP token/Curve pool.
+    /// @param underlying0 The address of first underlying asset.
+    /// @param underlying1 The address of second underlying asset.
+    /// @param divideRate0 If we only have the market price of the underlying,
+    ///                    and there is a rate with the underlying, then
+    ///                    divide out the rate.
+    /// @param divideRate1 If we only new the safe price of constitient assets
+    ///                    like sDAI,then we need to divide out the rate
+    ///                    stored in the curve pool.
+    /// @param isCorrelated Whether the lp token is made up of correlated
+    ///                     assets or not.
+    /// @param upperBound Upper bound allowed for an LP token's virtual price.
+    /// @param lowerBound Lower bound allowed for an LP token's virtual price.
     struct AdaptorData {
         address pool;
-        address underlyingOrConstituent0;
-        address underlyingOrConstituent1;
-        /// @notice If we only have the market price of the underlying,
-        ///         and there is a rate with the underlying,
-        ///         then divide out the rate.
+        address underlying0;
+        address underlying1;
         bool divideRate0;
-        /// @notice If we only new the safe price of constitient assets
-        ///         like sDAI,then we need to divide out the rate stored
-        ///         in the curve pool.
         bool divideRate1;
         bool isCorrelated;
-        /// @notice Upper bound allowed for an LP token's virtual price.
         uint256 upperBound;
-        /// @notice Lower bound allowed for an LP token's virtual price.
         uint256 lowerBound;
     }
 
@@ -125,7 +131,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         uint256 price1;
         uint256 errorCode;
         (price0, errorCode) = oracleRouter.getPrice(
-            data.underlyingOrConstituent0,
+            data.underlying0,
             inUSD,
             getLower
         );
@@ -134,7 +140,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
             return pData;
         }
         (price1, errorCode) = oracleRouter.getPrice(
-            data.underlyingOrConstituent1,
+            data.underlying1,
             inUSD,
             getLower
         );
@@ -202,7 +208,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         // by the Oracle Router.
         if (
             !IOracleRouter(oracleRouter).isSupportedAsset(
-                data.underlyingOrConstituent0
+                data.underlying0
             )
         ) {
             revert Curve2PoolLPAdaptor__QuoteAssetIsNotSupported();
@@ -212,7 +218,7 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
         // by the Oracle Router.
         if (
             !IOracleRouter(oracleRouter).isSupportedAsset(
-                data.underlyingOrConstituent1
+                data.underlying1
             )
         ) {
             revert Curve2PoolLPAdaptor__QuoteAssetIsNotSupported();
@@ -246,8 +252,8 @@ contract Curve2PoolLPAdaptor is CurveBaseAdaptor {
             // Make sure that data underlying is configured properly
             // via onchain pool check.
             if (
-                underlying != data.underlyingOrConstituent0 &&
-                underlying != data.underlyingOrConstituent1
+                underlying != data.underlying0 &&
+                underlying != data.underlying1
             ) {
                 revert Curve2PoolLPAdaptor__UnsupportedPool();
             }

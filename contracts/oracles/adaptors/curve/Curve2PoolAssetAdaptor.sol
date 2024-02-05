@@ -17,16 +17,26 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
     /// TYPES ///
 
+    /// @notice Stores configuration data for Curve LP price sources.
+    /// @param pool The address of the LP token/Curve pool.
+    /// @param baseToken The address of asset that the adaptor is trying
+    ///                  to price.
+    /// @param baseTokenIndex The index inside coins() corresponding
+    ///                       to `baseToken`.
+    /// @param quoteTokenIndex The index inside coins() corresponding
+    ///                        to the asset that `baseToken` is priced in.
+    /// @param baseTokenDecimals The decimals of `baseToken`.
+    /// @param quoteTokenDecimals The decimals of the token at `quoteTokenIndex`.
+    /// @param upperBound Upper bound allowed for an LP token's virtual price.
+    /// @param lowerBound Lower bound allowed for an LP token's virtual price.
     struct AdaptorData {
         address pool;
         address baseToken;
-        int128 quoteTokenIndex;
         int128 baseTokenIndex;
-        uint8 quoteTokenDecimals;
-        uint8 baseTokenDecimals;
-        /// @notice Upper bound allowed for an LP token's virtual price.
+        int128 quoteTokenIndex;
+        uint256 baseTokenDecimals;
+        uint256 quoteTokenDecimals;
         uint256 upperBound;
-        /// @notice Lower bound allowed for an LP token's virtual price.
         uint256 lowerBound;
     }
 
