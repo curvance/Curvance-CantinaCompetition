@@ -41,6 +41,23 @@ contract FuzzMarketManager is StatefulBaseMarket {
         list_token_should_succeed(address(cUSDC));
     }
 
+    function setup() public {
+        setUpFeeds();
+        c_token_deposit(address(cUSDC), 1 ether, true);
+        updateCollateralToken_should_succeed(
+            address(cUSDC),
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        );
+        setCToken_should_succeed(address(cUSDC), 10 ether);
+        post_collateral_should_succeed(address(cUSDC), WAD * 2, true);
+    }
+
     /// @custom:property market-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
     /// @custom:precondition mtoken must not already be listed
     /// @custom:precondition mtoken must be one of: cDAI, cUSDC
@@ -144,8 +161,12 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 uint256 convertSharesError = extractErrorSelector(
                     convertSharesData
                 );
+                emit LogUint256(
+                    "convert to shares error did overflow",
+                    convertSharesError
+                );
                 // CTokenBase._convertToShares will revert when `mulDivDown` overflows with `revert(0,0)
-                if (convertSharesError == 0) {
+                if (convertSharesError == 2904890407) {
                     convertToSharesOverflow = true;
                 }
             }
@@ -169,7 +190,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             if (convertToSharesOverflow || assetCalc) {
                 assertEq(
                     errorSelector,
-                    0,
+                    overflow,
                     "marketManager - expected mtoken.deposit() to revert with overflow"
                 );
             } else {
@@ -199,10 +220,10 @@ contract FuzzMarketManager is StatefulBaseMarket {
         uint256 liqFee,
         uint256 baseCFactor
     ) public {
-        require(feedsSetup);
         require(centralRegistry.hasDaoPermissions(address(this)));
         require(marketManager.isListed(mtoken));
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
+        require(feedsSetup);
 
         (bool divergenceTooLarge, bool priceError) = check_price_divergence(
             mtoken
@@ -866,12 +887,12 @@ contract FuzzMarketManager is StatefulBaseMarket {
     // Bounds the specific variables required to call updateCollateralBounds
     // Variables are generated in basis points, and converted to WAD (by multiplying by 1e14)
     // Assume ALL bounds below are inclusive, on both ends
-    // baseCFactor: [1, WAD/1e14]
+    // baseCFactor: [MIN_BASE_CFACTOR/1e14, MAX_BASE_CFACTOR/1e14]
     // liqFee: [0, MAX_LIQUIDATION_FEE/1e14]
     // liqIncSoft: [MIN_LIQUIDATION_INCENTIVE() / 1e14 + liqFee, MAX_LIQUIDATION_INCENTIVE()/1e14-1]
     // liqIncHard: [liqIncSoft+1, MAX_LIQUIDATION_INCENTIVE/1e14]
     // inherently from above, liqIncSoft < liqIncHard
-    // collReqHard = [liqIncHard, MAX_COLLATERAL_REQUIREMENT()/1e14-1]
+    // collReqHard = [liqIncHard + MIN_EXCESS_COLLATERAL_REQUIREMENT/1e14, MAX_COLLATERAL_REQUIREMENT()/1e14-1]
     // collReqSoft = [collReqHard+1, MAX_COLLATERAL_REQUIREMENT()/1e14]
     // collateralRatio = [0, min(MAX_COLLATERALIZATION_RATIO/1e14, (WAD*WAD)/(WAD+collReqSoft*1e14))]
     function get_safe_update_collateral_bounds(
@@ -883,10 +904,12 @@ contract FuzzMarketManager is StatefulBaseMarket {
         uint256 liqFee,
         uint256 baseCFactor
     ) private {
-        // TODO: incorrect for new rebase (min: 10%, max: 50%)
-        safeBounds.baseCFactor = clampBetween(baseCFactor, 1, 1e18 / 1e14);
+        safeBounds.baseCFactor = clampBetween(
+            baseCFactor,
+            marketManager.MIN_BASE_CFACTOR() / 1e14,
+            marketManager.MAX_BASE_CFACTOR() / 1e14
+        );
 
-        // liquidity incentive soft -> hard goes up
         safeBounds.liqFee = clampBetween(
             liqFee,
             0,
@@ -903,14 +926,16 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
         safeBounds.liqIncHard = clampBetween(
             liqIncHard,
-            safeBounds.liqIncSoft + 1, // TODO expected changes in rebase
+            safeBounds.liqIncSoft + 1,
             marketManager.MAX_LIQUIDATION_INCENTIVE() / 1e14
         );
 
         // collateral requirement soft -> hard goes down
         safeBounds.collReqHard = clampBetween(
             collReqHard,
-            safeBounds.liqIncHard, // account for MIN_EXCESS_COLLATERAL_REQUIREMENT  on rebase
+            safeBounds.liqIncHard +
+                marketManager.MIN_EXCESS_COLLATERAL_REQUIREMENT() /
+                1e14,
             marketManager.MAX_COLLATERAL_REQUIREMENT() / 1e14 - 1
         );
 
@@ -928,7 +953,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             safeBounds.collRatio = clampBetween(
                 collRatio,
                 0,
-                (collatPremium / 1e14) // collat ratio is going to be *1e14, so make sure that it will not overflow
+                (collatPremium / 1e14)
             );
             emit LogUint256(
                 "collateral ratio clamped to collateralization premium:",
