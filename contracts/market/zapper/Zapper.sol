@@ -135,7 +135,7 @@ contract Zapper is ReentrancyGuard {
     /// @param lpMinter The minter address of the Curve lp token.
     /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokens The underlying token addresses of the Curve lp token.
-    /// @param singleAssetWithdraw Whether LP should be unwrapped to a single
+    /// @param singleAssetWithdraw Whether lp should be unwrapped to a single
     ///                            token or not. 
     ///                            0 = all tokens.
     ///                            1 = single token; uint256 interface.

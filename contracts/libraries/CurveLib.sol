@@ -17,11 +17,11 @@ library CurveLib {
 
     /// FUNCTIONS ///
 
-    /// @notice Enter a curve position.
-    /// @param lpMinter The minter address of Curve LP.
-    /// @param lpToken The Curve LP token address.
-    /// @param tokens The underlying coin addresses of Curve LP.
-    /// @param lpMinOutAmount The minimum output amount.
+    /// @notice Enter a Curve lp token position.
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param lpToken The Curve lp token address.
+    /// @param tokens The underlying coins of the Curve lp token.
+    /// @param lpMinOutAmount The minimum lp token output amount acceptable.
     function enterCurve(
         address lpMinter,
         address lpToken,
@@ -34,8 +34,8 @@ library CurveLib {
         uint256 numTokens = tokens.length;
 
         uint256[] memory balances = new uint256[](numTokens);
-        // Approve tokens.
-        for (uint256 i; i < numTokens; ) {
+        // Approve tokens to deposit into Curve lp.
+        for (uint256 i; i < numTokens; ++i) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib._approveTokenIfNeeded(tokens[i], lpMinter, balances[i]);
 
@@ -49,13 +49,9 @@ library CurveLib {
                 value = balances[i];
                 containsEth = true;
             }
-
-            unchecked {
-                ++i;
-            }
         }
 
-        // Enter curve lp minter.
+        // Enter curve lp token position.
         if (numTokens == 4) {
             uint256[4] memory amounts;
             amounts[0] = balances[0];
@@ -77,7 +73,7 @@ library CurveLib {
             ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
         }
 
-        // Check min out amount.
+        // Validate we got an acceptable amount of lp tokens.
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
         if (lpOutAmount < lpMinOutAmount) {
             revert CurveLib__ReceivedAmountIsLessThanMinimum(
@@ -87,11 +83,19 @@ library CurveLib {
         }
     }
 
-    /// @notice Exit a curve position.
-    /// @param lpMinter The minter address of Curve LP.
-    /// @param lpToken The Curve LP token address.
-    /// @param tokens The underlying coin addresses of Curve LP.
-    /// @param lpAmount The LP amount to exit.
+    /// @notice Exit a Curve lp token position.
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param lpToken The Curve lp token address.
+    /// @param tokens The underlying coins of the Curve lp token.
+    /// @param lpAmount The Curve lp token amount to exit.
+    /// @param singleAssetWithdraw Whether lp should be unwrapped to a single
+    ///                            token or not. 
+    ///                            0 = all tokens.
+    ///                            1 = single token; uint256 interface.
+    ///                            2+ = single token; int128 interface.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` != 0, indicates
+    ///                         the coin index inside the Curve lp
+    ///                         to withdraw as.
     function exitCurve(
         address lpMinter,
         address lpToken,
