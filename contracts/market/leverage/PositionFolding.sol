@@ -75,7 +75,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     ///         possible to minimize reversion from things like price
     ///         fluctuations, swap fees, and oracle vs pool price divergence,
     ///         in basis points.
-    ///         9900 = 99% = 0.99.
+    /// @dev 9900 = 99% = 0.99.
     uint256 public constant MAX_LEVERAGE = 9900;
 
     /// @notice Curvance DAO hub.
@@ -546,6 +546,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             address(borrowToken)
         );
 
+        // Validate that the desired borrow amount is within bounds of what
+        // will be allowed by the Market Manager.
         if (borrowAmount > maxBorrowAmount) {
             revert PositionFolding__ExceedsMaximumBorrowAmount(
                 borrowAmount,
@@ -553,12 +555,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
             );
         }
 
-        bytes memory params = abi.encode(leverageData);
-
-        DToken(address(borrowToken)).borrowForPositionFolding(
-            payable(msg.sender),
+        borrowToken.borrowForPositionFolding(
+            msg.sender,
             borrowAmount,
-            params
+            abi.encode(leverageData)
         );
     }
 
@@ -567,14 +567,10 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// @param deleverageData Struct containing instructions on desired
     ///                       deleverage action.
     function _deleverage(DeleverageStruct memory deleverageData) internal {
-        bytes memory params = abi.encode(deleverageData);
-        CTokenPrimitive collateralToken = deleverageData.collateralToken;
-        uint256 collateralAmount = deleverageData.collateralAmount;
-
-        CTokenPrimitive(address(collateralToken)).withdrawByPositionFolding(
-            payable(msg.sender),
-            collateralAmount,
-            params
+        deleverageData.collateralToken.withdrawByPositionFolding(
+            msg.sender,
+            deleverageData.collateralAmount,
+            abi.encode(deleverageData)
         );
     }
 }
