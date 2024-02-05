@@ -94,7 +94,7 @@ contract OracleRouter is ERC165 {
     /// FUNCTIONS ///
 
     /// @notice Adds a new price feed for a specific asset.
-    /// @dev Requires that the feed address is an approved adaptor
+    /// @dev Requires that the feed address is an approved adaptor,
     ///      and that the asset doesn't already have two feeds.
     /// @param asset The address of the asset.
     /// @param feed The address of the new feed.
@@ -103,8 +103,9 @@ contract OracleRouter is ERC165 {
         _addFeed(asset, feed);
     }
 
-    /// @notice Replaces one price feed with a new price feed for a specific asset.
-    /// @dev Requires that the feed address is an approved adaptor
+    /// @notice Replaces one price feed with a new price feed for a specific
+    ///         asset.
+    /// @dev Requires that the feed address is an approved adaptor,
     ///      and that the asset has at least one feed.
     /// @param asset The address of the asset.
     /// @param feedToAdd The address of the feed to remove.
@@ -356,8 +357,8 @@ contract OracleRouter is ERC165 {
         return assetPriceFeeds[asset].length > 0;
     }
 
-    /// @notice Check whether sequencer is valid or down.
-    /// @return True if sequencer is valid
+    /// @notice Check whether L2 sequencer is valid or down.
+    /// @return True if sequencer is valid.
     function isSequencerValid() external view returns (bool) {
         return _isSequencerValid();
     }
@@ -366,15 +367,20 @@ contract OracleRouter is ERC165 {
 
     /// @notice Retrieves the price of a specified asset from either single
     ///         or dual oracles.
-    /// @dev If the asset has one oracle, it fetches the price from a single feed.
-    ///      If it has two or more oracles, it fetches the price from both feeds.
+    /// @dev If the asset has one oracle, it fetches the price from a single
+    ///      feed.
+    ///      If it has two or more oracles, it fetches the price from both
+    ///      feeds.
     /// @param asset The address of the asset to retrieve the price for.
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
     ///                 if two feeds are available.
     /// @return price The price of the asset.
-    /// @return errorCode An error code related to fetching the price. '1' indicates that price should be taken with caution.
-    ///                   '2' indicates a complete failure in receiving a price.
+    /// @return errorCode An error code related to fetching the price. 
+    ///                   '1' indicates that price should be taken with
+    ///                   caution.
+    ///                   '2' indicates a complete failure in receiving
+    ///                   a price.
     function getPrice(
         address asset,
         bool inUSD,
@@ -418,9 +424,11 @@ contract OracleRouter is ERC165 {
     /// @param inUSD An array of bools indicating whether the price should be
     ///              returned in USD or ETH.
     /// @param getLower An array of bools indiciating whether the lower
-    ///                 or higher price should be returned if two feeds are available.
+    ///                 or higher price should be returned if two feeds
+    ///                 are available.
     /// @return Two arrays. The first one contains prices for each asset,
-    ///         and the second one contains corresponding error flags (if any).
+    ///         and the second one contains corresponding error
+    ///         flags (if any).
     function getPrices(
         address[] calldata assets,
         bool[] calldata inUSD,
@@ -455,10 +463,12 @@ contract OracleRouter is ERC165 {
         return (prices, hadError);
     }
 
-    /// @notice Retrieves the prices and account data of multiple assets inside a Curvance Market.
+    /// @notice Retrieves the prices and account data of multiple assets
+    ///         inside a Curvance Market.
     /// @param account The account to retrieve data for.
     /// @param assets An array of asset addresses to retrieve the prices for.
-    /// @param errorCodeBreakpoint The error code that will cause liquidity operations to revert.
+    /// @param errorCodeBreakpoint The error code that will cause liquidity
+    ///                            operations to revert.
     /// @return AccountSnapshot[] Contains `assets` data for `account`
     /// @return uint256[] Contains prices for `assets`.
     /// @return uint256 The number of assets `account` is in.
@@ -540,7 +550,8 @@ contract OracleRouter is ERC165 {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
-        // Validate that the feed returns a usable price for us with a sample query.
+        // Validate that the feed returns a usable price for us with a sample
+        // query.
         PriceReturnData memory sampleData = IOracleAdaptor(feed).getPrice(
             asset,
             true,
@@ -598,10 +609,12 @@ contract OracleRouter is ERC165 {
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
     ///                 if two feeds are available.
-    /// @return A tuple containing the asset's price and an error flag (if any).
-    ///         If both price feeds return an error, it returns (0, BAD_SOURCE).
-    ///         If one of the price feeds return an error, it returns the price
-    ///         from the working feed along with a CAUTION flag.
+    /// @return A tuple containing the asset's price and an error flag
+    ///         (if any).
+    ///         If both price feeds return an error, it returns
+    ///         (0, BAD_SOURCE).
+    ///         If one of the price feeds return an error, it returns the
+    ///         price from the working feed along with a CAUTION flag.
     ///         Otherwise, it returns (price, NO_ERROR).
     function _getPriceDualFeed(
         address asset,
@@ -631,8 +644,10 @@ contract OracleRouter is ERC165 {
     /// @param inUSD Whether the price should be returned in USD or ETH.
     /// @param getLower Whether the lower or higher price should be returned
     ///                 if two feeds are available.
-    /// @return A tuple containing the asset's price and an error flag (if any).
-    ///         If the price feed returns an error, it returns (0, BAD_SOURCE).
+    /// @return A tuple containing the asset's price and an error flag
+    ///         (if any).
+    ///         If the price feed returns an error, it returns
+    ///         (0, BAD_SOURCE).
     ///         Otherwise, it returns (price, NO_ERROR).
     function _getPriceSingleFeed(
         address asset,
@@ -791,8 +806,10 @@ contract OracleRouter is ERC165 {
     /// @param conversionRate The rate to use for the conversion.
     /// @param currentlyInUSD Specifies whether the current format of the
     ///                       price is in USD.
-    ///                       If true, it will convert the price from USD to ETH.
-    ///                       If false, it will convert the price from ETH to USD.
+    ///                       If true, it will convert the price from
+    ///                       USD to ETH.
+    ///                       If false, it will convert the price from
+    ///                       ETH to USD.
     /// @return The converted price.
     function _convertETHUSD(
         uint240 currentPrice,

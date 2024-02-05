@@ -502,8 +502,8 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         // just extrapolated for a user's collateral vs debt.
         //
         // We also embed a `MAX_LEVERAGE` dampening effect to minimize
-        // reversion due to imperfect execution due to things such as
-        // price fluctuations, and AMM fees. 
+        // transaction failure from imperfect execution due to things
+        // such as price fluctuations, and AMM fees. 
         uint256 maxLeverage = ((sumCollateral - sumDebt) *
             MAX_LEVERAGE *
             sumCollateral) /

@@ -116,6 +116,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Used for frontend, needed due to array of structs.
+    /// @param user The user to query veCVE locks for.
+    /// @return Unwrapped user lock information.
     function queryUserLocks(
         address user
     ) external view returns (uint256[] memory, uint256[] memory) {
@@ -853,7 +855,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         return ((time - genesisEpoch) / EPOCH_DURATION);
     }
 
-    /// @notice Returns the current epoch for the given time.
+    /// @notice Returns the timestamp of when the next epoch begins.
     /// @return The calculated next epoch start timestamp.
     function nextEpochStartTime() public view returns (uint256) {
         uint256 timestampOffset = (currentEpoch(block.timestamp) + 1) *

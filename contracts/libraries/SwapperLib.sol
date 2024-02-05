@@ -150,12 +150,14 @@ library SwapperLib {
     /// @notice Removes `token` spending allowance, if needed.
     /// @param token The token address to remove approval.
     /// @param spender The spender address.
-    function _removeApprovalIfNeeded(address token, address spender) internal {
-        if (
-            !CommonLib.isETH(token) &&
-            IERC20(token).allowance(address(this), spender) > 0
-        ) {
-            SafeTransferLib.safeApprove(token, spender, 0);
+    function _removeApprovalIfNeeded(
+        address token, 
+        address spender
+    ) internal {
+        if (!CommonLib.isETH(token)) {
+            if (IERC20(token).allowance(address(this), spender) > 0) {
+                SafeTransferLib.safeApprove(token, spender, 0);
+            }
         }
     }
 

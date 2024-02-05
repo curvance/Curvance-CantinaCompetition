@@ -66,7 +66,7 @@ interface IMarketManager {
         address account,
         uint256 balance, 
         uint256 amount,
-        bool forceReduce
+        bool forceRedeemCollateral
     ) external;
 
     /// @notice Checks if the account should be allowed to borrow
@@ -97,7 +97,7 @@ interface IMarketManager {
     ///         in the given market.
     /// @param mToken The market to verify the repay against.
     /// @param account The account who will have their loan repaid.
-    function canRepay(address mToken, address borrower) external;
+    function canRepay(address mToken, address account) external;
 
     /// @notice Checks if the liquidation should be allowed to occur,
     ///         and returns how many collateral tokens should be seized
@@ -158,7 +158,7 @@ interface IMarketManager {
     /// @param account The address of the account to pull assets for.
     /// @return A dynamic list with the assets the account has entered.
     function assetsOf(
-        address mToken
+        address account
     ) external view returns (IMToken[] memory);
 
     /// @notice Returns if an account has an active position in `mToken`.
