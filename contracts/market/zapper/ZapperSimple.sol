@@ -20,8 +20,7 @@ contract ZapperSimple is ReentrancyGuard {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Address of the Market Manager linked to this
-    ///         Position Folding contract.
+    /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
     /// @notice The address of WETH on this chain.
     address public immutable WETH;

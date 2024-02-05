@@ -815,7 +815,7 @@ contract OracleRouter is ERC165 {
         uint240 currentPrice,
         uint256 conversionRate,
         bool currentlyInUSD
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         if (!currentlyInUSD) {
             // The price denomination is in ETH and we want USD.
             return (currentPrice * conversionRate) / WAD;

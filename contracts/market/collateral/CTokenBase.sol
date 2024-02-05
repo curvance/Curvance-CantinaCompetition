@@ -69,7 +69,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// ```
     uint256 internal constant _BALANCE_SLOT_SEED = 0x87a211a2;
 
-    /// @notice Money Market Manager.
+    /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
     /// @notice Curvance DAO Hub.
     ICentralRegistry public immutable centralRegistry;
@@ -200,13 +200,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Returns share -> asset exchange rate, in `WAD`, safely.
-    /// @dev Oracle router calculates CToken value from this exchange rate.
+    /// @dev Oracle router calculates cToken value from this exchange rate.
     function exchangeRateSafe() external view returns (uint256) {
         return convertToAssetsSafe(WAD);
     }
 
     /// @notice Returns share -> asset exchange rate, in `WAD`.
-    /// @dev Oracle router calculates CToken value from this exchange rate.
+    /// @dev Oracle router calculates cToken value from this exchange rate.
     function exchangeRateCached() external view returns (uint256) {
         return convertToAssets(WAD);
     }
@@ -495,7 +495,9 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         gaugePool.deposit(address(this), liquidator, shares);
     }
 
-    /// @notice Returns whether the MToken is a cToken or not.
+    /// @notice Returns the type of Curvance token.
+    /// @dev true = Collateral token; false = Debt token.
+    /// @return Whether this token is a cToken or not.
     function isCToken() public pure returns (bool) {
         return true;
     }

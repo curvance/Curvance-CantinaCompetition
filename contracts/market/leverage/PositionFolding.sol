@@ -80,8 +80,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Address of the Market Manager linked to this Position Folding
-    ///         contract.
+    /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
 
     /// ERRORS ///

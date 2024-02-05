@@ -62,7 +62,7 @@ contract DToken is ERC165, ReentrancyGuard {
     address public immutable underlying;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Money Market Manager.
+    /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
 
     /// @dev `bytes4(keccak256(bytes("DToken__Unauthorized()")))`.
@@ -79,7 +79,8 @@ contract DToken is ERC165, ReentrancyGuard {
     string public symbol;
     /// @notice Total number of tokens in circulation.
     uint256 public totalSupply;
-    /// @notice Total outstanding borrows of underlying.
+    /// @notice Returns total amount of outstanding borrows of the
+    ///         underlying in this dToken market.
     uint256 public totalBorrows;
     /// @notice Total protocol reserves of underlying.
     uint256 public totalReserves;
@@ -220,11 +221,13 @@ contract DToken is ERC165, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Starts a DToken market, executed via marketManager.
+    //// @notice Starts a dToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
+    /// @dev Emits a {Transfer} event.
     /// @param by The account initializing the dToken market.
+    /// @return Returns with true when successful.
     function startMarket(address by) external nonReentrant returns (bool) {
         if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);

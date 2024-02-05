@@ -88,7 +88,7 @@ contract CTokenPrimitive is CTokenBase {
 
     // PERMISSIONED FUNCTIONS
 
-    /// @notice Starts a CToken market, executed via marketManager.
+    /// @notice Starts a cToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
     ///      although, we protect against them in many ways,
     ///      better safe than sorry.
