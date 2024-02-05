@@ -18,9 +18,13 @@ import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 contract ZapperSimple is ReentrancyGuard {
     /// CONSTANTS ///
 
-    IMarketManager public immutable marketManager; // MarketManager linked
-    address public immutable WETH; // Address of WETH
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
+    /// @notice Address of the Market Manager linked to this Position Folding
+    ///         contract.
+    IMarketManager public immutable marketManager;
+    /// @notice The address of WETH on this chain.
+    address public immutable WETH;
 
     /// ERRORS ///
 
@@ -51,6 +55,8 @@ contract ZapperSimple is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the Central Registry.
         if (!centralRegistry.isMarketManager(marketManager_)) {
             revert ZapperSimple__MarketManagerIsNotLendingMarket();
         }
@@ -129,7 +135,7 @@ contract ZapperSimple is ReentrancyGuard {
 
         if (balance > repayAmount) {
             // transfer token back to user
-            _transferOut(dTokenUnderlying, recipient, balance - repayAmount);
+            _transferToUser(dTokenUnderlying, recipient, balance - repayAmount);
         }
     }
 
@@ -164,7 +170,13 @@ contract ZapperSimple is ReentrancyGuard {
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 
-    function _transferOut(
+    /// @notice Helper function for efficiently transferring tokens
+    ///         to desired user.
+    /// @param token The token to transfer to `recipient`, 
+    ///              this can be the network gas token.
+    /// @param recipient The user receiving `token`.
+    /// @param amount The amount of `token` to be transferred to `recipient`.
+    function _transferToUser(
         address token,
         address recipient,
         uint256 amount

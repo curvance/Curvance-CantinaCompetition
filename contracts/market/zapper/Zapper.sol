@@ -21,26 +21,37 @@ import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol
 contract Zapper is ReentrancyGuard {
     /// TYPES ///
 
+    /// @param inputToken Address of input token to Zap from.
+    /// @param inputAmount The amount of `inputToken` to Zap.
+    /// @param outputToken Address of token to Zap into.
+    /// @param minimumOut The minimum amount of `outputToken` acceptable
+    ///                   from the Zap.
+    /// @param depositInputAsWETH Used only if `inputToken` is ETH, indicates
+    ///                           whether ETH should be input at ETH or WETH.
     struct ZapperData {
-        address inputToken; // Input token to Zap from
-        uint256 inputAmount; // Input token amount to Zap from
-        address outputToken; // Output token to Zap to
-        uint256 minimumOut; // Minimum token amount acceptable
-        bool depositInputAsWETH; // Only valid if input token is ETH for zap in
+        address inputToken;
+        uint256 inputAmount;
+        address outputToken;
+        uint256 minimumOut;
+        bool depositInputAsWETH;
     }
 
     /// CONSTANTS ///
 
-    IMarketManager public immutable marketManager; // MarketManager linked
-    address public immutable WETH; // Address of WETH
-    ICentralRegistry public immutable centralRegistry; // Curvance DAO hub
+    /// @notice Curvance DAO hub.
+    ICentralRegistry public immutable centralRegistry;
+    /// @notice Address of the Market Manager linked to this Position Folding
+    ///         contract.
+    IMarketManager public immutable marketManager;
+    /// @notice The address of WETH on this chain.
+    address public immutable WETH;
 
     /// ERRORS ///
 
     error Zapper__ExecutionError();
     error Zapper__InvalidCentralRegistry();
     error Zapper__MarketManagerIsNotLendingMarket();
-    error Zapper__CTokenUnderlyingIsNotLPToken();
+    error Zapper__CTokenUnderlyingIsNotInputToken();
     error Zapper__Unauthorized();
     error Zapper__SlippageError();
     error Zapper__InvalidSwapper(uint256 index, address invalidSwapper);
@@ -65,6 +76,8 @@ contract Zapper is ReentrancyGuard {
 
         centralRegistry = centralRegistry_;
 
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the Central Registry.
         if (!centralRegistry.isMarketManager(marketManager_)) {
             revert Zapper__MarketManagerIsNotLendingMarket();
         }
@@ -75,14 +88,16 @@ contract Zapper is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @dev Deposit inputToken and enter curvance
-    /// @param cToken The curvance deposit token address
-    /// @param zapData Zap data containing input/output token addresses and amounts
-    /// @param tokenSwaps The swap aggregation data
-    /// @param lpMinter The minter address of Curve LP
-    /// @param tokens The underlying coins of curve LP token
-    /// @param recipient Address that should receive zapped deposit
-    /// @return cTokenOutAmount The output amount received from zapping
+    /// @notice Deposits `zapData.inputToken` into Curve lp token and
+    ///         enters into Curvance position.
+    /// @param cToken The Curvance cToken address.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param tokens The underlying coins of the Curve lp token.
+    /// @param recipient Address that should receive Zapped deposit.
+    /// @return cTokenOutAmount The output amount received from Zapping.
     function curveIn(
         address cToken,
         ZapperData calldata zapData,
@@ -91,7 +106,7 @@ contract Zapper is ReentrancyGuard {
         address[] calldata tokens,
         address recipient
     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
-        // swap input token for underlyings
+        // Swap input token for underlyings.
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
@@ -99,7 +114,7 @@ contract Zapper is ReentrancyGuard {
             zapData.depositInputAsWETH
         );
 
-        // enter curve
+        // Enter Curve lp position.
         uint256 lpOutAmount = CurveLib.enterCurve(
             lpMinter,
             zapData.outputToken,
@@ -107,7 +122,7 @@ contract Zapper is ReentrancyGuard {
             zapData.minimumOut
         );
 
-        // enter curvance
+        // Enter Curvance cToken position.
         cTokenOutAmount = _enterCurvance(
             cToken,
             zapData.outputToken,
@@ -116,6 +131,23 @@ contract Zapper is ReentrancyGuard {
         );
     }
 
+    /// @notice Withdraws a Curvance Curve lp position and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokens The underlying token addresses of the Curve lp token.
+    /// @param singleAssetWithdraw Whether LP should be unwrapped to a single
+    ///                            token or not. 
+    ///                            0 = all tokens.
+    ///                            1 = single token; uint256 interface.
+    ///                            2+ = single token; int128 interface.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` != 0, indicates
+    ///                         the coin index inside the Curve lp
+    ///                         to withdraw as.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
     function curveOut(
         address lpMinter,
         ZapperData calldata zapData,
@@ -125,12 +157,15 @@ contract Zapper is ReentrancyGuard {
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external nonReentrant returns (uint256 outAmount) {
+        // Transfer Curve lp token to the Zapper.
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
             address(this),
             zapData.inputAmount
         );
+
+        // Exit Curve lp position.
         CurveLib.exitCurve(
             lpMinter,
             zapData.inputToken,
@@ -141,7 +176,7 @@ contract Zapper is ReentrancyGuard {
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
-        // prepare tokens to mint LP
+        // Swap unwrapped token(s) into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
@@ -157,19 +192,21 @@ contract Zapper is ReentrancyGuard {
             revert Zapper__SlippageError();
         }
 
-        // transfer token back to user
-        _transferOut(zapData.outputToken, recipient, outAmount);
+        // Transfer output tokens to `recipient`.
+        _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @dev Deposit inputToken and enter curvance
-    /// @param cToken The curvance deposit token address
-    /// @param zapData Zap data containing input/output token addresses and amounts
-    /// @param tokenSwaps The swap aggregation data
-    /// @param balancerVault The balancer vault address
-    /// @param balancerPoolId The balancer pool ID
-    /// @param tokens The underlying coins of balancer LP token
-    /// @param recipient Address that should receive zapped deposit
-    /// @return cTokenOutAmount The output amount received from zapping
+    /// @notice Deposits `zapData.inputToken` into Balancer BPT and
+    ///         enters into Curvance position.
+    /// @param cToken The Curvance cToken address.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The Balancer BPT pool ID.
+    /// @param tokens The underlying coins of the Curve lp token.
+    /// @param recipient Address that should receive Zapped deposit.
+    /// @return cTokenOutAmount The output amount received from Zapping.
     function balancerIn(
         address cToken,
         ZapperData calldata zapData,
@@ -179,7 +216,7 @@ contract Zapper is ReentrancyGuard {
         address[] calldata tokens,
         address recipient
     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
-        // swap input token for underlyings
+        // Swap input token for underlyings.
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
@@ -187,7 +224,7 @@ contract Zapper is ReentrancyGuard {
             zapData.depositInputAsWETH
         );
 
-        // enter balancer
+        // Enter Balancer BPT position.
         uint256 lpOutAmount = BalancerLib.enterBalancer(
             balancerVault,
             balancerPoolId,
@@ -196,7 +233,7 @@ contract Zapper is ReentrancyGuard {
             zapData.minimumOut
         );
 
-        // enter curvance
+        // Enter Curvance cToken position.
         cTokenOutAmount = _enterCurvance(
             cToken,
             zapData.outputToken,
@@ -205,6 +242,23 @@ contract Zapper is ReentrancyGuard {
         );
     }
 
+    /// @notice Withdraws a Curvance Balancer BPT position and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The Balancer BPT pool ID.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokens The underlying token addresses of the Curve lp token.
+    /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
+    ///                            token or not. 
+    ///                            false = all tokens.
+    ///                            true = single token.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` = true,
+    ///                         indicates the coin index inside the Balancer
+    ///                         BPT to withdraw as.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
     function balancerOut(
         address balancerVault,
         bytes32 balancerPoolId,
@@ -215,12 +269,15 @@ contract Zapper is ReentrancyGuard {
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external nonReentrant returns (uint256 outAmount) {
+        // Transfer the Balancer BPT to the Zapper.
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
             address(this),
             zapData.inputAmount
         );
+
+        // Exit Balancer BPT position.
         BalancerLib.exitBalancer(
             balancerVault,
             balancerPoolId,
@@ -232,7 +289,7 @@ contract Zapper is ReentrancyGuard {
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
-        // prepare tokens to mint LP
+        // Swap unwrapped token(s) into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
@@ -248,18 +305,20 @@ contract Zapper is ReentrancyGuard {
             revert Zapper__SlippageError();
         }
 
-        // transfer token back to user
-        _transferOut(zapData.outputToken, recipient, outAmount);
+        // Transfer output tokens to `recipient`.
+        _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @dev Deposit inputToken and enter curvance
-    /// @param cToken The curvance deposit token address
-    /// @param zapData Zap data containing input/output token addresses and amounts
-    /// @param tokenSwaps The swap aggregation data
-    /// @param router The velodrome router address
-    /// @param factory The velodrome factory address
-    /// @param recipient Address that should receive zapped deposit
-    /// @return cTokenOutAmount The output amount received from zapping
+    /// @notice Deposits `zapData.inputToken` into Velodrome sAMM/vAMM and
+    ///         enters into Curvance position.
+    /// @param cToken The Curvance cToken address.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param router The Velodrome router address.
+    /// @param factory The Velodrome factory address.
+    /// @param recipient Address that should receive Zapped deposit.
+    /// @return cTokenOutAmount The output amount received from Zapping.
     function velodromeIn(
         address cToken,
         ZapperData calldata zapData,
@@ -268,14 +327,15 @@ contract Zapper is ReentrancyGuard {
         address factory,
         address recipient
     ) external payable nonReentrant returns (uint256 cTokenOutAmount) {
-        // swap input token for underlyings
+        // Swap input token for underlyings.
         _swapForUnderlyings(
             zapData.inputToken,
             zapData.inputAmount,
             tokenSwaps,
             zapData.depositInputAsWETH
         );
-        // enter velodrome
+
+        // Enter Velodrome sAMM/vAMM position.
         cTokenOutAmount = VelodromeLib.enterVelodrome(
             router,
             factory,
@@ -284,7 +344,8 @@ contract Zapper is ReentrancyGuard {
             CommonLib.getTokenBalance(IVeloPair(zapData.outputToken).token1()),
             zapData.minimumOut
         );
-        // enter curvance
+
+        // Enter Curvance cToken position.
         cTokenOutAmount = _enterCurvance(
             cToken,
             zapData.outputToken,
@@ -293,18 +354,29 @@ contract Zapper is ReentrancyGuard {
         );
     }
 
+    /// @notice Withdraws a Curvance Velodrome sAMM/vAMM position and zaps it
+    ///         into desired token (zapData.outputToken).
+    /// @param router The Velodrome router address.
+    /// @param zapData Zap instruction data containing instruction data to
+    ///                execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
     function velodromeOut(
         address router,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external nonReentrant returns (uint256 outAmount) {
+        // Transfer the Velodrome sAMM/vAMM to the Zapper.
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
             address(this),
             zapData.inputAmount
         );
+
+        // Exit Velodrome sAMM/vAMM position.
         VelodromeLib.exitVelodrome(
             router,
             zapData.inputToken,
@@ -312,7 +384,7 @@ contract Zapper is ReentrancyGuard {
         );
 
         uint256 numTokenSwaps = tokenSwaps.length;
-        // prepare tokens to mint LP
+        // Swap unwrapped tokens into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
@@ -328,26 +400,32 @@ contract Zapper is ReentrancyGuard {
             revert Zapper__SlippageError();
         }
 
-        // transfer token back to user
-        _transferOut(zapData.outputToken, recipient, outAmount);
+        // Transfer output tokens to `recipient`.
+        _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @dev Deposit inputToken and enter curvance
-    /// @param inputToken The input token address
-    /// @param inputAmount The amount to deposit
-    /// @param tokenSwaps The swap aggregation data
-    /// @param depositInputAsWETH Used when `inputToken` is ether,
-    ///                           indicates depositing ether into WETH9 contract
+    /// @notice Swap `inputToken` into desired cToken underlying tokens.
+    /// @param inputToken The input token address.
+    /// @param inputAmount The amount of `inputToken` to swap for underlying
+    ///                    tokens.
+    /// @param tokenSwaps Array of swap instruction data
+    /// @param depositInputAsWETH Used when `inputToken` is chain gas token,
+    ///                           indicates depositing gas token into wrapper
+    ///                           contract.
     function _swapForUnderlyings(
         address inputToken,
         uint256 inputAmount,
         SwapperLib.Swap[] calldata tokenSwaps,
         bool depositInputAsWETH
     ) private {
+        // If the input token is chain gas token, check if it should be
+        // wrapped.
         if (CommonLib.isETH(inputToken)) {
+            // Validate message has gas token attached.
             if (inputAmount != msg.value) {
                 revert Zapper__ExecutionError();
             }
+
             if (depositInputAsWETH) {
                 IWETH(WETH).deposit{ value: inputAmount }();
             }
@@ -361,8 +439,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         uint256 numTokenSwaps = tokenSwaps.length;
-
-        // prepare tokens to mint LP
+        // Swap `inputToken` into desired cToken underlying tokens.
         for (uint256 i; i < numTokenSwaps; ) {
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
@@ -374,50 +451,62 @@ contract Zapper is ReentrancyGuard {
         }
     }
 
-    /// @dev Enter curvance
-    /// @param cToken The curvance deposit token address
-    /// @param lpToken The Curve LP token address
-    /// @param amount The amount to deposit
-    /// @param recipient The recipient address
-    /// @return The output amount
+    /// @notice Routes lp/BPT into Curvance cToken contract.
+    /// @param cToken The Curvance cToken address.
+    /// @param inputToken The input token address, should match
+    ///                   cToken.underlying().
+    /// @param amount The amount of `inputToken` to deposit into cToken
+    ///               position.
+    /// @param recipient Address that should receive Curvance cTokens.
+    /// @return The output amount of cTokens received.
     function _enterCurvance(
         address cToken,
-        address lpToken,
+        address inputToken,
         uint256 amount,
         address recipient
     ) private returns (uint256) {
+        // cToken not configured so transfer their token back and return.
         if (cToken == address(0)) {
-            // transfer LP token to recipient
-            SafeTransferLib.safeTransfer(lpToken, recipient, amount);
+            SafeTransferLib.safeTransfer(inputToken, recipient, amount);
             return amount;
         }
 
-        // check valid cToken
+        // Validate that `cToken` is listed inside the associated
+        // Market Manager.
         if (!marketManager.isListed(cToken)) {
             revert Zapper__Unauthorized();
         }
 
-        // check cToken underlying
-        if (CTokenPrimitive(cToken).underlying() != lpToken) {
-            revert Zapper__CTokenUnderlyingIsNotLPToken();
+        // Validate inputToken matches underlying token of cToken contract.
+        if (CTokenPrimitive(cToken).underlying() != inputToken) {
+            revert Zapper__CTokenUnderlyingIsNotInputToken();
         }
 
-        // approve lp token
-        SwapperLib._approveTokenIfNeeded(lpToken, cToken, amount);
+        // Approve cToken to take `inputToken`.
+        SwapperLib._approveTokenIfNeeded(inputToken, cToken, amount);
 
         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);
 
-        // enter curvance
+        // Enter Curvance cToken position and make sure `recipient` got
+        // cTokens.
         if (CTokenPrimitive(cToken).deposit(amount, recipient) == 0) {
             revert Zapper__ExecutionError();
         }
 
-        SwapperLib._removeApprovalIfNeeded(lpToken, cToken);
+        // Remove any excess approval.
+        SwapperLib._removeApprovalIfNeeded(inputToken, cToken);
 
+        // Bubble up how many cTokens `recipient` received.
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 
-    function _transferOut(
+    /// @notice Helper function for efficiently transferring tokens
+    ///         to desired user.
+    /// @param token The token to transfer to `recipient`, 
+    ///              this can be the network gas token.
+    /// @param recipient The user receiving `token`.
+    /// @param amount The amount of `token` to be transferred to `recipient`.
+    function _transferToUser(
         address token,
         address recipient,
         uint256 amount
