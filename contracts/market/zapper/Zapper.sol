@@ -23,7 +23,7 @@ contract Zapper is ReentrancyGuard {
 
     /// @param inputToken Address of input token to Zap from.
     /// @param inputAmount The amount of `inputToken` to Zap.
-    /// @param outputToken Address of token to Zap into.
+    /// @param outputToken Address of token Zapped into.
     /// @param minimumOut The minimum amount of `outputToken` acceptable
     ///                   from the Zap.
     /// @param depositInputAsWETH Used only if `inputToken` is ETH, indicates
@@ -40,8 +40,8 @@ contract Zapper is ReentrancyGuard {
 
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice Address of the Market Manager linked to this Position Folding
-    ///         contract.
+    /// @notice Address of the Market Manager linked to this
+    ///         Position Folding contract.
     IMarketManager public immutable marketManager;
     /// @notice The address of WETH on this chain.
     address public immutable WETH;
@@ -88,11 +88,10 @@ contract Zapper is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Deposits `zapData.inputToken` into Curve lp token and
-    ///         enters into Curvance position.
+    /// @notice Swaps then deposits `zapData.inputToken` into Curve lp token
+    ///         and enters into Curvance position.
     /// @param cToken The Curvance cToken address.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param lpMinter The minter address of the Curve lp token.
     /// @param tokens The underlying coins of the Curve lp token.
@@ -134,8 +133,7 @@ contract Zapper is ReentrancyGuard {
     /// @notice Withdraws a Curvance Curve lp position and zaps it into
     ///         desired token (zapData.outputToken).
     /// @param lpMinter The minter address of the Curve lp token.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokens The underlying token addresses of the Curve lp token.
     /// @param singleAssetWithdraw Whether LP should be unwrapped to a single
     ///                            token or not. 
@@ -178,6 +176,7 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // Swap unwrapped token(s) into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
@@ -196,11 +195,10 @@ contract Zapper is ReentrancyGuard {
         _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @notice Deposits `zapData.inputToken` into Balancer BPT and
+    /// @notice Swaps then deposits `zapData.inputToken` into Balancer BPT and
     ///         enters into Curvance position.
     /// @param cToken The Curvance cToken address.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param balancerVault The Balancer vault address.
     /// @param balancerPoolId The Balancer BPT pool ID.
@@ -246,8 +244,7 @@ contract Zapper is ReentrancyGuard {
     ///         desired token (zapData.outputToken).
     /// @param balancerVault The Balancer vault address.
     /// @param balancerPoolId The Balancer BPT pool ID.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokens The underlying token addresses of the Curve lp token.
     /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
     ///                            token or not. 
@@ -291,6 +288,7 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // Swap unwrapped token(s) into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
@@ -309,11 +307,10 @@ contract Zapper is ReentrancyGuard {
         _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @notice Deposits `zapData.inputToken` into Velodrome sAMM/vAMM and
-    ///         enters into Curvance position.
+    /// @notice Swaps then deposits `zapData.inputToken` into Velodrome
+    ///         sAMM/vAMM and enters into Curvance position.
     /// @param cToken The Curvance cToken address.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param router The Velodrome router address.
     /// @param factory The Velodrome factory address.
@@ -357,8 +354,7 @@ contract Zapper is ReentrancyGuard {
     /// @notice Withdraws a Curvance Velodrome sAMM/vAMM position and zaps it
     ///         into desired token (zapData.outputToken).
     /// @param router The Velodrome router address.
-    /// @param zapData Zap instruction data containing instruction data to
-    ///                execute the Zap.
+    /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param recipient Address that should receive Zapped withdrawal.
     /// @return outAmount The output amount received from Zapping.
@@ -386,6 +382,7 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // Swap unwrapped tokens into `zapData.outputToken`.
         for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
@@ -396,6 +393,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
@@ -441,6 +439,7 @@ contract Zapper is ReentrancyGuard {
         uint256 numTokenSwaps = tokenSwaps.length;
         // Swap `inputToken` into desired cToken underlying tokens.
         for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
                 revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
