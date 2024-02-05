@@ -6,41 +6,103 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
+/// @title Curvance Dynamic Interest Rate Model.
+/// @notice Manages borrow and supply interest rates for Curvance debt tokens.
+/// @dev A dynamically adjust interest rate model built to incentivize growth,
+///      and minimize liquidity crunches.
+///
+///      At its core the Curvance Dynamic Interest Rate Model uses two
+///      interest rates.
+///      The "baseInterestRate" which linearly increases interest until
+///      `vertexStartingPoint` is reached, where `vertexInterestRate` then is
+///      used instead. This behaves very similar to the classic "Jump Rate"
+///      interest rate model just without the risk-free rate. 
+///      
+///      This model then builds on top of the model by introducing a dynamic
+///      "Vertex Multiplier" which increases the skew of `vertexInterestRate`.
+///      The Vertex Multiplier is adjusted upward or downward based on the
+///      utilization of liquidity inside the dToken market. 
+///
+///      This means that if utilization remains elevated during update
+///      periods, the interest rate paid by borrowers will continually
+///      increase. This will, in theory, attract new borrowers who require
+///      a higher yield to provide liquidity to a particular market.
+///      At the same time, higher borrow rates incentivize interest rate
+///      sensitive borrowers to repay their outstanding debt.
+///      These two actions both will decrease net liquidity utilization,
+///      decreasing borrow rates, and with a heavy enough drop, begin
+///      decreasing the Vertex Multiplier. 
+///
+///      This process is optimized by the introduction of a decay mechanism.
+///      When the Vertex Multiplier is elevated, the decay rate naturally
+///      reduces the excess skew overtime. This has the effect of creating a
+///     "downward sloping" interest rate model. From a mathematical sense,
+///      this means when the multiplier value is elevated, a constant negative
+///      velocity is applied to it, regardless of positive or negative
+///      acceleration applied due to liquidity utilization. By having a
+///      naturally decreasing interest rate model users are incentivized to
+///      continually borrow from the dToken market over other solutions. Then,
+///      when liquidity dries up, the interest rate model attracts new lenders.
+///      The combination of these two forces should, in theory, create an
+///      efficient system that naturally stimulants market growth while also
+///      decreasing the risk of liquidity crunches.
+///
+///      The Vertex Multiplier logic is as follows:
+///
+///      When utilization is below `vertexStartingPoint`:
+///         If the utilization is below the 'decreaseThresholdMax',
+///         decay rate and maximum adjustment velocity is applied.
+///         For higher utilizations (but still below the vertex),
+///         a new multiplier is calculated by applying a negative curve value
+///         to the adjustment. This new multiplier is also subjected to the
+///         decay multiplier.
+///
+///      When utilization is above `vertexStartingPoint`:
+///         If the utilization rate is below the 'increaseThreshold',
+///         it simply applies the decay to the current multiplier.
+///         If the utilization is higher, it calculates a new multiplier by
+///         applying a positive curve value to the adjustment. This adjustment
+///         is also subjected to the decay multiplier.
+///
 contract DynamicInterestRateModel {
     /// TYPES ///
 
+
+    /// @notice Stores configuration data for current Dynamic Interest
+    ///         Rate Model.
+    /// @param baseInterestRate Base rate at which interest is accumulated,
+    ///                         per compound.
+    /// @param vertexInterestRate Vertex rate at which interest is 
+    ///                           accumulated, per compound.
+    /// @param vertexStartingPoint Utilization rate point where vertex rate
+    ///                            is used, instead of base rate.
+    /// @param adjustmentRate The rate at which the vertex multiplier
+    ///                       is adjusted, in seconds.
+    /// @param adjustmentVelocity The maximum rate at with the vertex
+    ///                           multiplier is adjusted, in `WAD`.
+    /// @param vertexMultiplierMax The maximum value that vertexMultiplier
+    ///                            can be.
+    /// @param decayRate Rate at which the vertex multiplier will decay
+    ///                  per update, in `WAD`.
+    /// @param increaseThreshold The utilization rate at which the vertex
+    ///                          multiplier will begin to increase.
+    /// @param increaseThresholdMax The utilization rate at which the vertex
+    ///                             multiplier positive velocity will max out.
+    /// @param decreaseThreshold The utilization rate at which the vertex
+    ///                          multiplier will begin to decrease.
+    /// @param decreaseThresholdMax The utilization rate at which the vertex
+    ///                             multiplier negative velocity will max out.
     struct RatesConfiguration {
-        /// @notice Base rate at which interest is accumulated,
-        ///         per compound.
         uint256 baseInterestRate;
-        /// @notice Vertex rate at which interest is accumulated, 
-        ///         per compound.
         uint256 vertexInterestRate;
-        /// @notice Utilization rate point where vertex rate is used,
-        ///         instead of base rate.
         uint256 vertexStartingPoint;
-        /// @notice The rate at which the vertex multiplier is adjusted,
-        ///         in seconds.
         uint256 adjustmentRate;
-        /// @notice The maximum rate at with the vertex multiplier
-        ///         is adjusted, in `WAD`.
         uint256 adjustmentVelocity;
-        /// @notice The maximum value that vertexMultiplier can be.
         uint256 vertexMultiplierMax;
-        /// @notice Rate at which the vertex multiplier will decay
-        ///         per update, in `WAD`.
         uint256 decayRate;
-        /// @notice The utilization rate at which the vertex multiplier
-        ///         will begin to increase.
         uint256 increaseThreshold;
-        /// @notice The utilization rate at which the vertex multiplier
-        ///         positive velocity will max out.
         uint256 increaseThresholdMax;
-        /// @notice The utilization rate at which the vertex multiplier
-        ///         will begin to decrease.
         uint256 decreaseThreshold;
-        /// @notice The utilization rate at which the vertex multiplier
-        ///         negative velocity will max out.
         uint256 decreaseThresholdMax;
     }
 
@@ -49,11 +111,11 @@ contract DynamicInterestRateModel {
     /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
     /// @notice Rate at which interest is compounded, in seconds. 
-    ///         10 minutes = 600 seconds.
+    /// @dev 10 minutes = 600 seconds.
     uint256 public constant INTEREST_COMPOUND_RATE = 10 minutes;
     /// @notice Maximum Rate at which the vertex multiplier will
     ///         decay per adjustment, in `WAD`. 
-    ///         .05e18 = 5%.
+    /// @dev .05e18 = 5%.
     uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18;
     /// @notice The maximum frequency in which the vertex can have
     ///         between adjustments. It is important that this value is not
@@ -94,10 +156,10 @@ contract DynamicInterestRateModel {
     /// @notice Struct containing current configuration data for the
     ///         dynamic interest rate model.
     RatesConfiguration public ratesConfig;
-    /// Internal stored rates data.
-    /// Bits Layout:
-    /// - [0..191]    `vertexMultiplier`.
-    /// - [192..255] `nextUpdateTimestamp`.
+    /// @dev Internal stored rates data.
+    ///      Bits Layout:
+    ///      - [0..191]   `vertexMultiplier`.
+    ///      - [192..255] `nextUpdateTimestamp`.
     uint256 internal _currentRates;
 
     /// EVENTS ///
@@ -238,7 +300,7 @@ contract DynamicInterestRateModel {
 
         bool belowVertex = (util <= vertexPoint);
 
-        // Query current interest rate.
+        // Pull current interest rate.
         if (belowVertex) {
             unchecked {
                 borrowRate = getBaseInterestRate(util);

@@ -18,6 +18,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 abstract contract CTokenCompounding is CTokenBase {
     /// TYPES ///
 
+    /// @notice Storage format of _vaultData bitshifted data structure.
     /// @param rewardRate The rate that the vault vests fresh rewards.
     /// @param vestingPeriodEnd When the current vesting period ends.
     /// @param lastVestClaim Last time vesting rewards were claimed.
@@ -27,6 +28,7 @@ abstract contract CTokenCompounding is CTokenBase {
         uint64 lastVestClaim;
     }
 
+    /// @notice Storage configuration for pending vesting update.
     /// @param updateNeeded Whether there is a pending update to vault
     ///                     vesting schedule.
     /// @param newVestPeriod The pending new compounding vesting schedule.
@@ -61,11 +63,11 @@ abstract contract CTokenCompounding is CTokenBase {
     /// @dev Starts paused until market started, 1 = unpaused; 2 = paused.
     uint256 public compoundingPaused = 2;
 
-    /// Internal packed vault accounting data.
-    /// @dev Bits Layout:
-    /// - [0..127]    `rewardRate`
-    /// - [128..191]  `vestingPeriodEnd`
-    /// - [192..255] `lastVestClaim`
+    /// @dev Internal packed vault accounting data.
+    ///      Bits Layout:
+    ///      - [0..127]   `rewardRate`.
+    ///      - [128..191] `vestingPeriodEnd`.
+    ///      - [192..255] `lastVestClaim`.
     uint256 internal _vaultData;
 
     /// EVENTS ///

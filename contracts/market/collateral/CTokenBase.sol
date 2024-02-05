@@ -29,8 +29,8 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///      Users can at any time, choose to "post" their cTokens as collateral
 ///      inside the Curvance Protocol, unlocking their ability to borrow
 ///      against these assets. Posting collateral carries restrictions,
-///      not all assets inside Curvance can be collateralized, and if they can
-///      they have a "Collateral Cap" which restricts the total amount of
+///      not all assets inside Curvance can be collateralized, and if they
+///      can, they have a "Collateral Cap" which restricts the total amount of
 ///      exogeneous risk introduced by each asset into the system.
 ///      Rehypothecation of collateral assets has also been removed from the
 ///      system, reducing the likelihood of introducing systematic risk to the
@@ -38,9 +38,10 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///
 ///      These caps can be updated as needed by the DAO and should be
 ///      configured based on "sticky" onchain liquidity in the corresponding
-///      asset. The vaults have theability to have their compounding, minting,
-///      or redemption functionality paused, modifying the maximum mint,
-///      deposit,withdrawal, or redemptions possible.
+///      asset. 
+///      The vaults have the ability to have their compounding, minting,
+///      or redemption functionality paused. Modifying the maximum mint,
+///      deposit, withdrawal, or redemptions possible.
 ///     
 ///      "Safe" versions of functions have been added that introduce
 ///      additional reentry and update protection logic to minimize risks
