@@ -28,6 +28,7 @@ interface IOracleAdaptor {
         bool getLower
     ) external view returns (PriceReturnData memory);
 
-    /// @notice Asset => Supported by adaptor.
+    /// @notice Whether an asset is supported by the Oracle Adaptor or not.
+    /// @dev Asset => Supported by adaptor.
     function isSupportedAsset(address asset) external view returns (bool);
 }

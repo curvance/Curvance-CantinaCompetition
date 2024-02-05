@@ -25,15 +25,21 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
 
     /// EXTERNAL FUNCTIONS ///
 
+    /// @notice Inspects calldata for compliance with other swap instruction
+    ///         parameters.
+    /// @dev Used on Zap/swap to inspect and validate calldata safety.
+    /// @param swapData Zap/swap instruction data including both direct
+    ///                 parameters and decodeable calldata.
+    /// @param expectedRecipient User who will receive results of Zap/swap.
     function checkCallData(
-        SwapperLib.Swap memory _swapData,
-        address _recipient
+        SwapperLib.Swap memory swapData,
+        address expectedRecipient
     ) external view override {
-        if (_swapData.target != target) {
+        if (swapData.target != target) {
             revert CallDataChecker__TargetError();
         }
 
-        bytes4 funcSigHash = getFuncSigHash(_swapData.call);
+        bytes4 funcSigHash = getFuncSigHash(swapData.call);
         address recipient;
         address inputToken;
         uint256 inputAmount;
@@ -41,7 +47,7 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
         if (funcSigHash == IAggregationRouterV5.swap.selector) {
             (, IAggregationRouterV5.SwapDescription memory desc, , ) = abi
                 .decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (
                         address,
                         IAggregationRouterV5.SwapDescription,
@@ -65,7 +71,7 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 uint256[] memory pools,
 
             ) = abi.decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (address, address, uint256, uint256, uint256[], bytes)
                 );
 
@@ -86,7 +92,7 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 ,
                 uint256[] memory pools
             ) = abi.decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (address, uint256, uint256, uint256[])
                 );
 
@@ -106,11 +112,11 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
             funcSigHash == IAggregationRouterV5.uniswapV3Swap.selector
         ) {
             (uint256 amount, , uint256[] memory pools) = abi.decode(
-                getFuncParams(_swapData.call),
+                getFuncParams(swapData.call),
                 (uint256, uint256, uint256[])
             );
 
-            recipient = _recipient;
+            recipient = expectedRecipient;
             inputAmount = amount;
 
             uint256 pool = pools[0];
@@ -133,7 +139,7 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 uint256[] memory pools,
 
             ) = abi.decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (address, address, uint256, uint256, uint256[], bytes)
                 );
 
@@ -153,7 +159,7 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 ,
                 uint256[] memory pools
             ) = abi.decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (address, address, uint256, uint256, uint256[])
                 );
 
@@ -168,11 +174,11 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
         } else if (funcSigHash == IAggregationRouterV5.unoswap.selector) {
             (address srcToken, uint256 amount, , uint256[] memory pools) = abi
                 .decode(
-                    getFuncParams(_swapData.call),
+                    getFuncParams(swapData.call),
                     (address, uint256, uint256, uint256[])
                 );
 
-            recipient = _recipient;
+            recipient = expectedRecipient;
             inputToken = srcToken;
             inputAmount = amount;
 
@@ -182,19 +188,19 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
                 : UniswapV3Pool(address(uint160(pool))).token0();
         }
 
-        if (recipient != _recipient) {
+        if (recipient != expectedRecipient) {
             revert CallDataChecker__RecipientError();
         }
 
-        if (inputToken != _swapData.inputToken) {
+        if (inputToken != swapData.inputToken) {
             revert CallDataChecker__InputTokenError();
         }
 
-        if (inputAmount != _swapData.inputAmount) {
+        if (inputAmount != swapData.inputAmount) {
             revert CallDataChecker__InputAmountError();
         }
 
-        if (outputToken != _swapData.outputToken) {
+        if (outputToken != swapData.outputToken) {
             revert CallDataChecker__OutputTokenError();
         }
     }

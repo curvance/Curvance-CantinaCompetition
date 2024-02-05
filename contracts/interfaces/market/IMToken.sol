@@ -20,7 +20,6 @@ interface IMToken {
     function startMarket(address by) external returns (bool);
 
     /// @notice Returns the address of the underlying asset.
-    /// @dev We have both asset() and underlying() for composability.
     function underlying() external view returns (address);
 
     /// @notice Returns the decimals of the mToken.
