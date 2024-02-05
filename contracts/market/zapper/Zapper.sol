@@ -187,6 +187,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
@@ -195,14 +196,14 @@ contract Zapper is ReentrancyGuard {
         _transferToUser(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @notice Swaps then deposits `zapData.inputToken` into Balancer BPT and
+    /// @notice Swaps then deposits `zapData.inputToken` into BPT and
     ///         enters into Curvance position.
     /// @param cToken The Curvance cToken address.
     /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param balancerVault The Balancer vault address.
-    /// @param balancerPoolId The Balancer BPT pool ID.
-    /// @param tokens The underlying coins of the Curve lp token.
+    /// @param balancerPoolId The BPT pool ID.
+    /// @param tokens The underlying coins of the BPT.
     /// @param recipient Address that should receive Zapped deposit.
     /// @return cTokenOutAmount The output amount received from Zapping.
     function balancerIn(
@@ -222,7 +223,7 @@ contract Zapper is ReentrancyGuard {
             zapData.depositInputAsWETH
         );
 
-        // Enter Balancer BPT position.
+        // Enter BPT position.
         uint256 lpOutAmount = BalancerLib.enterBalancer(
             balancerVault,
             balancerPoolId,
@@ -240,12 +241,12 @@ contract Zapper is ReentrancyGuard {
         );
     }
 
-    /// @notice Withdraws a Curvance Balancer BPT position and zaps it into
+    /// @notice Withdraws a Curvance BPT position and zaps it into
     ///         desired token (zapData.outputToken).
     /// @param balancerVault The Balancer vault address.
-    /// @param balancerPoolId The Balancer BPT pool ID.
+    /// @param balancerPoolId The BPT pool ID.
     /// @param zapData Zap instruction data to execute the Zap.
-    /// @param tokens The underlying token addresses of the Curve lp token.
+    /// @param tokens The underlying token addresses of the BPT.
     /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
     ///                            token or not. 
     ///                            false = all tokens.
@@ -266,7 +267,7 @@ contract Zapper is ReentrancyGuard {
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external nonReentrant returns (uint256 outAmount) {
-        // Transfer the Balancer BPT to the Zapper.
+        // Transfer the BPT to the Zapper.
         SafeTransferLib.safeTransferFrom(
             zapData.inputToken,
             msg.sender,
@@ -274,7 +275,7 @@ contract Zapper is ReentrancyGuard {
             zapData.inputAmount
         );
 
-        // Exit Balancer BPT position.
+        // Exit BPT position.
         BalancerLib.exitBalancer(
             balancerVault,
             balancerPoolId,
@@ -299,6 +300,7 @@ contract Zapper is ReentrancyGuard {
         }
 
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
             revert Zapper__SlippageError();
         }
@@ -511,9 +513,9 @@ contract Zapper is ReentrancyGuard {
         uint256 amount
     ) internal {
         if (CommonLib.isETH(token)) {
-            SafeTransferLib.forceSafeTransferETH(recipient, amount);
-        } else {
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            return SafeTransferLib.forceSafeTransferETH(recipient, amount);
         }
+            
+        SafeTransferLib.safeTransfer(token, recipient, amount);
     }
 }

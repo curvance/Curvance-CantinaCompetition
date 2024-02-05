@@ -16,13 +16,13 @@ library CommonLib {
     }
 
     /// @notice Returns balance of `token` for this contract.
-    /// @param token The token address.
+    /// @param token The token address to query balance of.
     /// @return The balance of `token` inside address(this).
     function getTokenBalance(address token) internal view returns (uint256) {
         if (isETH(token)) {
             return address(this).balance;
-        } else {
-            return IERC20(token).balanceOf(address(this));
         }
+
+        return IERC20(token).balanceOf(address(this));
     }
 }

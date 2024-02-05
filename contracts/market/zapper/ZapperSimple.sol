@@ -160,7 +160,11 @@ contract ZapperSimple is ReentrancyGuard {
 
         // Transfer any remaining `dTokenUnderlying` to `recipient`.
         if (balance > repayAmount) {
-            _transferToUser(dTokenUnderlying, recipient, balance - repayAmount);
+            _transferToUser(
+                dTokenUnderlying, 
+                recipient, 
+                balance - repayAmount
+            );
         }
     }
 
@@ -212,9 +216,9 @@ contract ZapperSimple is ReentrancyGuard {
         uint256 amount
     ) internal {
         if (CommonLib.isETH(token)) {
-            SafeTransferLib.forceSafeTransferETH(recipient, amount);
-        } else {
-            SafeTransferLib.safeTransfer(token, recipient, amount);
+            return SafeTransferLib.forceSafeTransferETH(recipient, amount);
         }
+            
+        SafeTransferLib.safeTransfer(token, recipient, amount);
     }
 }
