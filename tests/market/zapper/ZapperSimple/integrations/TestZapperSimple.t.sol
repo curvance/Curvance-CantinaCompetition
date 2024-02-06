@@ -86,9 +86,8 @@ contract TestZapperSimple is TestBaseMarket {
         adaptor.setReentrancyConfig(2, 10000);
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = _CURVE_STETH_LP;
-        data
-            .underlyingOrConstituent0 = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-        data.underlyingOrConstituent1 = _STETH_ADDRESS;
+        data.underlying0 = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+        data.underlying1 = _STETH_ADDRESS;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
