@@ -2,13 +2,15 @@
 pragma solidity ^0.8.17;
 
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
 /// @notice Curvance DAO's Canonical CVE Contract.
-contract CVE is ERC20 {
+contract CVE is ERC20, ERC165 {
     /// CONSTANTS ///
 
     /// @notice Seconds in a month based on 365.2425 days.
@@ -269,6 +271,15 @@ contract CVE is ERC20 {
     /// @dev Returns the symbol of the token.
     function symbol() public pure override returns (string memory) {
         return "CVE";
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(ICVE).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///

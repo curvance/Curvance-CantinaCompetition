@@ -3,17 +3,19 @@ pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
-contract VeCVE is ERC20, ReentrancyGuard {
+contract VeCVE is ERC20, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     struct Lock {
@@ -841,6 +843,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @dev Returns the symbol of the token.
     function symbol() public view override returns (string memory) {
         return string(abi.encodePacked(_symbol));
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IVeCVE).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     /// @notice Returns the current epoch for the given time.

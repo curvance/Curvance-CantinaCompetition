@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { DENOMINATOR } from "contracts/libraries/Constants.sol";
-import { Bytes32Helper } from "contracts/libraries/Bytes32Helper.sol";
+
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
@@ -17,6 +17,8 @@ import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRe
 import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { ICVE } from "contracts/interfaces/ICVE.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -276,9 +278,12 @@ contract CentralRegistry is ERC165 {
             IERC20(newCVE).symbol()
         );
 
-        // Sanity check that the new CVE address is at least an ERC20
-        // compliant contract with the expected symbol.
-        if (newSymbol != bytes32("CVE")) {
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newCVE),
+                type(ICVE).interfaceId
+            )
+        ) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -296,9 +301,12 @@ contract CentralRegistry is ERC165 {
             IERC20(newVeCVE).symbol()
         );
 
-        // Sanity check that the new veCVE address is at least an ERC20
-        // compliant contract with the expected symbol.
-        if (newSymbol != bytes32("veCVE")) {
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newVeCVE),
+                type(IVeCVE).interfaceId
+            )
+        ) {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
