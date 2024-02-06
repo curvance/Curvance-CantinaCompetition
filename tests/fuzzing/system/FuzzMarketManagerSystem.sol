@@ -55,5 +55,29 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
         );
     }
 
+    function hypotheticalLiquidityOf_no_excess_liquidity_for_amount_greater_than_posted(
+        address mtoken,
+        uint256 amount
+    ) public {
+        uint256 collateralPosted = _collateralPostedFor(mtoken);
+        uint256 amount = clampBetween(
+            amount,
+            collateralPosted + 1,
+            type(uint256).max
+        );
+        (uint256 excessLiquidity, uint256 liquidityDeficit) = marketManager
+            .hypotheticalLiquidityOf(address(this), mtoken, 0, amount);
+        assertEq(
+            excessLiquidity,
+            0,
+            "MARKET MANAGER - calling hypothetical liquidity of for an amount greater than posted should result in no excess"
+        );
+        assertGt(
+            liquidityDeficit,
+            0,
+            "MARKET MANAGER - calling hypothetical liquidity of for an amount greater than posted should result in error"
+        );
+    }
+
     // current debt > max allowed debt after folding
 }
