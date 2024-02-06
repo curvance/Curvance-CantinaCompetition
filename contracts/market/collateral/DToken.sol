@@ -92,14 +92,14 @@ contract DToken is ERC165, ReentrancyGuard {
     MarketData public marketData;
 
     /// @notice The dToken balance of an account.
-    /// @dev Account address => account token balance.
+    /// @dev Account address => Account token balance.
     mapping(address => uint256) public balanceOf;
     /// @notice The allowance on token transfers a spender has for an account.
-    /// @dev Account address => spender address => approved token amount.
+    /// @dev Account address => Spender address => Approved token amount.
     mapping(address => mapping(address => uint256)) public allowance;
     /// @notice Status of whether a spender has the ability to borrow
     ///         on behalf of an account.
-    /// @dev Account address => spender address => can borrow on behalf.
+    /// @dev Account address => Spender address => Can borrow on behalf.
     mapping(address => mapping(address => bool)) public isApprovedToBorrow;
     /// @notice Debt information associated with an account.
     /// @dev Account address => DebtData struct.
@@ -756,7 +756,7 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @param account The account address to have their balance measured.
     /// @return The amount of underlying owned by `account`.
     function balanceOfUnderlyingSafe(address account) external returns (uint256) {
-        return ((exchangeRateWithUpdate() * balanceOf[account]) / WAD);
+        return ((exchangeRateWithUpdateSafe() * balanceOf[account]) / WAD);
     }
 
     /// @notice Get a snapshot of the account's balances, and the cached
