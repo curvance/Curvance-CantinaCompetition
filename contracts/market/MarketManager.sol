@@ -283,9 +283,15 @@ contract MarketManager is LiquidityManager, ERC165 {
     function hypotheticalLiquidityOf(
         address account,
         address mTokenModified,
-        uint256 redeemTokens, // in shares
-        uint256 borrowAmount // in assets
+        uint256 redeemTokens, // in Shares.
+        uint256 borrowAmount // in Assets.
     ) external view returns (uint256, uint256) {
+        // Make sure they are not trying to hypothetically borrow
+        // a collateral token.
+        if (IMToken(mTokenModified).isCToken() && borrowAmount > 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         return
             _hypotheticalLiquidityOf(
                 account,
