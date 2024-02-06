@@ -274,10 +274,6 @@ contract CentralRegistry is ERC165 {
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
-        bytes32 newSymbol = Bytes32Helper.stringToBytes32(
-            IERC20(newCVE).symbol()
-        );
-
         if (
             !ERC165Checker.supportsInterface(
                 address(newCVE),
@@ -296,10 +292,6 @@ contract CentralRegistry is ERC165 {
     /// @param newVeCVE The new address of veCVE.
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
-
-        bytes32 newSymbol = Bytes32Helper.stringToBytes32(
-            IERC20(newVeCVE).symbol()
-        );
 
         if (
             !ERC165Checker.supportsInterface(
