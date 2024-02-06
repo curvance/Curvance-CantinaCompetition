@@ -64,26 +64,35 @@ library CurveLib {
 
         // Enter curve lp token position.
         if (numTokens == 4) {
-            uint256[4] memory amounts;
-            amounts[0] = balances[0];
-            amounts[1] = balances[1];
-            amounts[2] = balances[2];
-            amounts[3] = balances[3];
+            uint256[4] memory fourPoolAmounts;
+            fourPoolAmounts[0] = balances[0];
+            fourPoolAmounts[1] = balances[1];
+            fourPoolAmounts[2] = balances[2];
+            fourPoolAmounts[3] = balances[3];
 
-            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(
+                fourPoolAmounts,
+                0
+            );
         } else if (numTokens == 3) {
-            uint256[3] memory amounts;
-            amounts[0] = balances[0];
-            amounts[1] = balances[1];
-            amounts[2] = balances[2];
+            uint256[3] memory threePoolAmounts;
+            threePoolAmounts[0] = balances[0];
+            threePoolAmounts[1] = balances[1];
+            threePoolAmounts[2] = balances[2];
 
-            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(
+                threePoolAmounts,
+                0
+            );
         } else {
-            uint256[2] memory amounts;
-            amounts[0] = balances[0];
-            amounts[1] = balances[1];
+            uint256[2] memory twoPoolAmounts;
+            twoPoolAmounts[0] = balances[0];
+            twoPoolAmounts[1] = balances[1];
 
-            ICurveSwap(lpMinter).add_liquidity{ value: value }(amounts, 0);
+            ICurveSwap(lpMinter).add_liquidity{ value: value }(
+                twoPoolAmounts,
+                0
+            );
         }
 
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
@@ -130,23 +139,26 @@ library CurveLib {
             }
 
             if (numTokens == 4) {
-                uint256[4] memory amounts;
+                uint256[4] memory fourPoolAmounts;
                 return ICurveSwap(lpMinter).remove_liquidity(
                     lpAmount, 
-                    amounts
+                    fourPoolAmounts
                 );
             }
 
             if (numTokens == 3) {
-                uint256[3] memory amounts;
+                uint256[3] memory threePoolAmounts;
                 return ICurveSwap(lpMinter).remove_liquidity(
                     lpAmount, 
-                    amounts
+                    threePoolAmounts
                 );
             }
 
-            uint256[2] memory amounts;
-            return ICurveSwap(lpMinter).remove_liquidity(lpAmount, amounts);
+            uint256[2] memory twoPoolAmounts;
+            return ICurveSwap(lpMinter).remove_liquidity(
+                lpAmount,
+                twoPoolAmounts
+            );
         }
 
         // Withdraw as 1 token with uint256 interface.

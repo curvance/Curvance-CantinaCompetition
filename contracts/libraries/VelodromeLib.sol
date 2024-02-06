@@ -233,11 +233,11 @@ library VelodromeLib {
     ) internal view returns (uint256) {
         // Cache swap fee from pair factory.
         uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, stable);
+        uint256 a;
 
         // sAMM deposit calculation.
         if (stable) {
-            uint256 a = (((amount0 * 10000) / (10000 - swapFee)) * 1e18) /
-                decimals0;
+            a = (((amount0 * 10000) / (10000 - swapFee)) * 1e18) / decimals0;
 
             uint256 x = (reserve0 * 1e18) / decimals0;
             uint256 y = (reserve1 * 1e18) / decimals1;
@@ -253,7 +253,8 @@ library VelodromeLib {
 
         // vAMM deposit calculation.
         uint256 swapFeeFactor = 10000 - swapFee;
-        uint256 a = (10000 + swapFeeFactor) * reserve0;
+        
+        a = (10000 + swapFeeFactor) * reserve0;
         uint256 b = amount0 * 10000 * reserve0 * 4 * swapFeeFactor;
         uint256 c = FixedPointMathLib.sqrt(a * a + b);
         uint256 d = swapFeeFactor * 2;

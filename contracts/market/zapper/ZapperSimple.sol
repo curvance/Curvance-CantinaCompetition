@@ -169,7 +169,6 @@ contract ZapperSimple is ReentrancyGuard {
 
     /// @notice Deposits cToken underlying into Curvance cToken contract.
     /// @param cToken The Curvance cToken address.
-    /// @param amount The amount of cToken underlying to deposit.
     /// @param recipient Address that should receive Curvance cTokens.
     /// @return The output amount of cTokens received.
     function _enterCurvance(
