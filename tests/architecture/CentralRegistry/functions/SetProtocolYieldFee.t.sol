@@ -20,9 +20,9 @@ contract SetProtocolYieldFeeTest is TestBaseMarket {
         vm.expectRevert(
             CentralRegistry.CentralRegistry__ParametersMisconfigured.selector
         );
-        centralRegistry.setProtocolYieldFee(2001);
+        centralRegistry.setProtocolYieldFee(5001);
 
-        centralRegistry.setProtocolYieldFee(2000);
+        centralRegistry.setProtocolYieldFee(5000);
     }
 
     function test_setProtocolYieldFee_success() public {
