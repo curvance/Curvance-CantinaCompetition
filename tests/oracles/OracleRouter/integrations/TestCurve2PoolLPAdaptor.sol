@@ -252,6 +252,30 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
         adaptor.addAsset(ETH_STETH, data);
     }
 
+    function testRevertGetPrice__Curve2PoolLPAdaptor__InvalidBounds2() public {
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        chainlinkAdaptor.addAsset(STETH, CHAINLINK_PRICE_FEED_STETH, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(STETH, address(chainlinkAdaptor));
+
+        Curve2PoolLPAdaptor.AdaptorData memory data;
+        data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
+        data.underlyingOrConstituent0 = ETH;
+        data.underlyingOrConstituent1 = STETH;
+        data.divideRate0 = true;
+        data.divideRate1 = true;
+        data.isCorrelated = true;
+        data.upperBound = 10501;
+        data.lowerBound = 10000;
+
+        vm.expectRevert(Curve2PoolLPAdaptor.Curve2PoolLPAdaptor__InvalidBounds.selector);
+        adaptor.addAsset(ETH_STETH, data);
+    }
+
     function testRaiseBounds() public {
         chainlinkAdaptor = new ChainlinkAdaptor(
             ICentralRegistry(address(centralRegistry))
