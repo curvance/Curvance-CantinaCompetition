@@ -319,6 +319,10 @@ contract Curve2PoolAssetAdaptor is CurveBaseAdaptor {
             revert Curve2PoolAssetAdaptor__InvalidBounds();
         }
 
+        uint256 testVirtualPrice = ICurvePool(data.pool).get_virtual_price();
+        // Validate the virtualPrice is within the desired bounds.
+        _enforceBounds(testVirtualPrice, newLowerBound, newUpperBound);
+
         data.lowerBound = newLowerBound;
         data.upperBound = newUpperBound;
     }
