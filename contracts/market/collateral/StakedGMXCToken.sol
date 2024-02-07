@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 import { WAD } from "contracts/libraries/Constants.sol";
 
@@ -13,7 +14,7 @@ contract StakedGMXCToken is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    IERC20 public immutable rewardToken;
+    IERC20 public immutable WETH;
 
     /// STORAGE ///
 
@@ -27,21 +28,28 @@ contract StakedGMXCToken is CTokenCompounding {
 
     error StakedGMXCToken__ChainIsNotSupported();
     error StakedGMXCToken__InvalidRewardRouter();
+    error StakedGMXCToken__InvalidWETH();
+    error StakedGMXCToken__InvalidSwapper(address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
     constructor(
         ICentralRegistry centralRegistry_,
-        IERC20 asset_,
+        IERC20 asset_, // GMX
         address marketManager_,
-        address rewardRouter_
+        address rewardRouter_,
+        address weth_
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         if (block.chainid != 42161) {
             revert StakedGMXCToken__ChainIsNotSupported();
         }
+        if (weth_ == address(0)) {
+            revert StakedGMXCToken__InvalidWETH();
+        }
 
         _setRewardRouter(rewardRouter_);
-        rewardToken = IERC20(IStakedGMX(asset()).rewardToken());
+
+        WETH = IERC20(weth_);
     }
 
     /// EXTERNAL FUNCTIONS ///
@@ -54,7 +62,7 @@ contract StakedGMXCToken is CTokenCompounding {
     ///         vests pending rewards.
     /// @dev Only callable by Gelato Network bot.
     function harvest(
-        bytes calldata
+        bytes calldata data
     ) external override returns (uint256 yield) {
         // Checks whether the caller can compound the vault yield.
         _canCompound();
@@ -77,7 +85,7 @@ contract StakedGMXCToken is CTokenCompounding {
                 );
                 rewardAmount -= protocolFee;
                 SafeTransferLib.safeTransfer(
-                    address(rewardToken),
+                    address(WETH),
                     centralRegistry.feeAccumulator(),
                     protocolFee
                 );
@@ -85,15 +93,24 @@ contract StakedGMXCToken is CTokenCompounding {
 
             uint256 balance = IERC20(asset()).balanceOf(address(this));
 
-            // Deposit claimed reward to StakedGMX.
-            SafeTransferLib.safeApprove(
-                address(rewardToken),
-                address(rewardRouter),
-                rewardAmount
+            SwapperLib.Swap memory swapData = abi.decode(
+                data,
+                (SwapperLib.Swap)
             );
-            rewardRouter.stakeEsGmx(rewardAmount);
+
+            if (!centralRegistry.isSwapper(swapData.target)) {
+                revert StakedGMXCToken__InvalidSwapper(swapData.target);
+            }
+
+            SwapperLib.swap(swapData);
 
             yield = IERC20(asset()).balanceOf(address(this)) - balance;
+            _totalAssets = IStakedGMX(rewardRouter.stakedGmxTracker())
+                .stakedAmounts(address(this));
+
+            // Deposit swapped reward to StakedGMX.
+            SafeTransferLib.safeApprove(asset(), address(rewardRouter), yield);
+            rewardRouter.stakeGmx(yield);
 
             // Update vesting info.
             // Cache vest period so we do not need to load it twice.
@@ -118,7 +135,7 @@ contract StakedGMXCToken is CTokenCompounding {
 
     /// @notice Set Reward Router address.
     function _setRewardRouter(address newRouter) internal {
-        if (!IStakedGMX(asset()).isHandler(newRouter)) {
+        if (newRouter == address(0)) {
             revert StakedGMXCToken__InvalidRewardRouter();
         }
 
@@ -126,6 +143,19 @@ contract StakedGMXCToken is CTokenCompounding {
     }
 
     // INTERNAL POSITION LOGIC
+
+    /// @notice Deposits specified amount of assets into velodrome gauge pool
+    /// @param assets The amount of assets to deposit
+    function _afterDeposit(uint256 assets, uint256) internal override {
+        SafeTransferLib.safeApprove(asset(), address(rewardRouter), assets);
+        rewardRouter.stakeGmx(assets);
+    }
+
+    /// @notice Withdraws specified amount of assets from velodrome gauge pool
+    /// @param assets The amount of assets to withdraw
+    function _beforeWithdraw(uint256 assets, uint256) internal override {
+        rewardRouter.unstakeGmx(assets);
+    }
 
     /// @notice Gets the balance of assets inside StakedGMX.
     /// @return The current balance of assets.
@@ -140,11 +170,11 @@ contract StakedGMXCToken is CTokenCompounding {
 
     /// @notice Claim reward from StakedGMX.
     function _claimReward() internal returns (uint256 rewardAmount) {
-        uint256 balance = rewardToken.balanceOf(address(this));
+        uint256 balance = WETH.balanceOf(address(this));
 
         // claim reward from StakedGMX.
-        rewardRouter.claimEsGmx();
+        rewardRouter.handleRewards(true, true, true, true, true, true, false);
 
-        return rewardToken.balanceOf(address(this)) - balance;
+        return WETH.balanceOf(address(this)) - balance;
     }
 }
