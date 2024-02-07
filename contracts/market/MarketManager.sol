@@ -568,9 +568,12 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @param amount The amount of `debtToken` underlying being repaid.
     /// @param liquidateExact Whether the liquidator desires a specific
     ///                       liquidation amount.
-    /// @return The amount of `debtToken` underlying to be repaid on liquidation.
-    /// @return The number of `collateralToken` tokens to be seized in a liquidation.
-    /// @return The number of `collateralToken` tokens to be seized for the protocol.
+    /// @return The amount of `debtToken` underlying to be repaid on
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized in a
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized for the
+    ///         protocol.
     function canLiquidate(
         address dToken,
         address cToken,
@@ -591,9 +594,12 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @param amount The amount of `debtToken` underlying being repaid.
     /// @param liquidateExact Whether the liquidator desires a specific
     ///                       liquidation amount.
-    /// @return The amount of `debtToken` underlying to be repaid on liquidation.
-    /// @return The number of `collateralToken` tokens to be seized in a liquidation.
-    /// @return The number of `collateralToken` tokens to be seized for the protocol.
+    /// @return The amount of `debtToken` underlying to be repaid on
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized in a
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized for the
+    ///         protocol.
     function canLiquidateWithExecution(
         address dToken,
         address cToken,
@@ -1335,10 +1341,12 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @param liquidateExact Whether the liquidator wants to liquidate a
     ///                       specific amount of debt, used in conjunction
     ///                       with `debtAmount`.
-    /// @return The maximum amount of `debtToken` that can be repaid
-    ///         during liquidation.
-    /// @return Current price for `debtToken`.
-    /// @return Current price for `collateralToken`.
+    /// @return The amount of `debtToken` underlying to be repaid on
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized in a
+    ///         liquidation.
+    /// @return The number of `collateralToken` tokens to be seized for the
+    ///         protocol.
     function _canLiquidate(
         address debtToken,
         address collateralToken,

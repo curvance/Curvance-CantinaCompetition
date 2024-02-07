@@ -274,15 +274,6 @@ contract CentralRegistry is ERC165 {
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
 
-        if (
-            !ERC165Checker.supportsInterface(
-                address(newCVE),
-                type(ICVE).interfaceId
-            )
-        ) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
         cve = newCVE;
         emit CoreContractSet("CVE", newCVE);
     }
@@ -292,15 +283,6 @@ contract CentralRegistry is ERC165 {
     /// @param newVeCVE The new address of veCVE.
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
-
-        if (
-            !ERC165Checker.supportsInterface(
-                address(newVeCVE),
-                type(IVeCVE).interfaceId
-            )
-        ) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
 
         veCVE = newVeCVE;
         emit CoreContractSet("VeCVE", newVeCVE);
