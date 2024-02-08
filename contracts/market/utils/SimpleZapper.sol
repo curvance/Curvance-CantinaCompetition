@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
@@ -15,7 +14,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 
-contract ZapperSimple is ReentrancyGuard {
+contract SimpleZapper is ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Curvance DAO hub.
@@ -27,12 +26,12 @@ contract ZapperSimple is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error ZapperSimple__ExecutionError();
-    error ZapperSimple__InvalidCentralRegistry();
-    error ZapperSimple__MarketManagerIsNotLendingMarket();
-    error ZapperSimple__Unauthorized();
-    error ZapperSimple__InsufficientToRepay();
-    error ZapperSimple__InvalidZapper(address invalidZapper);
+    error SimpleZapper__ExecutionError();
+    error SimpleZapper__InvalidCentralRegistry();
+    error SimpleZapper__MarketManagerIsNotLendingMarket();
+    error SimpleZapper__Unauthorized();
+    error SimpleZapper__InsufficientToRepay();
+    error SimpleZapper__InvalidZapper(address invalidZapper);
 
     /// CONSTRUCTOR ///
 
@@ -49,7 +48,7 @@ contract ZapperSimple is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert ZapperSimple__InvalidCentralRegistry();
+            revert SimpleZapper__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -57,7 +56,7 @@ contract ZapperSimple is ReentrancyGuard {
         // Validate that `marketManager_` is configured as a market manager
         // inside the Central Registry.
         if (!centralRegistry.isMarketManager(marketManager_)) {
-            revert ZapperSimple__MarketManagerIsNotLendingMarket();
+            revert SimpleZapper__MarketManagerIsNotLendingMarket();
         }
 
         marketManager = IMarketManager(marketManager_);
@@ -80,7 +79,7 @@ contract ZapperSimple is ReentrancyGuard {
         if (CommonLib.isETH(zapperCall.inputToken)) {
             // Validate message has gas token attached.
             if (zapperCall.inputAmount != msg.value) {
-                revert ZapperSimple__ExecutionError();
+                revert SimpleZapper__ExecutionError();
             }
         } else {
             SafeTransferLib.safeTransferFrom(
@@ -93,7 +92,7 @@ contract ZapperSimple is ReentrancyGuard {
 
         // Validate target contract is an approved Zapper.
         if (!centralRegistry.isZapper(zapperCall.target)) {
-            revert ZapperSimple__InvalidZapper(zapperCall.target);
+            revert SimpleZapper__InvalidZapper(zapperCall.target);
         }
 
         SwapperLib.zap(zapperCall);
@@ -117,7 +116,7 @@ contract ZapperSimple is ReentrancyGuard {
         if (CommonLib.isETH(swapperData.inputToken)) {
             // Validate message has gas token attached.
             if (swapperData.inputAmount != msg.value) {
-                revert ZapperSimple__ExecutionError();
+                revert SimpleZapper__ExecutionError();
             }
         } else {
             SafeTransferLib.safeTransferFrom(
@@ -130,7 +129,7 @@ contract ZapperSimple is ReentrancyGuard {
 
         // Validate target contract is an approved swapper.
         if (!centralRegistry.isSwapper(swapperData.target)) {
-            revert ZapperSimple__InvalidZapper(swapperData.target);
+            revert SimpleZapper__InvalidZapper(swapperData.target);
         }
 
         SwapperLib.swap(centralRegistry, swapperData);
@@ -141,7 +140,7 @@ contract ZapperSimple is ReentrancyGuard {
 
         // Revert if the swap experienced too much slippage.
         if (balance < repayAmount) {
-            revert ZapperSimple__InsufficientToRepay();
+            revert SimpleZapper__InsufficientToRepay();
         }
 
         // Approve `dTokenUnderlying` to dToken contract, if necessary.
@@ -178,7 +177,7 @@ contract ZapperSimple is ReentrancyGuard {
         // Validate that `cToken` is listed inside the associated
         // Market Manager.
         if (!marketManager.isListed(cToken)) {
-            revert ZapperSimple__Unauthorized();
+            revert SimpleZapper__Unauthorized();
         }
 
         address cTokenUnderlying = CTokenPrimitive(cToken).underlying();
@@ -192,7 +191,7 @@ contract ZapperSimple is ReentrancyGuard {
         // Enter Curvance cToken position and make sure `recipient` got
         // cTokens.
         if (CTokenPrimitive(cToken).deposit(balance, recipient) == 0) {
-            revert ZapperSimple__ExecutionError();
+            revert SimpleZapper__ExecutionError();
         }
 
         // Remove any excess approval.

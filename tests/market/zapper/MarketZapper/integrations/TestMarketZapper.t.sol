@@ -7,7 +7,7 @@ import "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestZapper is TestBaseMarket {
+contract TestMarketZapper is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address _CURVE_TRICRYPTO_LP = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;

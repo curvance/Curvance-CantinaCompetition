@@ -18,7 +18,7 @@ import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IVeloPair } from "contracts/interfaces/external/velodrome/IVeloPair.sol";
 
-contract Zapper is ReentrancyGuard {
+contract ComplexZapper is ReentrancyGuard {
     /// TYPES ///
 
     /// @param inputToken Address of input token to Zap from.
@@ -47,13 +47,13 @@ contract Zapper is ReentrancyGuard {
 
     /// ERRORS ///
 
-    error Zapper__ExecutionError();
-    error Zapper__InvalidCentralRegistry();
-    error Zapper__MarketManagerIsNotLendingMarket();
-    error Zapper__CTokenUnderlyingIsNotInputToken();
-    error Zapper__Unauthorized();
-    error Zapper__SlippageError();
-    error Zapper__InvalidSwapper(uint256 index, address invalidSwapper);
+    error ComplexZapper__ExecutionError();
+    error ComplexZapper__InvalidCentralRegistry();
+    error ComplexZapper__MarketManagerIsNotLendingMarket();
+    error ComplexZapper__CTokenUnderlyingIsNotInputToken();
+    error ComplexZapper__Unauthorized();
+    error ComplexZapper__SlippageError();
+    error ComplexZapper__InvalidSwapper(uint256 index, address invalidSwapper);
 
     /// CONSTRUCTOR ///
 
@@ -70,7 +70,7 @@ contract Zapper is ReentrancyGuard {
                 type(ICentralRegistry).interfaceId
             )
         ) {
-            revert Zapper__InvalidCentralRegistry();
+            revert ComplexZapper__InvalidCentralRegistry();
         }
 
         centralRegistry = centralRegistry_;
@@ -78,7 +78,7 @@ contract Zapper is ReentrancyGuard {
         // Validate that `marketManager_` is configured as a market manager
         // inside the Central Registry.
         if (!centralRegistry.isMarketManager(marketManager_)) {
-            revert Zapper__MarketManagerIsNotLendingMarket();
+            revert ComplexZapper__MarketManagerIsNotLendingMarket();
         }
 
         marketManager = IMarketManager(marketManager_);
@@ -177,7 +177,7 @@ contract Zapper is ReentrancyGuard {
         for (uint256 i; i < numTokenSwaps; ) {
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -188,7 +188,7 @@ contract Zapper is ReentrancyGuard {
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
-            revert Zapper__SlippageError();
+            revert ComplexZapper__SlippageError();
         }
 
         // Transfer output tokens to `recipient`.
@@ -290,7 +290,7 @@ contract Zapper is ReentrancyGuard {
         for (uint256 i; i < numTokenSwaps; ) {
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -301,7 +301,7 @@ contract Zapper is ReentrancyGuard {
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
-            revert Zapper__SlippageError();
+            revert ComplexZapper__SlippageError();
         }
 
         // Transfer output tokens to `recipient`.
@@ -385,7 +385,7 @@ contract Zapper is ReentrancyGuard {
         for (uint256 i; i < numTokenSwaps; ) {
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -396,7 +396,7 @@ contract Zapper is ReentrancyGuard {
         outAmount = CommonLib.getTokenBalance(zapData.outputToken);
         // Validate zap output is sufficient.
         if (outAmount < zapData.minimumOut) {
-            revert Zapper__SlippageError();
+            revert ComplexZapper__SlippageError();
         }
 
         // Transfer output tokens to `recipient`.
@@ -422,7 +422,7 @@ contract Zapper is ReentrancyGuard {
         if (CommonLib.isETH(inputToken)) {
             // Validate message has gas token attached.
             if (inputAmount != msg.value) {
-                revert Zapper__ExecutionError();
+                revert ComplexZapper__ExecutionError();
             }
 
             if (depositInputAsWETH) {
@@ -442,7 +442,7 @@ contract Zapper is ReentrancyGuard {
         for (uint256 i; i < numTokenSwaps; ) {
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert Zapper__InvalidSwapper(i, tokenSwaps[i].target);
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
             unchecked {
@@ -474,12 +474,12 @@ contract Zapper is ReentrancyGuard {
         // Validate that `cToken` is listed inside the associated
         // Market Manager.
         if (!marketManager.isListed(cToken)) {
-            revert Zapper__Unauthorized();
+            revert ComplexZapper__Unauthorized();
         }
 
         // Validate inputToken matches underlying token of cToken contract.
         if (CTokenPrimitive(cToken).underlying() != inputToken) {
-            revert Zapper__CTokenUnderlyingIsNotInputToken();
+            revert ComplexZapper__CTokenUnderlyingIsNotInputToken();
         }
 
         // Approve cToken to take `inputToken`.
@@ -490,7 +490,7 @@ contract Zapper is ReentrancyGuard {
         // Enter Curvance cToken position and make sure `recipient` got
         // cTokens.
         if (CTokenPrimitive(cToken).deposit(amount, recipient) == 0) {
-            revert Zapper__ExecutionError();
+            revert ComplexZapper__ExecutionError();
         }
 
         // Remove any excess approval.

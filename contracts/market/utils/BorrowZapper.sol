@@ -9,11 +9,11 @@ import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract ZapperBorrow is FeeTokenBridgingHub {
+contract BorrowZapper is FeeTokenBridgingHub {
     /// ERRORS ///
 
-    error ZapperBorrow__InvalidSwapper(address invalidSwapper);
-    error ZapperBorrow__InvalidSwapData();
+    error BorrowZapper__InvalidSwapper(address invalidSwapper);
+    error BorrowZapper__InvalidSwapData();
 
     /// CONSTRUCTOR ///
 
@@ -55,19 +55,19 @@ contract ZapperBorrow is FeeTokenBridgingHub {
                 swapData.outputToken != feeToken ||
                 swapData.inputAmount != borrowAmount
             ) {
-                revert ZapperBorrow__InvalidSwapData();
+                revert BorrowZapper__InvalidSwapData();
             }
 
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(swapData.target)) {
-                revert ZapperBorrow__InvalidSwapper(swapData.target);
+                revert BorrowZapper__InvalidSwapper(swapData.target);
             }
             unchecked {
                 SwapperLib.swap(centralRegistry, swapData);
             }
         } else {
             if (swapData.target != address(0)) {
-                revert ZapperBorrow__InvalidSwapData();
+                revert BorrowZapper__InvalidSwapData();
             }
         }
 

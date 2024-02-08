@@ -3,16 +3,16 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
+import { ComplexZapper } from "contracts/market/utils/ComplexZapper.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 import { DeployConfiguration } from "../utils/DeployConfiguration.sol";
 
-contract ZapperDeployer is DeployConfiguration {
-    address zapper;
+contract ComplexZapperDeployer is DeployConfiguration {
+    address complexZapper;
 
-    function _deployZapper(
+    function _deployComplexZapper(
         address centralRegistry,
         address marketManager,
         address weth
@@ -21,11 +21,11 @@ contract ZapperDeployer is DeployConfiguration {
         require(marketManager != address(0), "Set the marketManager!");
         require(weth != address(0), "Set the weth!");
 
-        zapper = address(
-            new Zapper(ICentralRegistry(centralRegistry), marketManager, weth)
+        complexZapper = address(
+            new ComplexZapper(ICentralRegistry(centralRegistry), marketManager, weth)
         );
 
-        console.log("zapper: ", zapper);
-        _saveDeployedContracts("zapper", zapper);
+        console.log("complexZapper: ", complexZapper);
+        _saveDeployedContracts("complexZapper", complexZapper);
     }
 }

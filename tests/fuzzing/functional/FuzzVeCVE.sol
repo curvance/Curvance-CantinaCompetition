@@ -4,7 +4,7 @@ import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
-contract FuzzVECVE is StatefulBaseMarket {
+contract FuzzVeCVE is StatefulBaseMarket {
     RewardsData defaultRewardData;
     // uint256.max to represent no locks existing
     uint256 NO_LOCKS = type(uint256).max;
