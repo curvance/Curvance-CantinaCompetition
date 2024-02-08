@@ -2,14 +2,14 @@
 pragma solidity ^0.8.17;
 
 /// @notice Rewards data for CVE rewards locker.
-/// @param desiredRewardToken The token to receive as rewards.
+/// @param asCVE Whether rewards to be routed into CVE or not.
 /// @param shouldLock Indicator of whether rewards should be locked,
 ///                   if applicable.
 /// @param isFreshLock Indicator of whether it's a fresh lock, if applicable.
 /// @param isFreshLockContinuous Indicator of whether the fresh lock
 ///                              should be continuous.
 struct RewardsData {
-    address desiredRewardToken;
+    bool asCVE;
     bool shouldLock;
     bool isFreshLock;
     bool isFreshLockContinuous;

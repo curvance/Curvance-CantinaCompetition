@@ -68,28 +68,28 @@ contract MarketManager is LiquidityManager, ERC165 {
     uint256 public constant MAX_COLLATERAL_REQUIREMENT = 2.34e18;
     /// @notice Minimum excess collateral requirement 
     ///         on top of liquidation incentive.
-    ///         .015e18 = 1.5%.
+    /// @dev .015e18 = 1.5%.
     uint256 public constant MIN_EXCESS_COLLATERAL_REQUIREMENT = .015e18;
     /// @notice Maximum collateralization ratio.
-    ///         .91e18 = 91%.
+    /// @dev .91e18 = 91%.
     uint256 public constant MAX_COLLATERALIZATION_RATIO = .91e18;
     /// @notice The maximum liquidation incentive.
-    ///         .3e18 = 30%.
+    /// @dev .3e18 = 30%.
     uint256 public constant MAX_LIQUIDATION_INCENTIVE = .3e18;
     /// @notice The minimum liquidation incentive.
-    ///         .01e18 = 1%.
+    /// @dev .01e18 = 1%.
     uint256 public constant MIN_LIQUIDATION_INCENTIVE = .01e18;
     /// @notice The maximum liquidation fee distributed to Curvance DAO.
-    ///         .05e18 = 5%.
+    /// @dev .05e18 = 5%.
     uint256 public constant MAX_LIQUIDATION_FEE = .05e18;
     /// @notice The maximum base cFactor.
-    ///         .5e18 = 50%.
+    /// @dev .5e18 = 50%.
     uint256 public constant MAX_BASE_CFACTOR = .5e18;
     /// @notice The minimum base cFactor.
-    ///         .1e18 = 10%.
+    /// @dev .1e18 = 10%.
     uint256 public constant MIN_BASE_CFACTOR = .1e18;
     /// @notice Minimum hold time to minimize external risks, in seconds.
-    ///         20 minutes = 1,200 seconds.
+    /// @dev 20 minutes = 1,200 seconds.
     uint256 public constant MIN_HOLD_PERIOD = 20 minutes;
     
     /// @dev `bytes4(keccak256(bytes("MarketManager__InvalidParameter()")))`
@@ -133,6 +133,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     mapping(address => uint256) public borrowPaused;
 
     /// COLLATERAL POSTING INVARIANTS
+    
     /// @notice Amount of cToken that has been posted as collateral,
     ///         in shares.
     /// @dev Token => Collateral Posted.
@@ -748,13 +749,13 @@ contract MarketManager is LiquidityManager, ERC165 {
                         _revert(_INVARIANT_ERROR_SELECTOR);
                     }
                     // Repay `account`'s debt where:
-                    // debtToPay = totalCollateral / (1 - liquidationPenalty)
-                    // badDebt = totalDebt - debtToPay
+                    // debtToPay = totalCollateral / (1 - liquidationPenalty).
+                    // badDebt = totalDebt - debtToPay.
                     // Thus:
-                    // totalDebt = debtToPay + badDebt
-                    // where debtToPay is what caller repays to receive collateral
+                    // totalDebt = debtToPay + badDebt.
+                    // Where debtToPay is what caller repays to receive collateral,
                     // badDebt is loss to lenders by offsetting
-                    // totalBorrows (total estimated outstanding debt)
+                    // totalBorrows (total estimated outstanding debt).
                     mToken.repayWithBadDebt(msg.sender, account, repayRatio);
                 }
             }
