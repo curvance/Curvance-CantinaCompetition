@@ -294,10 +294,6 @@ contract CentralRegistry is ERC165 {
     function setCVELocker(address newCVELocker) external {
         _checkElevatedPermissions();
 
-        // Sanity check that the new CVE locker contract at least
-        // looks like one.
-        ICVELocker(newCVELocker).currentEpoch(block.timestamp);
-
         cveLocker = newCVELocker;
         emit CoreContractSet("CVE Locker", newCVELocker);
     }
@@ -330,16 +326,6 @@ contract CentralRegistry is ERC165 {
     function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
 
-        // Validate that newOracleRouter is actually an Oracle Router.
-        if (
-            !ERC165Checker.supportsInterface(
-                address(newOracleRouter),
-                type(IOracleRouter).interfaceId
-            )
-        ) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
         oracleRouter = newOracleRouter;
         emit CoreContractSet("Oracle Router", newOracleRouter);
     }
@@ -349,10 +335,6 @@ contract CentralRegistry is ERC165 {
     /// @param newFeeAccumulator The new address of feeAccumulator.
     function setFeeAccumulator(address newFeeAccumulator) external {
         _checkElevatedPermissions();
-
-        // Sanity check that the new fee accumulator contract at least
-        // looks like one.
-        IFeeAccumulator(newFeeAccumulator).getRewardTokenBalances();
 
         feeAccumulator = newFeeAccumulator;
         emit CoreContractSet("Fee Accumulator", newFeeAccumulator);

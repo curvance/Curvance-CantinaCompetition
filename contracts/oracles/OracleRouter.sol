@@ -9,12 +9,11 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 import { IChainlink } from "contracts/interfaces/external/chainlink/IChainlink.sol";
 import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
-import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 
 /// @title Curvance Dynamic Pessimistic Dual Oracle Router.
 /// @notice Provides a universal interface allowing contracts
 ///         to retrieve secure pricing data based on various price feeds.
-contract OracleRouter is ERC165 {
+contract OracleRouter {
     /// TYPES ///
 
     struct FeedData {
@@ -509,15 +508,6 @@ contract OracleRouter is ERC165 {
         }
 
         return (snapshots, underlyingPrices, numAssets);
-    }
-
-    /// @inheritdoc ERC165
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override returns (bool) {
-        return
-            interfaceId == type(IOracleRouter).interfaceId ||
-            super.supportsInterface(interfaceId);
     }
 
     /// INTERNAL FUNCTIONS ///
