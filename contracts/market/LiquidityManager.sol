@@ -87,8 +87,8 @@ abstract contract LiquidityManager {
         mapping(address => AccountMetadata) accountData;
     }
 
-    /// @notice Data structure returned on liquidation containing lFactor,
-    ///         and c/d token prices for efficient liquidation processing.
+    /// @notice Data structure returned on liquidation calculation containing
+    ///         lFactor, and c/d token prices for efficient liquidation processing.
     /// @param lFactor The liquidation factor value corresponding to a users
     ///                posted collateral vs outstanding debt. A lFactor of 0
     ///                corresponds to no liquidation available, an lFactor of
@@ -100,6 +100,19 @@ abstract contract LiquidityManager {
         uint256 lFactor;
         uint256 collateralTokenPrice;
         uint256 debtTokenPrice;
+    }
+
+    /// @notice Data structure returned on Bad Debt calculation containing
+    ///         account collateral, amount of debt to repay, total account
+    ///         debt.
+    /// @paramcollateral Total value of `account` collateral.
+    /// @param debt Total value of `account` debt.
+    /// @param debtToPay The amount of debt to repay to receive
+    ///                  `accountCollateral`.
+    struct BadDebtData {
+        uint256 collateral;
+        uint256 debt;
+        uint256 debtToPay;
     }
 
     /// STORAGE ///
@@ -431,21 +444,21 @@ abstract contract LiquidityManager {
     }
 
     /// @notice Determine `account`'s current status between collateral,
-    ///         debt, and additional liquidity.
-    /// @param account The account to determine liquidity for.
-    /// @return accountCollateral Total value of `account` collateral.
-    /// @return accountDebtToPay The amount of debt to repay to receive
-    ///                          `accountCollateral`.
-    /// @return accountDebt Total value of `account` debt.
+    ///         debt, and additional liquidity and whether theres associated bad debt available.
+    /// @param account The account to determine bad debt status.
+    /// @return result Containing values:
+    ///                Total value of `account` collateral.
+    ///                The amount of debt to repay to receive `accountCollateral`.
+    ///                Total value of `account` debt.
+    /// @return Array of the amount of collateral posted for each user asset.
     function _BadDebtTermsOf(
         address account
     )
         internal
         view
         returns (
-            uint256 accountCollateral,
-            uint256 accountDebtToPay,
-            uint256 accountDebt
+            BadDebtData memory result,
+            uint256[] memory
         )
     {
         (
@@ -453,8 +466,11 @@ abstract contract LiquidityManager {
             uint256[] memory underlyingPrices,
             uint256 numAssets
         ) = _assetDataOf(account, 2);
-        AccountSnapshot memory snapshot;
+        uint256[] memory assetBalances = new uint256[](numAssets);
 
+        {
+        AccountSnapshot memory snapshot;
+        
         for (uint256 i; i < numAssets; ++i) {
             snapshot = snapshots[i];
 
@@ -462,29 +478,38 @@ abstract contract LiquidityManager {
                 // If the cToken has a Collateralization Ratio,
                 // increment their collateral and debt to pay.
                 if (!(tokenData[snapshot.asset].collRatio == 0)) {
+                    uint256 currentPosted = tokenData[snapshot.asset]
+                    .accountData[account]
+                    .collateralPosted;
+
+                    assetBalances[i] = currentPosted;
                     uint256 collateralValue = _getAssetValue(
-                        ((tokenData[snapshot.asset]
-                            .accountData[account]
-                            .collateralPosted * snapshot.exchangeRate) / WAD),
+                        ((currentPosted * snapshot.exchangeRate) / WAD),
                         underlyingPrices[i],
                         snapshot.decimals
                     );
-                    accountCollateral += collateralValue;
-                    accountDebtToPay +=
+                    result.collateral += collateralValue;
+                    result.debtToPay +=
                         (collateralValue * WAD) /
                         tokenData[snapshot.asset].liqBaseIncentive;
                 }
             } else {
                 // If they have a debt balance, increment their debt.
-                if (snapshot.debtBalance > 0) {
-                    accountDebt += _getAssetValue(
-                        snapshot.debtBalance,
+                uint256 currentDebtBalance = snapshot.debtBalance;
+                if (currentDebtBalance > 0) {
+                    assetBalances[i] = currentDebtBalance;
+                    result.debt += _getAssetValue(
+                        currentDebtBalance,
                         underlyingPrices[i],
                         snapshot.decimals
                     );
                 }
             }
         }
+
+        }
+
+        return (result, assetBalances);
     }
 
     /// @notice Retrieves the prices and account data of multiple assets

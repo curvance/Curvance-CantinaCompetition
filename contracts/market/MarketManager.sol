@@ -100,6 +100,8 @@ contract MarketManager is LiquidityManager, ERC165 {
     uint256 internal constant _TOKEN_NOT_LISTED_SELECTOR = 0x4f3013c5;
     /// @dev `bytes4(keccak256(bytes("MarketManager__Paused()")))`
     uint256 internal constant _PAUSED_SELECTOR = 0xf47323f4;
+    /// @dev `bytes4(keccak256(bytes("MarketManager__InvariantError()")))`
+    uint256 internal constant _INVARIANT_ERROR_SELECTOR = 0x5518d5cb;
 
     /// @notice The address of the linked Gauge Pool.
     IGaugePool public immutable gaugePool;
@@ -303,6 +305,8 @@ contract MarketManager is LiquidityManager, ERC165 {
     }
 
     /// @notice Posts `tokens` of `cToken` as collateral inside this market.
+    /// @dev The collateral token must have collateralization
+    ///      enabled (collRatio > 0).
     /// @param account The account posting collateral.
     /// @param cToken The address of the cToken to post collateral for.
     /// @param tokens The amount of `cToken` to post as collateral, in shares.
@@ -311,18 +315,22 @@ contract MarketManager is LiquidityManager, ERC165 {
         address cToken,
         uint256 tokens
     ) external {
+        if (tokens == 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // If they are trying to post collateral for someone else,
+        // make sure it is done via the cToken contract itself.
+        if (msg.sender != account) {
+            _checkIsToken(cToken);
+        }
+
         if (!tokenData[cToken].isListed) {
             _revert(_TOKEN_NOT_LISTED_SELECTOR);
         }
 
         if (!IMToken(cToken).isCToken()) {
             _revert(_INVALID_PARAMETER_SELECTOR);
-        }
-
-        // If you are trying to post collateral for someone else,
-        // make sure it is done via the cToken contract itself.
-        if (msg.sender != account) {
-            _checkIsToken(cToken);
         }
 
         AccountMetadata storage accountData = tokenData[cToken].accountData[
@@ -353,6 +361,10 @@ contract MarketManager is LiquidityManager, ERC165 {
         uint256 tokens,
         bool closePositionIfPossible
     ) external {
+        if (tokens == 0) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
         AccountMetadata storage accountData = tokenData[cToken].accountData[
             msg.sender
         ];
@@ -361,7 +373,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // will always have activePosition == 0,
         // and this lets us check for any invariant errors.
         if (accountData.activePosition != 2) {
-            revert MarketManager__InvariantError();
+            _revert(_INVARIANT_ERROR_SELECTOR);
         }
 
         if (!IMToken(cToken).isCToken()) {
@@ -678,6 +690,8 @@ contract MarketManager is LiquidityManager, ERC165 {
     ///         distributing all `account` collateral and recognize remaining
     ///         debt as bad debt.
     /// @dev Updates `account` DToken interest before solvency is checked.
+    ///      Extensive run invariant checks are made to prevent potential
+    ///      asset callback exploits.
     ///      Emits a {CollateralRemoved} event.
     /// @param account The address to liquidate completely.
     function liquidateAccount(address account) external {
@@ -691,14 +705,14 @@ contract MarketManager is LiquidityManager, ERC165 {
             _revert(_PAUSED_SELECTOR);
         }
 
-        IMToken[] memory accountAssets = accountAssets[account].assets;
-        uint256 numAssets = accountAssets.length;
+        IMToken[] memory accountAssetsPrior = accountAssets[account].assets;
+        uint256 numAssetsPrior = accountAssetsPrior.length;
         IMToken mToken;
 
         // Update pending interest in markets.
-        for (uint256 i = 0; i < numAssets; ) {
+        for (uint256 i = 0; i < numAssetsPrior; ) {
             // Cache `account` mToken then increment i.
-            mToken = accountAssets[i++];
+            mToken = accountAssetsPrior[i++];
             if (!mToken.isCToken()) {
                 // Update DToken interest if necessary.
                 mToken.accrueInterest();
@@ -706,61 +720,103 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
 
         (
-            uint256 totalCollateral,
-            uint256 debtToPay,
-            uint256 totalDebt
+            BadDebtData memory data,
+            uint256[] memory assetBalances
         ) = _BadDebtTermsOf(account);
 
-        // If an account has no positions or debt this will revert.
-        if (totalCollateral >= totalDebt) {
+        // If an account has no collateral or debt this will revert.
+        if (data.collateral >= data.debt) {
             revert MarketManager__NoLiquidationAvailable();
         }
 
-        uint256 repayRatio = (debtToPay * WAD) / totalDebt;
+        uint256 repayRatio = (data.debtToPay * WAD) / data.debt;
+        uint256 debt;
         
         // Repay `account`'s debt and recognize bad debt.
-        for (uint256 i = 0; i < numAssets; ) {
-            // Cache `account` mToken then increment i.
-            mToken = accountAssets[i++];
+        for (uint256 i = 0; i < numAssetsPrior; ++i) {
+            // Cache `account` mToken.
+            mToken = accountAssetsPrior[i];
             if (!mToken.isCToken()) {
-                // Repay `account`'s debt where:
-                // debtToPay = totalCollateral / (1 - liquidationPenalty)
-                // badDebt = totalDebt - debtToPay
-                // Thus:
-                // totalDebt = debtToPay + badDebt
-                // where debtToPay is what caller repays to receive collateral
-                // badDebt is loss to lenders by offsetting
-                // totalBorrows (total estimated outstanding debt)
-                mToken.repayWithBadDebt(msg.sender, account, repayRatio);
+                debt = mToken.debtBalanceCached(account);
+
+                // Make sure this dToken actually has outstanding debt.
+                if (debt > 0) {
+                    // If the debt balance now does not match initial
+                    // debt balance, there has been an attempt at
+                    // invariant manipulation, revert.
+                    if (debt != assetBalances[i]) {
+                        _revert(_INVARIANT_ERROR_SELECTOR);
+                    }
+                    // Repay `account`'s debt where:
+                    // debtToPay = totalCollateral / (1 - liquidationPenalty)
+                    // badDebt = totalDebt - debtToPay
+                    // Thus:
+                    // totalDebt = debtToPay + badDebt
+                    // where debtToPay is what caller repays to receive collateral
+                    // badDebt is loss to lenders by offsetting
+                    // totalBorrows (total estimated outstanding debt)
+                    mToken.repayWithBadDebt(msg.sender, account, repayRatio);
+                }
             }
         }
 
         uint256 collateral;
 
         // Seize `account`'s collateral and remove posted collateral.
-        for (uint256 i = 0; i < numAssets; ) {
-            // Cache `account` mToken then increment i.
-            mToken = accountAssets[i++];
+        for (uint256 i = 0; i < numAssetsPrior; ++i) {
+            // Cache `account` mToken.
+            mToken = accountAssetsPrior[i];
             if (mToken.isCToken()) {
-                AccountMetadata storage data = tokenData[address(mToken)]
-                    .accountData[account];
+                AccountMetadata storage collateralData = tokenData[address(mToken)]
+                .accountData[account];
                 // Cache `account` collateral posted.
-                collateral = data.collateralPosted;
+                collateral = collateralData.collateralPosted;
 
-                // Remove `account` posted collateral,
-                // as their account is completely closed out.
-                delete data.collateralPosted;
-                // Update collateralPosted invariant.
-                collateralPosted[address(mToken)] =
-                    collateralPosted[address(mToken)] -
-                    collateral;
-                emit CollateralRemoved(account, address(mToken), collateral);
-                // Seize `account`'s collateral and give to caller.
-                mToken.seizeAccountLiquidation(
-                    msg.sender,
-                    account,
-                    collateral
-                );
+                // Make sure this cToken is actually being used as collateral.
+                // Usually we would lean on gauge pool amount == 0 check,
+                // but this would cause a user to be immune to bad debt
+                // liquidation.
+                if (collateral > 0) {
+                    // If the collateral posted now does not match initial
+                    // collateral posted, there has been an attempt at
+                    // invariant manipulation, revert.
+                    if (collateral != assetBalances[i]) {
+                        _revert(_INVARIANT_ERROR_SELECTOR);
+                    }
+
+                    // Remove `account` posted collateral,
+                    // as their account is completely closed out.
+                    delete collateralData.collateralPosted;
+
+                    // Update collateralPosted invariant.
+                    collateralPosted[address(mToken)] =
+                        collateralPosted[address(mToken)] -
+                        collateral;
+                    emit CollateralRemoved(account, address(mToken), collateral);
+                    // Seize `account`'s collateral and give to caller.
+                    mToken.seizeAccountLiquidation(
+                        msg.sender,
+                        account,
+                        collateral
+                    );
+                }  
+            }
+        }
+
+        IMToken[] memory accountAssetsPost = accountAssets[account].assets;
+        uint256 numAssetsPost = accountAssetsPost.length;
+
+        // If a user somehow manipulated their assets via ERC777 or some
+        // other callbacks we can validate that no changes occurred to
+        // user assets, as we've already validated collateral posted/debt
+        // balances above.
+        if (numAssetsPost != numAssetsPrior) {
+            _revert(_INVARIANT_ERROR_SELECTOR);
+        }
+
+        for (uint256 i = 0; i < numAssetsPrior; ++i) {
+            if (accountAssetsPost[i] != accountAssetsPrior[i]) {
+                _revert(_INVARIANT_ERROR_SELECTOR);
             }
         }
     }
@@ -784,7 +840,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // Immediately deposit into the market to prevent any rounding
         // exploits.
         if (!IMToken(mToken).startMarket(msg.sender)) {
-            revert MarketManager__InvariantError();
+            _revert(_INVARIANT_ERROR_SELECTOR);
         }
 
         MarketToken storage token = tokenData[mToken];
@@ -912,6 +968,13 @@ contract MarketManager is LiquidityManager, ERC165 {
         // Validate the soft liquidation collateral premium
         // is not more strict than the asset's CR.
         if (collRatio > (WAD_SQUARED / (WAD + collReqSoft))) {
+            _revert(_INVALID_PARAMETER_SELECTOR);
+        }
+
+        // If this token already has collateralization enabled,
+        // we cannot turn collateralization off completely as this
+        // would cause downstream effects to the DLE.
+        if (marketToken.collRatio != 0 && collRatio == 0) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -1179,6 +1242,9 @@ contract MarketManager is LiquidityManager, ERC165 {
         address cToken,
         uint256 tokens
     ) internal {
+        // This also acts as a check that the cToken collateralization ratio
+        // is > 0, since collateralCaps can only be raised above zero if a
+        // cToken's collateralization ratio is > 0.
         if (collateralPosted[cToken] + tokens > collateralCaps[cToken]) {
             revert MarketManager__CollateralCapReached();
         }
@@ -1263,7 +1329,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         // so it corresponds to last element index now starting at index 0.
         // This is an additional runtime invariant check for extra security.
         if (assetIndex >= numUserAssets--) {
-            revert MarketManager__InvariantError();
+            _revert(_INVARIANT_ERROR_SELECTOR);
         }
 
         // Copy last item in list to location of item to be removed.
@@ -1331,13 +1397,18 @@ contract MarketManager is LiquidityManager, ERC165 {
 
     /// @notice Helper function for checking if the liquidation should be
     ///         allowed to occur.
+    /// @dev Typically we would check for debtAmount > 0 in a liquidateExact
+    ///      scenario, but the gauge pool checks for amount == 0 on
+    ///      deposit/withdrawal, so that will naturally fail even without a
+    ///      preconditional check here.
     /// @param debtToken Asset which was borrowed by the borrower.
     /// @param collateralToken Asset which was used as collateral and will
     ///                        be seized.
     /// @param account The address of the account to be liquidated.
-    /// @param debtAmount The amount of `debtToken` desired to liquidate,
-    ///                   `0` means the maximum liquidation allowed
-    ///                   will be executed.
+    /// @param debtAmount The amount of `debtToken` desired to liquidate.
+    ///                   When `liquidateExact` is false, this value is
+    ///                   replaced with the maximum executable liquidation
+    ///                   amount.
     /// @param liquidateExact Whether the liquidator wants to liquidate a
     ///                       specific amount of debt, used in conjunction
     ///                       with `debtAmount`.
