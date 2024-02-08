@@ -140,7 +140,7 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
             _genRandom(i, entropy, 0, noOfDebtTokens)
         ];
         uint256 underlyingHeld = borrowToken.marketUnderlyingHeld();
-        amount = underlyingHeld - BASE_UNDERLYING_RESERVE;
+        uint256 amount = underlyingHeld - BASE_UNDERLYING_RESERVE;
 
         console2.log("amount %s", amount);
         if (amount < uint256(borrowToken.decimals()) * 100) {
@@ -152,7 +152,7 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
                     borrowToken = dTokens[j];
                     underlyingHeld = borrowToken.marketUnderlyingHeld();
                     amount = underlyingHeld - BASE_UNDERLYING_RESERVE;
-                    
+
                     return (false, borrowToken, amount);
                 }
             }
