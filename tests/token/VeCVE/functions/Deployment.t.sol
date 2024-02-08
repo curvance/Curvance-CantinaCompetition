@@ -18,7 +18,7 @@ contract VeCVEDeploymentTest is TestBaseVeCVE {
             veCVE.name(),
             string(abi.encodePacked(bytes32("Vote Escrowed CVE")))
         );
-        assertEq(veCVE.symbol(), string(abi.encodePacked(bytes32("VeCVE"))));
+        assertEq(veCVE.symbol(), string(abi.encodePacked(bytes32("veCVE"))));
         assertEq(address(veCVE.centralRegistry()), address(centralRegistry));
         assertEq(veCVE.genesisEpoch(), centralRegistry.genesisEpoch());
         assertEq(veCVE.cve(), centralRegistry.cve());
