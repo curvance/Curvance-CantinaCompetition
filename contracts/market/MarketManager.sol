@@ -133,7 +133,7 @@ contract MarketManager is LiquidityManager, ERC165 {
     mapping(address => uint256) public borrowPaused;
 
     /// COLLATERAL POSTING INVARIANTS
-    
+
     /// @notice Amount of cToken that has been posted as collateral,
     ///         in shares.
     /// @dev Token => Collateral Posted.
@@ -740,14 +740,15 @@ contract MarketManager is LiquidityManager, ERC165 {
             if (!mToken.isCToken()) {
                 debt = mToken.debtBalanceCached(account);
 
+                // If the debt balance now does not match initial
+                // debt balance, there has been an attempt at
+                // invariant manipulation, revert.
+                if (debt != assetBalances[i]) {
+                    _revert(_INVARIANT_ERROR_SELECTOR);
+                }
+
                 // Make sure this dToken actually has outstanding debt.
                 if (debt > 0) {
-                    // If the debt balance now does not match initial
-                    // debt balance, there has been an attempt at
-                    // invariant manipulation, revert.
-                    if (debt != assetBalances[i]) {
-                        _revert(_INVARIANT_ERROR_SELECTOR);
-                    }
                     // Repay `account`'s debt where:
                     // debtToPay = totalCollateral / (1 - liquidationPenalty).
                     // badDebt = totalDebt - debtToPay.
@@ -773,18 +774,19 @@ contract MarketManager is LiquidityManager, ERC165 {
                 // Cache `account` collateral posted.
                 collateral = collateralData.collateralPosted;
 
+                // If the collateral posted now does not match initial
+                // collateral posted, there has been an attempt at
+                // invariant manipulation, revert.
+                if (collateral != assetBalances[i]) {
+                    _revert(_INVARIANT_ERROR_SELECTOR);
+                }
+
                 // Make sure this cToken is actually being used as collateral.
                 // Usually we would lean on gauge pool amount == 0 check,
                 // but this would cause a user to be immune to bad debt
                 // liquidation.
                 if (collateral > 0) {
-                    // If the collateral posted now does not match initial
-                    // collateral posted, there has been an attempt at
-                    // invariant manipulation, revert.
-                    if (collateral != assetBalances[i]) {
-                        _revert(_INVARIANT_ERROR_SELECTOR);
-                    }
-
+                    
                     // Remove `account` posted collateral,
                     // as their account is completely closed out.
                     delete collateralData.collateralPosted;

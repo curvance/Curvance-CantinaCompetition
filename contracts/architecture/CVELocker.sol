@@ -295,6 +295,7 @@ contract CVELocker is ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         _checkIsVeCVE();
+        
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards.
         _claimRewards(user, user, epochs, rewardsData, params, aux);
@@ -307,13 +308,14 @@ contract CVELocker is ReentrancyGuard {
     function manageRewardsFor(
         address user,
         uint256 epochs
-    ) external nonReentrant {
+    ) external nonReentrant returns (bool) {
         if (!isApprovedToManage[user][msg.sender]) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
+
         // We check whether there are epochs to claim in reward manager
         // modules so we do not need to check here like in claimRewards.
-        _claimRewardsDirect(user, epochs);
+        return _claimRewardsDirect(user, epochs);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -379,7 +381,8 @@ contract CVELocker is ReentrancyGuard {
         }
     }
 
-    /// @notice Claims rewards for multiple epochs for `user`.
+    /// @notice Claims rewards for `epochs` directly without rewards
+    ///         adjustment checks for `user`.
     /// @dev May emit a {RewardPaid} event.
     /// @param user The address of the user claiming rewards.
     /// @param epochs The number of epochs for which to claim rewards.
@@ -393,7 +396,8 @@ contract CVELocker is ReentrancyGuard {
         // Only emit an event if they actually had rewards,
         // do not wanna revert to maintain composability.
         if (rewards > 0) {
-            // Transfer rewards directly to reward manager for strategy execution.
+            // Transfer rewards directly to reward manager for strategy
+            // execution.
             SafeTransferLib.safeTransfer(rewardToken, msg.sender, rewards);
 
             emit RewardPaid(
