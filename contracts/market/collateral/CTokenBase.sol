@@ -88,6 +88,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @notice Total CToken underlying token assets, minus pending vesting.
     uint256 internal _totalAssets;
 
+    /// @notice Status of whether a spender has the ability to collateralize
+    ///         on behalf of an account.
+    /// @dev Account address => Spender address => Can collateralize on behalf.
+    mapping(address => mapping(address => bool)) public isApprovedToCollateralize;
+
+    /// EVENTS ///
+
+    event CollateralizeApproval(
+        address indexed owner,
+        address indexed spender,
+        bool isApproved
+    );
+
     /// ERRORS ///
 
     error CTokenBase__Unauthorized();
@@ -135,8 +148,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Caller deposits assets into the market, receives shares,
-    ///         and turns on collateralization of the assets.
+    /// @notice Caller deposits assets into the market, `receivier` receives
+    ///         shares, and turns on collateralization of the assets.
+    /// @dev The caller must be depositing for themselves, or be managing
+    ///      their position through the position folding contract.
+    ///      If the caller is not approved to collateralize the function will
+    ///      simply deposit assets on behalf of `receiver`.
     /// @param assets The amount of the underlying assets to deposit.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
@@ -145,12 +162,36 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address receiver
     ) external nonReentrant returns (uint256 shares) {
         shares = _deposit(assets, receiver);
-        if (
-            msg.sender == receiver ||
+
+        if (msg.sender == receiver ||
             msg.sender == marketManager.positionFolding()
         ) {
             marketManager.postCollateral(receiver, address(this), shares);
         }
+    }
+
+    /// @notice Caller deposits assets into the market, `receivier` receives
+    ///         shares, and turns on collateralization of the assets.
+    /// @dev Requires that `receiver` approves the caller prior to
+    ///      collateralize on their behalf.
+    ///      NOTE: Be careful who you approve here!
+    ///      They can delay redemption of assets through repeated
+    ///      collateralization preventing withdrawal.
+    ///      If the caller is not approved to collateralize the function will
+    ///      simply deposit assets on behalf of `receiver`.
+    /// @param assets The amount of the underlying assets to deposit.
+    /// @param receiver The account that should receive the cToken shares.
+    /// @return shares The amount of cToken shares received by `receiver`.
+    function depositAsCollateralFor(
+        uint256 assets,
+        address receiver
+    ) external nonReentrant returns (uint256 shares) {
+        shares = _deposit(assets, receiver);
+
+        if (isApprovedToCollateralize[receiver][msg.sender]) {
+            marketManager.postCollateral(receiver, address(this), shares);
+        }
+
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.
@@ -179,6 +220,27 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address owner
     ) external nonReentrant returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner, true);
+    }
+
+    /// @notice Approves or restricts `spender`'s authority to collateralize
+    ///         shares on the caller's behalf.
+    /// @dev NOTE: Be careful who you approve here!
+    ///      They can delay redemption of assets through repeated
+    ///      collateralization preventing withdrawal.
+    ///      Emits a {CollateralizeApproval} event.
+    /// @param spender The address that will be approved or restricted
+    ///                from collateralizing on behalf of the caller.
+    /// @param isApproved Whether `spender` is being approved or restricted
+    ///                   of authority to collateralize on behalf of caller.
+    /// @return Returns true on success.
+    function setCollateralizeApproval(
+        address spender,
+        bool isApproved
+    ) external returns (bool) {
+        isApprovedToCollateralize[msg.sender][spender] = isApproved;
+
+        emit CollateralizeApproval(msg.sender, spender, isApproved);
+        return true;
     }
 
     /// @notice Returns the underlying balance of the `account`, safely.

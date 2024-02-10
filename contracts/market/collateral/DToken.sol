@@ -298,6 +298,9 @@ contract DToken is ERC165, ReentrancyGuard {
     ///         from lenders, based on collateral posted inside this market
     ///         by `account`.
     /// @dev Updates pending interest before executing the borrow.
+    ///      NOTE: Be careful who you approve here!
+    ///      Not only can they take borrowed funds, but, they can delay
+    ///      repayment through repeated borrows preventing withdrawal.
     /// @param account The account who will have their assets borrowed against.
     /// @param recipient The account who will receive the borrowed assets.
     /// @param amount The amount of the underlying asset to borrow.
@@ -316,9 +319,6 @@ contract DToken is ERC165, ReentrancyGuard {
         // Reverts if borrow not allowed.
         // Notifies the Market Manager that a user is taking on more debt,
         // and to pause user redemptions for 20 minutes.
-        // Note: Be careful who you approve here!
-        // Not only can they take borrowed funds, but, they can delay
-        // repayment through repeated notifications.
         marketManager.canBorrowWithNotify(address(this), account, amount);
 
         _borrow(account, amount, recipient);
@@ -677,8 +677,11 @@ contract DToken is ERC165, ReentrancyGuard {
     }
 
     /// @notice Approves or restricts `spender`'s authority to borrow
-    //          on the caller's behalf.
-    /// @dev Emits a {BorrowApproval} event.
+    ///         on the caller's behalf.
+    /// @dev NOTE: Be careful who you approve here!
+    ///      Not only can they take borrowed funds, but, they can delay
+    ///      repayment through repeated borrows preventing withdrawal.
+    ///      Emits a {BorrowApproval} event.
     /// @param spender The address that will be approved or restricted
     ///                from borrowing on behalf of the caller.
     /// @param isApproved Whether `spender` is being approved or restricted
@@ -1215,6 +1218,10 @@ contract DToken is ERC165, ReentrancyGuard {
         // We add _BASE_UNDERLYING_RESERVE to the calculation to ensure that
         // the market never actually runs out of assets and may introduce
         // invariant manipulation. 
+        // This also acts as a protective mechanism against trying to
+        // manipulate totalBorrows above total underlying assets inside
+        // the system since there will always be at least
+        // _BASE_UNDERLYING_RESERVE excess inside the market.
         if (
             marketUnderlyingHeld() - totalReserves <
             amount + _BASE_UNDERLYING_RESERVE
@@ -1222,7 +1229,8 @@ contract DToken is ERC165, ReentrancyGuard {
             revert DToken__InsufficientUnderlyingHeld();
         }
 
-        // Update account and total borrow balances, failing on overflow.
+        // Calculate current account debt then add `amount`.
+        // Then update account exchange rate, and total borrow balances.
         _debtOf[account].principal = debtBalanceCached(account) + amount;
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
         totalBorrows = totalBorrows + amount;

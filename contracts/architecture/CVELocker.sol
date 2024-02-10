@@ -295,7 +295,7 @@ contract CVELocker is ReentrancyGuard {
         uint256 aux
     ) external nonReentrant {
         _checkIsVeCVE();
-        
+
         // We check whether there are epochs to claim in veCVE
         // so we do not need to check here like in claimRewards.
         _claimRewards(user, user, epochs, rewardsData, params, aux);
@@ -303,6 +303,11 @@ contract CVELocker is ReentrancyGuard {
 
     /// @notice Manages rewards for `user`, used at the beginning
     ///         of some external strategy for `user`.
+    /// @dev Be extremely careful giving this authority to anyone, the
+    ///      intention is to allow delegate claim functionality to hot wallets
+    ///      or strategies that make sure of rewards directly without
+    ///      distributing rewards to a user directly.
+    ///      Emits a {ClaimApproval} event.
     /// @param user The address of the user having rewards managed.
     /// @param epochs The number of epochs for which to manage rewards.
     function manageRewardsFor(
