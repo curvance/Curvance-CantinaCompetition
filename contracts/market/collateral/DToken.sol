@@ -1252,7 +1252,12 @@ contract DToken is ERC165, ReentrancyGuard {
         // Cache how much the account has to save gas.
         uint256 accountDebt = debtBalanceCached(account);
 
-        // If amount == 0, amount = accountDebt.
+        // Validate repayment amount is not excessive.
+        if (amount > accountDebt) {
+            revert DToken__ExcessiveValue();
+        }
+
+        // If amount == 0, repay max; amount = accountDebt.
         amount = amount == 0 ? accountDebt : amount;
 
         SafeTransferLib.safeTransferFrom(
@@ -1263,8 +1268,11 @@ contract DToken is ERC165, ReentrancyGuard {
         );
 
         // We calculate the new account and total borrow balances,
-        // failing on underflow.
-        _debtOf[account].principal = accountDebt - amount;
+        // we check that amount is <= accountDebt so we can skip
+        // underflow check here.
+        unchecked {
+            _debtOf[account].principal = accountDebt - amount;
+        }
         _debtOf[account].accountExchangeRate = marketData.exchangeRate;
         totalBorrows -= amount;
 

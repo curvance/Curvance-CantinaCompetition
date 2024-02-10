@@ -1194,10 +1194,10 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
 
         if (tokenData[dToken].accountData[account].activePosition < 2) {
-            // only mTokens may call borrowAllowed if account not in market
+            // Only mTokens may call borrowAllowed if account not in market.
             _checkIsToken(dToken);
             
-            // The account is not in the market yet, so make them enter
+            // The account is not in the market yet, so make them enter.
             tokenData[dToken].accountData[account].activePosition = 2;
             accountAssets[account].assets.push(IMToken(dToken));
 
@@ -1205,7 +1205,7 @@ contract MarketManager is LiquidityManager, ERC165 {
         }
 
         // Check if the user has sufficient liquidity to borrow,
-        // with heavier error code scrutiny
+        // with heavier error code scrutiny.
         (, uint256 liquidityDeficit) = _hypotheticalLiquidityOf(
             account,
             dToken,
