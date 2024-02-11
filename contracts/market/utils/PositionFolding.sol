@@ -152,8 +152,6 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         marketManager = IMarketManager(marketManager_);
     }
 
-
-
     /// @notice Lightweight getter for any associated leverage fee.
     function getProtocolLeverageFee() public view returns (uint256) {
         return centralRegistry.protocolLeverageFee();

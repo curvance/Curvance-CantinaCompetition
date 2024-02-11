@@ -128,6 +128,14 @@ interface ICentralRegistry {
     /// @notice Address array for all Curvance Market Managers on this chain.
     function marketManagers() external view returns (address[] memory);
 
+    /// @notice Returns `user`'s approval index.
+    /// @param user The user to check approval index for.
+    function userApprovalIndex(address user) external view returns (uint256);
+
+    /// @notice Returns whether a user has delegation disabled.
+    /// @param user The user to check delegation status for.
+    function delegatingDisabled(address user) external view returns (bool);
+
     /// @notice Returns whether a particular GETH chainId is supported.
     /// ChainId => messagingHub address, 2 = supported; 1 = unsupported.
     function supportedChainData(

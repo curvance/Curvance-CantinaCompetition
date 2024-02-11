@@ -148,7 +148,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Caller deposits assets into the market, `receivier` receives
+    /// @notice Caller deposits assets into the market, `receiver` receives
     ///         shares, and turns on collateralization of the assets.
     /// @dev The caller must be depositing for themselves, or be managing
     ///      their position through the position folding contract.
@@ -163,9 +163,10 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) external nonReentrant returns (uint256 shares) {
         shares = _deposit(assets, receiver);
 
-        if (msg.sender == receiver ||
+        if (
+            msg.sender == receiver ||
             msg.sender == marketManager.positionFolding()
-        ) {
+            ) {
             marketManager.postCollateral(receiver, address(this), shares);
         }
     }
@@ -191,7 +192,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         if (isApprovedToCollateralize[receiver][msg.sender]) {
             marketManager.postCollateral(receiver, address(this), shares);
         }
-
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.

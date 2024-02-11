@@ -110,6 +110,20 @@ contract CentralRegistry is ERC165 {
     /// @dev Market Manager => Protocol Interest Factor, in `WAD`.
     mapping(address => uint256) public protocolInterestFactor;
 
+    /// USER DELEGATION ///
+
+    /// @notice A User's approval index acts as a way for users to manage
+    ///         their delegatee's status across Curvance.
+    /// @dev By incrementing their approval index, a user's delegates will all
+    ///      have their delegation authority revoked across all Curvance
+    ///      contracts.
+    ///      User => Approval Index.
+    mapping(address => uint256) public approvalIndex;
+
+    /// @notice Whether a user wants to allow new delegating to be disabled.
+    /// @dev User => Has new delegation  disabled.
+    mapping(address => uint256) public delegatingDisabled;
+
     // DAO PERMISSION DATA
 
     /// @notice Whether an address has DAO permissioning or not.
@@ -156,6 +170,26 @@ contract CentralRegistry is ERC165 {
 
     /// EVENTS ///
 
+    event FeeSet(
+        string indexed fee,
+        uint256 newFee
+    );
+    event InterestFeeSet(
+        address indexed market,
+        uint256 newFee
+    );
+    event MultiplierSet(
+        string indexed multiplier,
+        uint256 newMultiplier
+    );
+    event ApprovalIndexIncremented(
+        address indexed user,
+        uint256 newIndex
+    );
+    event DelegableStatusSet(
+        address indexed user,
+        bool delegable
+    );
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -270,6 +304,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new CVE contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newCVE The new address of cve.
     function setCVE(address newCVE) external {
         _checkElevatedPermissions();
@@ -280,6 +315,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new veCVE contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newVeCVE The new address of veCVE.
     function setVeCVE(address newVeCVE) external {
         _checkElevatedPermissions();
@@ -290,6 +326,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new CVE locker contract address
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newCVELocker The new address of cveLocker.
     function setCVELocker(address newCVELocker) external {
         _checkElevatedPermissions();
@@ -300,6 +337,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new protocol messaging hub contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newProtocolMessagingHub The new address of protocolMessagingHub.
     function setProtocolMessagingHub(
         address newProtocolMessagingHub
@@ -332,6 +370,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new fee accumulator contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newFeeAccumulator The new address of feeAccumulator.
     function setFeeAccumulator(address newFeeAccumulator) external {
         _checkElevatedPermissions();
@@ -342,6 +381,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new WormholeCore contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {WormholeCoreSet} event.
     /// @param newWormholeCore The new address of WormholeCore.
     function setWormholeCore(address newWormholeCore) external {
         _checkElevatedPermissions();
@@ -352,6 +392,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new WormholeRelayer contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {WormholeRelayerSet} event.
     /// @param newWormholeRelayer The new address of wormholeRelayer.
     function setWormholeRelayer(address newWormholeRelayer) external {
         _checkElevatedPermissions();
@@ -362,6 +403,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new Circle Relayer contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CircleRelayerSet} event.
     /// @param newCircleRelayer The new address of circleRelayer.
     function setCircleRelayer(address newCircleRelayer) external {
         _checkElevatedPermissions();
@@ -372,6 +414,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new TokenBridgeRelayer contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {TokenBridgeRelayerSet} event.
     /// @param newTokenBridgeRelayer The new address of tokenBridgeRelayer.
     function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {
         _checkElevatedPermissions();
@@ -397,6 +440,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new gelato sponsor address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {GelatoSponsorSet} event.
     /// @param newGelatoSponsor The new address of new gelato sponsor.
     function setGelatoSponsor(address newGelatoSponsor) external {
         _checkElevatedPermissions();
@@ -409,6 +453,7 @@ contract CentralRegistry is ERC165 {
     ///         to compound rewards for users.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      can only have a maximum value of 5%.
+    ///      Emits a {FeeSet} event.
     /// @param value The new fee to take on compound to fund future
     ///              auto compounding, in `basis points`.
     function setProtocolCompoundFee(uint256 value) external {
@@ -425,12 +470,15 @@ contract CentralRegistry is ERC165 {
 
         // Update vault harvest fee with new yield fee.
         protocolHarvestFee = protocolYieldFee + _bpToWad(value);
+
+        emit FeeSet("Compound", value);
     }
 
     /// @notice Sets the fee taken by Curvance DAO on all generated
     ///         by the protocol.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      can only have a maximum value of 50%.
+    ///      Emits a {FeeSet} event.
     /// @param value The new fee to take on compound to distribute to veCVE
     ///              lockers, in `basis points`.
     function setProtocolYieldFee(uint256 value) external {
@@ -447,12 +495,15 @@ contract CentralRegistry is ERC165 {
 
         // Update vault harvest fee with new yield fee.
         protocolHarvestFee = _bpToWad(value) + protocolCompoundFee;
+
+        emit FeeSet("Yield", value);
     }
 
     /// @notice Sets the fee taken by Curvance DAO on leverage/deleverage
     ///         via position folding.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      can only have a maximum value of 2%.
+    ///      Emits a {FeeSet} event.
     /// @param value The new fee to take on leverage/deleverage when done
     ///              by position folding, in `basis points`.
     function setProtocolLeverageFee(uint256 value) external {
@@ -466,11 +517,14 @@ contract CentralRegistry is ERC165 {
         // while inefficient we want to minimize potential human error
         // as much as possible, even if it costs a bit extra gas on config.
         protocolLeverageFee = _bpToWad(value);
+
+        emit FeeSet("Leverage", value);
     }
 
     /// @notice Sets the fee taken by Curvance DAO from interest generated.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      can only have a maximum value of 50%.
+    ///      Emits an {InterestFeeSet} event.
     /// @param market The address of the market manager to configure
     ///               interest fees of.
     /// @param value The new fee to take on interest generated
@@ -495,12 +549,15 @@ contract CentralRegistry is ERC165 {
         // while inefficient we want to minimize potential human error
         // as much as possible, even if it costs a bit extra gas on config.
         protocolInterestFactor[market] = _bpToWad(value);
+
+        emit InterestFeeSet(market, value);
     }
 
     /// @notice Sets the early unlock penalty value for when users want to
     ///         unlock their veCVE early.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be between 30% and 90%.
+    ///      Emits a {MultiplierSet} event.
     /// @param value The new penalty on early expiring a vote escrowed
     ///              cve position, in `basis points`.
     function setEarlyUnlockPenaltyMultiplier(uint256 value) external {
@@ -518,12 +575,15 @@ contract CentralRegistry is ERC165 {
         }
 
         earlyUnlockPenaltyMultiplier = value;
+
+        emit MultiplierSet("Early Unlock Penalty", value);
     }
 
     /// @notice Sets the voting power boost received by locks using
     ///         Continuous Lock mode.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be a positive boost i.e. > 1.01 or greater multiplier.
+    ///      Emits a {MultiplierSet} event.
     /// @param value The new voting power boost for continuous lock mode
     ///              vote escrowed cve positions, in `basis points`.
     function setVoteBoostMultiplier(uint256 value) external {
@@ -536,12 +596,15 @@ contract CentralRegistry is ERC165 {
         }
 
         voteBoostMultiplier = value;
+
+        emit MultiplierSet("Vote Boost", value);
     }
 
     /// @notice Sets the emissions boost received by choosing
     ///         to lock emissions at veCVE.
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      must be a positive boost i.e. > 1.01 or greater multiplier.
+    ///      Emits a {MultiplierSet} event.
     /// @param value The new emissions boost for opting to take emissions
     ///              in a vote escrowed cve position instead of liquid CVE,
     ///              in `basis points`.
@@ -554,6 +617,32 @@ contract CentralRegistry is ERC165 {
         }
 
         lockBoostMultiplier = value;
+
+        emit MultiplierSet("Lock Boost", value);
+    }
+
+    /// USER DELEGATION MANAGEMENT ///
+
+    /// @notice Increments a caller's approval index.
+    /// @dev By incrementing their approval index, a user's delegates will all
+    ///      have their delegation authority revoked across all Curvance
+    ///      contracts.
+    ///      Emits an {ApprovalIndexIncremented} event.
+    function incrementApprovalIndex() external {
+        uint256 newIndex = approvalIndex[msg.sender] + 1;
+        approvalIndex[msg.sender] = newIndex;
+
+        emit ApprovalIndexIncremented(msg.sender, newIndex);
+    }
+
+    /// @notice Sets a callers status for whether to allow new delegation
+    ///         or not.
+    /// @param delegable Whether caller wants to allow new delegation or not.
+    ///      Emits a {DelegableStatusSet} event.
+    function setDelegable(bool delegable) external {
+        delegatingDisabled[msg.sender] = delegable;
+
+        emit DelegableStatusSet(msg.sender, delegable);
     }
 
     /// OWNERSHIP LOGIC
@@ -922,7 +1011,7 @@ contract CentralRegistry is ERC165 {
     /// @dev Only callable on a 7 day delay or by the Emergency Council,
     ///      can only have a maximum value of 50% interest fee.
     ///      Cannot be a supported Market Manager contract prior.
-    ///      Emits a {NewCurvanceContract} event.
+    ///      Emits a {NewCurvanceContract} and {InterestFeeSet} events.
     /// @param newMarketManager The new Market Manager contract to support
     ///                         for use in Curvance.
     /// @param marketInterestFactor The interest factor associated with
@@ -963,6 +1052,7 @@ contract CentralRegistry is ERC165 {
         );
 
         emit NewCurvanceContract("Market Manager", newMarketManager);
+        emit InterestFeeSet(newMarketManager, marketInterestFactor);
     }
 
     /// @notice Removes a current market manager from Curvance.
