@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
@@ -23,7 +24,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///
 ///      CToken and DToken contracts facilitate these operations through
 ///      integration with Position Foldings callback functions. 
-contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
+contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     /// @param borrowToken Address of dToken that will be borrowed from.
@@ -78,6 +79,9 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// @dev 9900 = 99% = 0.99.
     uint256 public constant MAX_LEVERAGE = 9900;
 
+    /// @dev `bytes4(keccak256(bytes("PositionFolding__Unauthorized()")))`
+    uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x1d52945b;
+
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
     /// @notice Address of the Market Manager linked to this contract.
@@ -105,15 +109,15 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// @dev Checks slippage on position folding prior and after
     ///      leverage/deleverage action, works similar to reentryguard
     ///      with pre and post checks.
-    modifier checkSlippage(address user, uint256 slippage) {
+    modifier checkSlippage(address account, uint256 slippage) {
         (uint256 collateralBefore, uint256 debtBefore) = marketManager
-            .solvencyOf(user);
+            .solvencyOf(account);
         uint256 liquidityBefore = collateralBefore - debtBefore;
 
         _;
 
         (uint256 sumCollateral, uint256 sumDebt) = marketManager.solvencyOf(
-            user
+            account
         );
 
         uint256 liquidityAfter = sumCollateral - sumDebt;
@@ -171,13 +175,41 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         LeverageStruct calldata leverageData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
-        _leverage(leverageData);
+        _leverage(leverageData, msg.sender);
+    }
+
+    /// @notice Leverages an active Curvance position in favor of increasing
+    ///         both collateral and debt inside the system, via delegation.
+    /// @dev Measures slippage through pre/post conditional slippage check
+    ///      in `checkSlippage` modifier.
+    ///      NOTE: Be careful who you approve here!
+    ///      The caller can select slippage, potentially causing loss of funds
+    ///      if delegation is provided to a malicious party.
+    /// @param leverageData Struct containing instructions on desired
+    ///                     leverage action.
+    /// @param account The account to leverage an active Curvance position
+    ///                for.
+    /// @param slippage Slippage accepted by the user for execution of
+    ///                 `leverageData` leverage action, in basis points.
+    function leverageFor(
+        LeverageStruct calldata leverageData,
+        address account,
+        uint256 slippage
+    ) external checkSlippage(account, slippage) nonReentrant {
+        if (!_checkIsDelegate(account, msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _leverage(leverageData, account);
     }
 
     /// @notice Deleverages an active Curvance position in favor of decreasing
     ///         both collateral and debt inside the system.
     /// @dev Measures slippage through pre/post conditional slippage check
     ///      in `checkSlippage` modifier.
+    ///      NOTE: Be careful who you approve here!
+    ///      The caller can select slippage, potentially causing loss of funds
+    ///      if delegation is provided to a malicious party.
     /// @param deleverageData Struct containing instructions on desired
     ///                       deleverage action.
     /// @param slippage Slippage accepted by the user for execution of
@@ -186,7 +218,29 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         DeleverageStruct calldata deleverageData,
         uint256 slippage
     ) external checkSlippage(msg.sender, slippage) nonReentrant {
-        _deleverage(deleverageData);
+        _deleverage(deleverageData, msg.sender);
+    }
+
+    /// @notice Deleverages an active Curvance position in favor of decreasing
+    ///         both collateral and debt inside the system, via delegation.
+    /// @dev Measures slippage through pre/post conditional slippage check
+    ///      in `checkSlippage` modifier.
+    /// @param deleverageData Struct containing instructions on desired
+    ///                       deleverage action.
+    /// @param account The account to deleverage an active Curvance position
+    ///                for.
+    /// @param slippage Slippage accepted by the user for execution of
+    ///                 `deleverageData` deleverage action, in basis points.
+    function deleverageFor(
+        DeleverageStruct calldata deleverageData,
+        address account,
+        uint256 slippage
+    ) external checkSlippage(account, slippage) nonReentrant {
+        if (!_checkIsDelegate(account, msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        _deleverage(deleverageData, account);
     }
 
     /// @notice Callback function to execute post borrow of
@@ -195,7 +249,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// @dev Measures slippage after this callback validating that `borrower`
     ///      is still within acceptable liquidity requirements.
     /// @param borrowToken The borrow token borrowed from.
-    /// @param borrower The user borrowing that will be swapped into
+    /// @param borrower The account borrowing that will be swapped into
     ///                 collateral assets deposited into Curvance.
     /// @param borrowAmount The amount of `borrowToken`'s underlying borrowed.
     /// @param params Swap and deposit instructions.
@@ -208,13 +262,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         // Validate that the debt token itself is executing
         // the callback.
         if (msg.sender != borrowToken) {
-            revert PositionFolding__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         // Validate the debt token is actually listed to this
         // Market Manager.
         if (!marketManager.isListed(borrowToken)) {
-            revert PositionFolding__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         LeverageStruct memory leverageData = abi.decode(
@@ -330,7 +384,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     /// @dev Measures slippage after this callback validating that `redeemer`
     ///      is still within acceptable liquidity requirements.
     /// @param collateralToken The cToken redeemed for its underlying.
-    /// @param redeemer The user redeeming collateral that will be used to
+    /// @param redeemer The account redeeming collateral that will be used to
     ///                 repay their active debt.
     /// @param collateralAmount The amount of `collateralToken` underlying
     ///                         redeemed.
@@ -344,13 +398,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         // Validate that the collateral token itself is executing
         // the callback.
         if (msg.sender != collateralToken) {
-            revert PositionFolding__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         // Validate the collateral token is actually listed to this
         // Market Manager.
         if (!marketManager.isListed(collateralToken)) {
-            revert PositionFolding__Unauthorized();
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
 
         DeleverageStruct memory deleverageData = abi.decode(
@@ -470,24 +524,24 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @notice Calculates the maximum amount of `borrowToken` `user` can
+    /// @notice Calculates the maximum amount of `borrowToken` `account` can
     ///         borrow for maximum leverage.
     /// @dev Applies a minor dampening effect to calculated maximum leverage
     ///      via `MAX_LEVERAGE`.
-    /// @param user The user to query maximum borrow amount for.
-    /// @param borrowToken The dToken that `user` will borrow from
+    /// @param account The account to query maximum borrow amount for.
+    /// @param borrowToken The dToken that `account` will borrow from
     ///                    to achieve leverage.
     /// @return The maximum borrow amount allowed from dToken, measured in
     ///         underlying token amount.
     function queryAmountToBorrowForLeverageMax(
-        address user,
+        address account,
         address borrowToken
     ) public view returns (uint256) {
         (
             uint256 sumCollateral,
             uint256 maxDebt,
             uint256 sumDebt
-        ) = marketManager.statusOf(user);
+        ) = marketManager.statusOf(account);
 
         // We can calculate terminal leverage by calculating the infinite
         // series of swapping to maximum LTV over and over, which results
@@ -496,7 +550,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         // For example, 80% LTV will result in terminal maximum leverage of:
         // 1 / (1 - .8) -> (1 / 0.2) -> 5x leverage. 
         // The equation below is equal to this equation,
-        // just extrapolated for a user's collateral vs debt.
+        // just extrapolated for an account's collateral vs debt.
         //
         // We also embed a `MAX_LEVERAGE` dampening effect to minimize
         // transaction failure from imperfect execution due to things
@@ -535,11 +589,13 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     ///         both collateral and debt inside the system.
     /// @param leverageData Struct containing instructions on desired
     ///                     leverage action.
-    function _leverage(LeverageStruct memory leverageData) internal {
+    /// @param account The account to leverage an active Curvance position
+    ///                for.
+    function _leverage(LeverageStruct memory leverageData, address account) internal {
         DToken borrowToken = leverageData.borrowToken;
         uint256 borrowAmount = leverageData.borrowAmount;
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
-            msg.sender,
+            account,
             address(borrowToken)
         );
 
@@ -553,7 +609,7 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
         }
 
         borrowToken.borrowForPositionFolding(
-            msg.sender,
+            account,
             borrowAmount,
             abi.encode(leverageData)
         );
@@ -563,11 +619,22 @@ contract PositionFolding is IPositionFolding, ERC165, ReentrancyGuard {
     ///         both collateral and debt inside the system.
     /// @param deleverageData Struct containing instructions on desired
     ///                       deleverage action.
-    function _deleverage(DeleverageStruct memory deleverageData) internal {
+    /// @param account The account to deleverage an active Curvance position
+    ///                for.
+    function _deleverage(DeleverageStruct memory deleverageData, address account) internal {
         deleverageData.collateralToken.withdrawByPositionFolding(
-            msg.sender,
+            account,
             deleverageData.collateralAmount,
             abi.encode(deleverageData)
         );
+    }
+
+    /// @dev Internal helper for reverting efficiently.
+    function _revert(uint256 s) internal pure {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, s)
+            revert(0x1c, 0x04)
+        }
     }
 }

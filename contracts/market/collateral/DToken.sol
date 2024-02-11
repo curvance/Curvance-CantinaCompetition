@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
@@ -37,7 +38,7 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 ///      "Safe" versions of functions have been added that introduce
 ///      additional reentry and update protection logic to minimize risks
 ///      when integrating Curvance into external protocols.
-contract DToken is ERC165, ReentrancyGuard {
+contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// TYPES ///
 
     /// @param principal Principal total balance (with accrued interest).
@@ -97,10 +98,6 @@ contract DToken is ERC165, ReentrancyGuard {
     /// @notice The allowance on token transfers a spender has for an account.
     /// @dev Account address => Spender address => Approved token amount.
     mapping(address => mapping(address => uint256)) public allowance;
-    /// @notice Status of whether a spender has the ability to borrow
-    ///         on behalf of an account.
-    /// @dev Account address => Spender address => Can borrow on behalf.
-    mapping(address => mapping(address => bool)) public isApprovedToBorrow;
     /// @notice Debt information associated with an account.
     /// @dev Account address => DebtData struct.
     mapping(address => DebtData) internal _debtOf;
@@ -112,11 +109,6 @@ contract DToken is ERC165, ReentrancyGuard {
         address indexed owner,
         address indexed spender,
         uint256 value
-    );
-    event BorrowApproval(
-        address indexed owner,
-        address indexed spender,
-        bool isApproved
     );
     event InterestAccrued(
         uint256 debtAccumulated,
@@ -309,7 +301,7 @@ contract DToken is ERC165, ReentrancyGuard {
         address recipient,
         uint256 amount
     ) external nonReentrant {
-        if (!isApprovedToBorrow[account][msg.sender]) {
+        if (!_checkIsDelegate(account, msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
@@ -673,27 +665,6 @@ contract DToken is ERC165, ReentrancyGuard {
         allowance[msg.sender][spender] = tokens;
 
         emit Approval(msg.sender, spender, tokens);
-        return true;
-    }
-
-    /// @notice Approves or restricts `spender`'s authority to borrow
-    ///         on the caller's behalf.
-    /// @dev NOTE: Be careful who you approve here!
-    ///      Not only can they take borrowed funds, but, they can delay
-    ///      repayment through repeated borrows preventing withdrawal.
-    ///      Emits a {BorrowApproval} event.
-    /// @param spender The address that will be approved or restricted
-    ///                from borrowing on behalf of the caller.
-    /// @param isApproved Whether `spender` is being approved or restricted
-    ///                   of authority to borrow on behalf of caller.
-    /// @return Returns true on success.
-    function setBorrowApproval(
-        address spender,
-        bool isApproved
-    ) external returns (bool) {
-        isApprovedToBorrow[msg.sender][spender] = isApproved;
-
-        emit BorrowApproval(msg.sender, spender, isApproved);
         return true;
     }
 

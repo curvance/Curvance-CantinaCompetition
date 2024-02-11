@@ -60,7 +60,7 @@ abstract contract Delegable {
     /// @dev The approval index is a way to revoke approval on all tokens,
     ///      and features at once if a malicious delegation was allowed by
     ///      `user`.
-    /// @param user The user to check approval index for.
+    /// @param user The user to check delegated approval index for.
     /// @return `User`'s approval index.
     function getUserApprovalIndex(
         address user

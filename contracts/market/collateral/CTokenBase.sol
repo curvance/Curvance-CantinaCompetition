@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ERC4626, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
 import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
@@ -47,7 +48,7 @@ import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.s
 ///      additional reentry and update protection logic to minimize risks
 ///      when integrating Curvance into external protocols.
 ///
-abstract contract CTokenBase is ERC4626, ReentrancyGuard {
+abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @dev `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
@@ -87,19 +88,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     string internal _symbol;
     /// @notice Total CToken underlying token assets, minus pending vesting.
     uint256 internal _totalAssets;
-
-    /// @notice Status of whether a spender has the ability to collateralize
-    ///         on behalf of an account.
-    /// @dev Account address => Spender address => Can collateralize on behalf.
-    mapping(address => mapping(address => bool)) public isApprovedToCollateralize;
-
-    /// EVENTS ///
-
-    event CollateralizeApproval(
-        address indexed owner,
-        address indexed spender,
-        bool isApproved
-    );
 
     /// ERRORS ///
 
@@ -189,7 +177,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     ) external nonReentrant returns (uint256 shares) {
         shares = _deposit(assets, receiver);
 
-        if (isApprovedToCollateralize[receiver][msg.sender]) {
+        if (_checkIsDelegate(receiver, msg.sender)) {
             marketManager.postCollateral(receiver, address(this), shares);
         }
     }
@@ -220,27 +208,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address owner
     ) external nonReentrant returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner, true);
-    }
-
-    /// @notice Approves or restricts `spender`'s authority to collateralize
-    ///         shares on the caller's behalf.
-    /// @dev NOTE: Be careful who you approve here!
-    ///      They can delay redemption of assets through repeated
-    ///      collateralization preventing withdrawal.
-    ///      Emits a {CollateralizeApproval} event.
-    /// @param spender The address that will be approved or restricted
-    ///                from collateralizing on behalf of the caller.
-    /// @param isApproved Whether `spender` is being approved or restricted
-    ///                   of authority to collateralize on behalf of caller.
-    /// @return Returns true on success.
-    function setCollateralizeApproval(
-        address spender,
-        bool isApproved
-    ) external returns (bool) {
-        isApprovedToCollateralize[msg.sender][spender] = isApproved;
-
-        emit CollateralizeApproval(msg.sender, spender, isApproved);
-        return true;
     }
 
     /// @notice Returns the underlying balance of the `account`, safely.

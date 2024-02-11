@@ -31,8 +31,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// CONSTANTS ///
 
     /// @notice The smallest possible twap that can be used.
-    ///         300 = 5 minutes.
-    uint32 public constant MINIMUM_SECONDS_AGO = 300;
+    ///         900 = 15 minutes.
+    uint32 public constant MINIMUM_SECONDS_AGO = 900;
 
     /// @notice Chain WETH address.
     address public immutable WETH;

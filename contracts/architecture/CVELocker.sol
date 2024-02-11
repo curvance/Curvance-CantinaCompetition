@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
@@ -12,7 +13,7 @@ import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
-contract CVELocker is ReentrancyGuard {
+contract CVELocker is Delegable, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @notice Protocol epoch length.
@@ -60,19 +61,10 @@ contract CVELocker is ReentrancyGuard {
     ///         in `WAD`.
     /// @dev Epoch # => Rewards per veCVE.
     mapping(uint256 => uint256) public epochRewardsPerCVE;
-    /// @notice Status of whether a spender has the ability to borrow
-    ///         on behalf of an account.
-    /// @dev Account address => spender address => Can claim rewards.
-    mapping(address => mapping(address => bool)) public isApprovedToManage;
 
     /// EVENTS ///
 
     event RewardPaid(address user, address rewardToken, uint256 amount);
-    event ClaimApproval(
-        address indexed owner,
-        address indexed spender,
-        bool isApproved
-    );
 
     /// ERRORS ///
 
@@ -167,28 +159,6 @@ contract CVELocker is ReentrancyGuard {
 
             SafeTransferLib.safeTransfer(token, daoOperator, amount);
         }
-    }
-
-    /// @notice Approves or restricts `spender`'s authority to claim locker          
-    //          rewards on the caller's behalf.
-    /// @dev Be extremely careful giving this authority to anyone, the
-    ///      intention is to allow delegate claim functionality to hot wallets
-    ///      or strategies that make sure of rewards directly without
-    ///      distributing rewards to a user directly.
-    ///      Emits a {ClaimApproval} event.
-    /// @param spender The address that will be approved or restricted
-    ///                from claiming rewards on behalf of the caller.
-    /// @param isApproved Whether `spender` is being approved or restricted
-    ///                   of authority to claim rewards on behalf of caller.
-    /// @return Returns true on success.
-    function setClaimApproval(
-        address spender,
-        bool isApproved
-    ) external returns (bool) {
-        isApprovedToManage[msg.sender][spender] = isApproved;
-
-        emit ClaimApproval(msg.sender, spender, isApproved);
-        return true;
     }
 
     /// @notice Shuts down the CVELocker and prevents future reward
@@ -314,7 +284,7 @@ contract CVELocker is ReentrancyGuard {
         address user,
         uint256 epochs
     ) external nonReentrant returns (bool) {
-        if (!isApprovedToManage[user][msg.sender]) {
+        if (!_checkIsDelegate(user, msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
