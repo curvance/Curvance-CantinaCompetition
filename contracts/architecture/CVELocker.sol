@@ -280,10 +280,11 @@ contract CVELocker is Delegable, ReentrancyGuard {
     ///      Emits a {ClaimApproval} event.
     /// @param user The address of the user having rewards managed.
     /// @param epochs The number of epochs for which to manage rewards.
+    /// @return How much rewards were claimed for `user` from the locker.
     function manageRewardsFor(
         address user,
         uint256 epochs
-    ) external nonReentrant returns (bool) {
+    ) external nonReentrant returns (uint256) {
         if (!_checkIsDelegate(user, msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
@@ -361,12 +362,12 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @dev May emit a {RewardPaid} event.
     /// @param user The address of the user claiming rewards.
     /// @param epochs The number of epochs for which to claim rewards.
-    /// @return Whether rewards were claimed or not.
+    /// @return How much rewards were claimed for `user` from the locker.
     function _claimRewardsDirect(
         address user,
         uint256 epochs
-    ) internal returns (bool) {
-        uint256 rewards = _calculateRewards(user, epochs);
+    ) internal returns (uint256 rewards) {
+        rewards = _calculateRewards(user, epochs);
 
         // Only emit an event if they actually had rewards,
         // do not wanna revert to maintain composability.
@@ -380,11 +381,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
                 rewardToken,
                 rewards
             );
-
-            return true;
         }
-
-        return false;
     }
 
     /// @notice Calculates the rewards over `epochs`.

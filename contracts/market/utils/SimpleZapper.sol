@@ -28,7 +28,7 @@ contract SimpleZapper is ReentrancyGuard {
 
     error SimpleZapper__ExecutionError();
     error SimpleZapper__InvalidCentralRegistry();
-    error SimpleZapper__MarketManagerIsNotLendingMarket();
+    error SimpleZapper__InvalidMarketManager();
     error SimpleZapper__Unauthorized();
     error SimpleZapper__InsufficientToRepay();
     error SimpleZapper__InvalidZapper(address invalidZapper);
@@ -56,7 +56,7 @@ contract SimpleZapper is ReentrancyGuard {
         // Validate that `marketManager_` is configured as a market manager
         // inside the Central Registry.
         if (!centralRegistry.isMarketManager(marketManager_)) {
-            revert SimpleZapper__MarketManagerIsNotLendingMarket();
+            revert SimpleZapper__InvalidMarketManager();
         }
 
         marketManager = IMarketManager(marketManager_);
@@ -65,17 +65,18 @@ contract SimpleZapper is ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Swaps then deposits `zapperCall.inputToken` cToken underlying
-    ///         and enters into Curvance position.
+    /// @notice Zaps then deposits `zapperCall.inputToken`, a cToken
+    ///         underlying, and enters into Curvance position,
+    ///         for `recipient`.
     /// @param zapperCall Zap instruction data to execute the Zap.
     /// @param cToken The Curvance cToken address.
     /// @param recipient Address that should receive Zapped deposit.
-    /// @return cTokenOutAmount The output amount received from Zapping.
+    /// @return The output amount received from Zapping.
     function zapAndDeposit(
         SwapperLib.ZapperCall memory zapperCall,
         address cToken,
         address recipient
-    ) external payable returns (uint256) {
+    ) external payable nonReentrant returns (uint256) {
         if (CommonLib.isETH(zapperCall.inputToken)) {
             // Validate message has gas token attached.
             if (zapperCall.inputAmount != msg.value) {
@@ -90,6 +91,12 @@ contract SimpleZapper is ReentrancyGuard {
             );
         }
 
+        // Validate that `cToken` is listed inside the associated
+        // Market Manager.
+        if (!marketManager.isListed(cToken)) {
+            revert SimpleZapper__Unauthorized();
+        }
+
         // Validate target contract is an approved Zapper.
         if (!centralRegistry.isZapper(zapperCall.target)) {
             revert SimpleZapper__InvalidZapper(zapperCall.target);
@@ -101,18 +108,20 @@ contract SimpleZapper is ReentrancyGuard {
         return _enterCurvance(cToken, recipient);
     }
 
-    /// @notice Swaps then repays dToken debt inside Curvance.
+    /// @notice Swaps then repays dToken debt inside Curvance for `recipient`.
     /// @dev Sends any excess dToken underlying to `recipient`.
     /// @param swapperData Swap instruction data to execute the repayment.
     /// @param dToken The Curvance dToken address.
     /// @param repayAmount The amount of dToken underlying to be repaid.
     /// @param recipient Address that should have its outstanding debt repaid.
+    /// @return The excess amount of dToken underlying that was returned
+    ///         to `recipient`.
     function swapAndRepay(
         SwapperLib.Swap memory swapperData,
         address dToken,
         uint256 repayAmount,
         address recipient
-    ) external payable {
+    ) external payable nonReentrant returns (uint256) {
         if (CommonLib.isETH(swapperData.inputToken)) {
             // Validate message has gas token attached.
             if (swapperData.inputAmount != msg.value) {
@@ -127,6 +136,12 @@ contract SimpleZapper is ReentrancyGuard {
             );
         }
 
+        // Validate that `dToken` is listed inside the associated
+        // Market Manager.
+        if (!marketManager.isListed(dToken)) {
+            revert SimpleZapper__Unauthorized();
+        }
+
         // Validate target contract is an approved swapper.
         if (!centralRegistry.isSwapper(swapperData.target)) {
             revert SimpleZapper__InvalidZapper(swapperData.target);
@@ -134,36 +149,7 @@ contract SimpleZapper is ReentrancyGuard {
 
         SwapperLib.swap(centralRegistry, swapperData);
 
-        // Cache underlying to minimize external calls.
-        address dTokenUnderlying = DToken(dToken).underlying();
-        uint256 balance = IERC20(dTokenUnderlying).balanceOf(address(this));
-
-        // Revert if the swap experienced too much slippage.
-        if (balance < repayAmount) {
-            revert SimpleZapper__InsufficientToRepay();
-        }
-
-        // Approve `dTokenUnderlying` to dToken contract, if necessary.
-        SwapperLib._approveTokenIfNeeded(
-            dTokenUnderlying,
-            address(dToken),
-            repayAmount
-        );
-
-        // Execute repayment of dToken debt.
-        DToken(dToken).repayFor(recipient, repayAmount);
-
-        // Remove any excess approval.
-        SwapperLib._removeApprovalIfNeeded(dTokenUnderlying, address(dToken));
-
-        // Transfer any remaining `dTokenUnderlying` to `recipient`.
-        if (balance > repayAmount) {
-            _transferToUser(
-                dTokenUnderlying, 
-                recipient, 
-                balance - repayAmount
-            );
-        }
+        return _repayDebt(dToken, repayAmount, recipient);
     }
 
     /// @notice Deposits cToken underlying into Curvance cToken contract.
@@ -174,12 +160,6 @@ contract SimpleZapper is ReentrancyGuard {
         address cToken,
         address recipient
     ) private returns (uint256) {
-        // Validate that `cToken` is listed inside the associated
-        // Market Manager.
-        if (!marketManager.isListed(cToken)) {
-            revert SimpleZapper__Unauthorized();
-        }
-
         address cTokenUnderlying = CTokenPrimitive(cToken).underlying();
         uint256 balance = IERC20(cTokenUnderlying).balanceOf(address(this));
 
@@ -201,13 +181,61 @@ contract SimpleZapper is ReentrancyGuard {
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
     }
 
+    /// @notice Repays Curvance lenders dToken underlying owed on behalf
+    ///         of `recipient`.
+    /// @param dToken The Curvance dToken address.
+    /// @param repayAmount The amount of dToken underlying to be repaid.
+    /// @param recipient Address that should have outstanding debt repaid.
+    /// @return outAmount The excess amount of dToken underlying that was
+    ///                   returned to `recipient`.
+    function _repayDebt(
+        address dToken,
+        uint256 repayAmount,
+        address recipient
+    ) internal returns (uint256 outAmount) {
+        address dTokenUnderlying = DToken(dToken).underlying();
+        // We never need to worry about this capturing other peoples balances
+        // since the Zapper should never be holding any dToken underlying
+        // itself.
+        outAmount = IERC20(dTokenUnderlying).balanceOf(address(this));
+        
+        // Revert if the swap experienced too much slippage.
+        if (outAmount < repayAmount) {
+            revert SimpleZapper__InsufficientToRepay();
+        }
+
+        // Approve `dTokenUnderlying` to dToken contract, if necessary.
+        SwapperLib._approveTokenIfNeeded(
+            dTokenUnderlying,
+            dToken,
+            repayAmount
+        );
+
+        // Execute repayment of dToken debt.
+        DToken(dToken).repayFor(recipient, repayAmount);
+
+        // Remove any excess approval.
+        SwapperLib._removeApprovalIfNeeded(dTokenUnderlying, dToken);
+
+        outAmount -= repayAmount;
+
+        // Transfer any remaining `dTokenUnderlying` to `recipient`.
+        if (outAmount > 0) {
+            _transferToRecipient(
+                dTokenUnderlying, 
+                recipient, 
+                outAmount
+            );
+        }
+    }
+
     /// @notice Helper function for efficiently transferring tokens
     ///         to desired user.
     /// @param token The token to transfer to `recipient`, 
     ///              this can be the network gas token.
     /// @param recipient The user receiving `token`.
     /// @param amount The amount of `token` to be transferred to `recipient`.
-    function _transferToUser(
+    function _transferToRecipient(
         address token,
         address recipient,
         uint256 amount

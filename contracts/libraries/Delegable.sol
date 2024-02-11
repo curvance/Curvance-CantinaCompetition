@@ -53,6 +53,22 @@ abstract contract Delegable {
 
         centralRegistry = centralRegistry_;
     }
+
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Returns whether a user or contract has the ability to act
+    ///         on behalf of an account.
+    /// @param user The address to check whether `delegate` has delegation
+    ///             permissions.
+    /// @param delegate The address that will be approved or restricted
+    ///                 from delegated actions on behalf of the caller.
+    /// @return Returns whether `delegate` is an approved delegate of `user`.
+    function isDelegate(
+        address user,
+        address delegate
+    ) public view returns (bool) {
+        return _checkIsDelegate(user, delegate);
+    }
     
     /// PUBLIC FUNCTIONS ///
 

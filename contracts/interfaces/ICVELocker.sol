@@ -17,6 +17,9 @@ struct RewardsData {
 
 interface ICVELocker {
 
+    /// @notice Returns the reward token for the CVE locker.
+    function rewardToken() external view returns (address);
+
     /// @notice Called by the fee accumulator to record rewards allocated to
     ///         an epoch.
     /// @dev Only callable on by the Fee Accumulator.
@@ -61,6 +64,20 @@ interface ICVELocker {
         bytes memory params,
         uint256 aux
     ) external;
+
+    /// @notice Manages rewards for `user`, used at the beginning
+    ///         of some external strategy for `user`.
+    /// @dev Be extremely careful giving this authority to anyone, the
+    ///      intention is to allow delegate claim functionality to hot wallets
+    ///      or strategies that make sure of rewards directly without
+    ///      distributing rewards to a user directly.
+    ///      Emits a {ClaimApproval} event.
+    /// @param user The address of the user having rewards managed.
+    /// @param epochs The number of epochs for which to manage rewards.
+    function manageRewardsFor(
+        address user,
+        uint256 epochs
+    ) external returns (uint256);
 
     /// @notice Checks if a user has any CVE locker rewards to claim.
     /// @dev Even if a users lock is expiring the next lock resulting

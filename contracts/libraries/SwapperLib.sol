@@ -11,7 +11,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 library SwapperLib {
     /// TYPES ///
 
-    /// @notice Used to execute a Zap, which is selling one token for another.
+    /// @notice Used to execute a swap, which is selling one token for another.
     /// @param inputToken Address of input token to swap from.
     /// @param inputAmount The amount of `inputToken` to swap.
     /// @param outputToken Address of token to swap into.
