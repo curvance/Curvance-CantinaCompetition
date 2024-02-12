@@ -453,80 +453,103 @@ contract VeCVE is ERC20, ReentrancyGuard {
         Lock[] storage locks = userLocks[msg.sender];
         uint256 numLocks = locks.length;
 
+        // Validate there are multiple locks to combine.
         if (numLocks < 2) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
 
-        uint256 priorCLPoints;
-        uint256 amount;
+        uint256 lockedAmount;
         Lock storage lock;
 
         for (uint256 i; i < numLocks; ) {
             lock = locks[i];
 
             if (lock.unlockTime != CONTINUOUS_LOCK_VALUE) {
-                // If the lock is expired, revert until they
-                // properly process it.
-                if (lock.unlockTime < block.timestamp) {
-                    _revert(_INVALID_LOCK_SELECTOR);
-                }
-
-                // Remove unlock data if there is any.
+                // Remove previous token unlock data.
                 _reduceTokenUnlocks(
                     msg.sender,
                     currentEpoch(lock.unlockTime),
                     lock.amount
                 );
-            } else {
-                // Sums how much veCVE is continuous locked.
-                unchecked {
-                    priorCLPoints += lock.amount;
-                }
             }
+
             unchecked {
                 // Should never overflow as the total amount of tokens a user
                 // could ever lock is equal to the entire token supply.
-                amount += locks[i++].amount;
+                lockedAmount += locks[i++].amount;
             }
         }
 
         // Remove the users locks.
         delete userLocks[msg.sender];
+        uint256 veBalanceOf = balanceOf(msg.sender);
 
+        // Validate that current ve balance matches the aggregate lock
+        // amounts, and invariants are accurate.
+        if (veBalanceOf != lockedAmount) {
+            revert VeCVE__InvariantError();
+        }
+
+        // Cache current user points.
+        uint256 currentPoints = userPoints[msg.sender];
+
+        // Terminal lock is continuous.
         if (continuousLock) {
+            // Create new continuous lock.
             userLocks[msg.sender].push(
                 Lock({
-                    amount: uint216(amount),
+                    amount: uint216(lockedAmount),
                     unlockTime: CONTINUOUS_LOCK_VALUE
                 })
             );
 
-            // If not all locks combined were continuous, we will need to
-            // increment points by the difference between the terminal boosted
-            // points minus current `priorCLPoints`, because continuous lock
-            // bonus is 100%, we can use amount as the excess points to be
-            // received from continuous lock.
-            uint256 netIncrease = amount - priorCLPoints;
-            if (netIncrease > 0) {
-                _incrementPoints(msg.sender, netIncrease);
-            }
-            
-        } else {
-            userLocks[msg.sender].push(
-                Lock({
-                    amount: uint216(amount),
-                    unlockTime: freshLockTimestamp()
-                })
-            );
+            // Adjust user points.
 
-            // Remove caller `priorCLPoints` from their continuous locks,
-            // if any.
-            if (priorCLPoints > 0) {
-                _reducePoints(msg.sender, priorCLPoints);
+            // Multiply balanceOf by CL Multiplier since terminal lock
+            // is continuous, and terminal points should be multiplied
+            // above their veCVE balance.
+            veBalanceOf = veBalanceOf * CL_POINT_MULTIPLIER;
+
+            // Check if points need to be adjusted, true when there are
+            // non-continuous locks currently so points need to increase.
+            if (veBalanceOf != currentPoints) {
+                _incrementPoints(msg.sender, veBalanceOf - currentPoints);
             }
-            // Record the new unlock data.
-            _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
+
+            // Return without updating token unlocks since the terminal
+            // lock is continuous.
+            return;
         }
+
+        // Terminal lock is non-continuous.
+
+        // Create new non-continuous lock.
+        userLocks[msg.sender].push(
+            Lock({
+                amount: uint216(lockedAmount),
+                unlockTime: freshLockTimestamp()
+            })
+        );
+
+        // Adjust user points and unlock data.
+
+        // Check if points need to be adjusted, true when there are
+        // non-continuous locks currently so points need to increase.
+        if (veBalanceOf != currentPoints) {
+            // Its possible user points are too low if user locks have
+            // expired without being processed, adjust upward.
+            if (veBalanceOf > currentPoints) {
+                _incrementPoints(msg.sender, veBalanceOf - currentPoints);
+            } else {
+                // Otherwise we need to adjust points down since there were
+                // user locks in continuous lock mode, requiring a downward
+                // adjustment.
+                _reducePoints(msg.sender, currentPoints - veBalanceOf);
+            }
+        }
+
+        // Record the new unlock data.
+        _incrementTokenUnlocks(msg.sender, freshLockEpoch(), lockedAmount);   
     }
 
     /// @notice Processes an expired lock for the specified lock index,
