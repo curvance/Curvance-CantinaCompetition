@@ -105,11 +105,13 @@ contract StakedGMXCToken is CTokenCompounding {
             SwapperLib.swap(swapData);
 
             yield = IERC20(asset()).balanceOf(address(this)) - balance;
-            _totalAssets = IStakedGMX(rewardRouter.stakedGmxTracker())
-                .stakedAmounts(address(this));
+            address stakedGmxTracker = rewardRouter.stakedGmxTracker();
+            _totalAssets = IStakedGMX(stakedGmxTracker).stakedAmounts(
+                address(this)
+            );
 
             // Deposit swapped reward to StakedGMX.
-            SafeTransferLib.safeApprove(asset(), address(rewardRouter), yield);
+            SafeTransferLib.safeApprove(asset(), stakedGmxTracker, yield);
             rewardRouter.stakeGmx(yield);
 
             // Update vesting info.
@@ -147,7 +149,11 @@ contract StakedGMXCToken is CTokenCompounding {
     /// @notice Deposits specified amount of assets into velodrome gauge pool
     /// @param assets The amount of assets to deposit
     function _afterDeposit(uint256 assets, uint256) internal override {
-        SafeTransferLib.safeApprove(asset(), address(rewardRouter), assets);
+        SafeTransferLib.safeApprove(
+            asset(),
+            rewardRouter.stakedGmxTracker(),
+            assets
+        );
         rewardRouter.stakeGmx(assets);
     }
 
