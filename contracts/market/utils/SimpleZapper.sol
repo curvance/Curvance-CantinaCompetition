@@ -102,6 +102,7 @@ contract SimpleZapper is ReentrancyGuard {
             revert SimpleZapper__InvalidZapper(zapperCall.target);
         }
 
+        // Execute Zap.
         SwapperLib.zap(zapperCall);
 
         // Enter Curvance cToken position.
@@ -147,6 +148,7 @@ contract SimpleZapper is ReentrancyGuard {
             revert SimpleZapper__InvalidZapper(swapperData.target);
         }
 
+        // Execute swap into dToken underlying.
         SwapperLib.swap(centralRegistry, swapperData);
 
         return _repayDebt(dToken, repayAmount, recipient);

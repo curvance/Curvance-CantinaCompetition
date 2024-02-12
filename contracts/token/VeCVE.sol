@@ -137,19 +137,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         return (lockAmounts, lockTimestamps);
     }
 
-    /// @notice Used for fuzzing.
-    function getUnlockTime(
-        address user,
-        uint256 lockIndex
-    ) public view returns (uint40) {
-        return userLocks[user][lockIndex].unlockTime;
-    }
-
-    /// @notice Used for frontend, needed due to array of structs.
-    function queryUserLocksLength(address user) external view returns (uint) {
-        return userLocks[user].length;
-    }
-
     /// @notice Rescue any token sent by mistake.
     /// @param token token to rescue.
     /// @param amount amount of `token` to rescue, 0 indicates to rescue all.
@@ -478,6 +465,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
             lock = locks[i];
 
             if (lock.unlockTime != CONTINUOUS_LOCK_VALUE) {
+                // If the lock is expired, revert until they
+                // properly process it.
+                if (lock.unlockTime < block.timestamp) {
+                    _revert(_INVALID_LOCK_SELECTOR);
+                }
+
                 // Remove unlock data if there is any.
                 _reduceTokenUnlocks(
                     msg.sender,
@@ -517,6 +510,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             if (netIncrease > 0) {
                 _incrementPoints(msg.sender, netIncrease);
             }
+            
         } else {
             userLocks[msg.sender].push(
                 Lock({

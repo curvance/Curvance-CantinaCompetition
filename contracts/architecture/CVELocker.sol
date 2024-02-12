@@ -470,7 +470,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
                 swapData.call.length == 0 ||
                 swapData.inputToken != rewardToken ||
                 swapData.outputToken != cve ||
-                swapData.inputAmount > rewards ||
+                swapData.inputAmount != rewards ||
                 !centralRegistry.isSwapper(swapData.target)
             ) {
                 revert CVELocker__SwapDataIsInvalid();

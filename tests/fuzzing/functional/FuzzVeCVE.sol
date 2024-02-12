@@ -443,12 +443,9 @@ contract FuzzVeCVE is StatefulBaseMarket {
     ) public {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(seed);
-        require(lockIndex != NO_LOCKS);
 
-        require(
-            veCVE.getUnlockTime(caller, lockIndex) ==
-                veCVE.CONTINUOUS_LOCK_VALUE()
-        );
+        require(lockIndex != NO_LOCKS);
+        require(get_unlock_time(lockIndex) == veCVE.CONTINUOUS_LOCK_VALUE());
 
         try
             veCVE.extendLock(
@@ -1262,8 +1259,14 @@ contract FuzzVeCVE is StatefulBaseMarket {
         return NO_LOCKS;
     }
 
+    function get_unlock_time(uint256 lockIndex) private view returns (uint256) {
+        ( ,uint256[] memory unlockTimes ) = veCVE.queryUserLocks(caller);
+        return unlockTimes[lockIndex];
+    }
+
     function get_locks_length() private view returns (uint256) {
-        return veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts, ) = veCVE.queryUserLocks(caller);
+        return lockAmounts.length;
     }
 
     function approve_cve(uint256 amount, string memory error) private {

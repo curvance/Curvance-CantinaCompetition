@@ -195,6 +195,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
             revert SimpleRewardZapper__InvalidInputAmount();
         }
 
+        // Execute Zap into cToken underlying.
         SwapperLib.zap(zapperCall);
 
         // Enter Curvance cToken position.
@@ -260,7 +261,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
                 revert SimpleRewardZapper__InvalidZapper(swapperData.target);
             }
 
-            // Check how much in rewards were received from the swap.
+            // Swap from reward token into `dTokenUnderlying`.
             SwapperLib.swap(centralRegistry, swapperData);
         }
 

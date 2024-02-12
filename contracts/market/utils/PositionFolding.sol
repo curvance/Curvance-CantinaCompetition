@@ -324,6 +324,8 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
                 );
             }
 
+            // Execute Zap from `borrowToken` underlying into cToken
+            // underlying.
             SwapperLib.zap(zapperCall);
         }
 
@@ -457,6 +459,7 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
                 );
             }
 
+            // Execute Zap from cToken underlying into unwrapped assets.
             SwapperLib.zap(zapperCall);
         }
 

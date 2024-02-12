@@ -180,6 +180,7 @@ contract ComplexZapper is ReentrancyGuard {
                 revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
+            // Execute swap(s) into `zapData.outputToken`.
             unchecked {
                 SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
@@ -293,6 +294,7 @@ contract ComplexZapper is ReentrancyGuard {
                 revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
+            // Execute swap(s) into `zapData.outputToken`.
             unchecked {
                 SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
@@ -388,6 +390,7 @@ contract ComplexZapper is ReentrancyGuard {
                 revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
+            // Execute swap(s) into `zapData.outputToken`.
             unchecked {
                 SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
@@ -447,6 +450,7 @@ contract ComplexZapper is ReentrancyGuard {
                 revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
             }
 
+            // Execute swap into underlying(s).
             unchecked {
                 SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
             }
