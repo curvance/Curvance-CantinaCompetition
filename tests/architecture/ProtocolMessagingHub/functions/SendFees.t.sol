@@ -10,7 +10,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.sendFees(23, address(this), 10e6);
+        protocolMessagingHub.sendFees(42161, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenOperatorIsNotAuthorized() public {
@@ -20,12 +20,12 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
                     .ProtocolMessagingHub__OperatorIsNotAuthorized
                     .selector,
                 address(this),
-                0
+                42161
             )
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(23, address(this), 10e6);
+        protocolMessagingHub.sendFees(42161, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenHasNoEnoughNativeAssetForMessageFee()
@@ -50,7 +50,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(23, address(this), 10e6);
+        protocolMessagingHub.sendFees(42161, address(this), 10e6);
     }
 
     function test_sendFees_fail_whenHasNoEnoughFeeToken() public {
@@ -69,7 +69,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         vm.expectRevert(bytes4(keccak256("TransferFromFailed()")));
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(23, address(this), 10e6);
+        protocolMessagingHub.sendFees(42161, address(this), 10e6);
     }
 
     function test_sendFees_success() public {
@@ -89,7 +89,7 @@ contract SendFeesTest is TestBaseProtocolMessagingHub {
         assertEq(usdc.balanceOf(address(feeAccumulator)), _ONE);
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendFees(23, address(this), 10e6);
+        protocolMessagingHub.sendFees(42161, address(this), 10e6);
 
         assertEq(usdc.balanceOf(address(feeAccumulator)), _ONE - 10e6);
     }

@@ -120,23 +120,23 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.setWormholeRelayer: ", wormholeRelayer);
     }
 
-    function _setCircleRelayer(address circleRelayer) internal {
+    function _setCircleTokenMessenger(address circleTokenMessenger) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
-        CentralRegistry(centralRegistry).setCircleRelayer(circleRelayer);
-        console.log("centralRegistry.setCircleRelayer: ", circleRelayer);
-    }
-
-    function _setTokenBridgeRelayer(address tokenBridgeRelayer) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-
-        CentralRegistry(centralRegistry).setTokenBridgeRelayer(
-            tokenBridgeRelayer
+        CentralRegistry(centralRegistry).setCircleTokenMessenger(
+            circleTokenMessenger
         );
         console.log(
-            "centralRegistry.setTokenBridgeRelayer: ",
-            tokenBridgeRelayer
+            "centralRegistry.setCircleTokenMessenger: ",
+            circleTokenMessenger
         );
+    }
+
+    function _setTokenBridge(address tokenBridge) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setTokenBridge(tokenBridge);
+        console.log("centralRegistry.setTokenBridge: ", tokenBridge);
     }
 
     function _setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {

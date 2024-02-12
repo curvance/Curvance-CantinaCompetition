@@ -12,8 +12,8 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// CONSTANTS ///
 
-    /// @notice Wormhole specific chain id for Polygon.
-    uint16 public immutable WORMHOLE_POLYGON_CHAIN_ID = 5;
+    /// @notice Chain id for Polygon.
+    uint16 public immutable POLYGON_CHAIN_ID = 137;
 
     /// STORAGE ///
 
@@ -68,7 +68,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
             _depositOneBalanceFee();
         } else {
             _sendFeeToken(
-                WORMHOLE_POLYGON_CHAIN_ID,
+                POLYGON_CHAIN_ID,
                 polygonOneBalanceFeeManager,
                 IERC20(feeToken).balanceOf(address(this))
             );

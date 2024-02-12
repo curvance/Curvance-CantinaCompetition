@@ -62,7 +62,7 @@ contract ZapperBorrow is FeeTokenBridgingHub {
         }
 
         _sendFeeToken(
-            centralRegistry.wormholeChainId(dstChainId),
+            dstChainId,
             msg.sender,
             IERC20(feeToken).balanceOf(address(this)) - balance
         );
