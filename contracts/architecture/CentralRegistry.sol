@@ -13,8 +13,8 @@ import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
-import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMessenger.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
@@ -70,10 +70,12 @@ contract CentralRegistry is ERC165 {
     IWormhole public wormholeCore;
     /// @notice Address of Wormhole Relayer.
     IWormholeRelayer public wormholeRelayer;
-    /// @notice Address of Wormhole Circle Relayer.
-    ICircleRelayer public circleRelayer;
-    /// @notice Adress of Wormhole TokenBridgeRelayer.
-    ITokenBridgeRelayer public tokenBridgeRelayer;
+
+    /// @notice Address of Circle Token Messenger.
+    ITokenMessenger public circleTokenMessenger;
+
+    /// @notice Wormhole TokenBridge.
+    ITokenBridge public tokenBridge;
 
     // GELATO ADDRESSES
 
@@ -152,12 +154,15 @@ contract CentralRegistry is ERC165 {
     mapping(uint16 => uint256) public messagingToGETHChainId;
     mapping(uint256 => uint16) public GETHToMessagingChainId;
 
-    // WORMHOLE CONTRACT MAPPINGS
+    // WORMHOLE/CCTP MAPPINGS
 
     /// @notice Wormhole specific chain ID for evm chain ID.
     mapping(uint256 => uint16) public wormholeChainId;
 
-    // APPROVED DAO CONTRACT MAPPINGS
+    /// @notice CCTP domain for evm chain ID.
+    mapping(uint256 => uint32) public cctpDomain;
+
+    // DAO CONTRACT MAPPINGS
 
     mapping(address => bool) public isZapper;
     mapping(address => bool) public isSwapper;
@@ -211,8 +216,8 @@ contract CentralRegistry is ERC165 {
     event FeeTokenSet(address newAddress);
     event WormholeCoreSet(address newAddress);
     event WormholeRelayerSet(address newAddress);
-    event CircleRelayerSet(address newAddress);
-    event TokenBridgeRelayerSet(address newAddress);
+    event CircleTokenMessengerSet(address newAddress);
+    event TokenBridgeSet(address newAddress);
     event GelatoSponsorSet(address newAddress);
     event NewChainAdded(uint256 chainId, address operatorAddress);
     event RemovedChain(uint256 chainId, address operatorAddress);
@@ -401,26 +406,26 @@ contract CentralRegistry is ERC165 {
         emit WormholeRelayerSet(newWormholeRelayer);
     }
 
-    /// @notice Sets a new Circle Relayer contract address.
+    /// @notice Sets an address of Circle TokenMessenger contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Emits a {CircleRelayerSet} event.
-    /// @param newCircleRelayer The new address of circleRelayer.
-    function setCircleRelayer(address newCircleRelayer) external {
+    /// @param newCircleTokenMessenger The new address of Circle TokenMessenger.
+    function setCircleTokenMessenger(
+        address newCircleTokenMessenger
+    ) external {
         _checkElevatedPermissions();
 
-        circleRelayer = ICircleRelayer(newCircleRelayer);
-        emit CircleRelayerSet(newCircleRelayer);
+        circleTokenMessenger = ITokenMessenger(newCircleTokenMessenger);
+        emit CircleTokenMessengerSet(newCircleTokenMessenger);
     }
 
-    /// @notice Sets a new TokenBridgeRelayer contract address.
+    /// @notice Sets an address of Wormhole TokenBridge contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Emits a {TokenBridgeRelayerSet} event.
-    /// @param newTokenBridgeRelayer The new address of tokenBridgeRelayer.
-    function setTokenBridgeRelayer(address newTokenBridgeRelayer) external {
+    /// @param newTokenBridge The new address of Wormhole TokenBridge.
+    function setTokenBridge(address newTokenBridge) external {
         _checkElevatedPermissions();
 
-        tokenBridgeRelayer = ITokenBridgeRelayer(newTokenBridgeRelayer);
-        emit TokenBridgeRelayerSet(newTokenBridgeRelayer);
+        tokenBridge = ITokenBridge(newTokenBridge);
+        emit TokenBridgeSet(newTokenBridge);
     }
 
     /// @notice Register wormhole specific chain IDs for evm chain IDs.
@@ -438,7 +443,23 @@ contract CentralRegistry is ERC165 {
         }
     }
 
-    /// @notice Sets a new gelato sponsor address.
+    /// @notice Register CCTP domains for evm chain IDs.
+    /// @param chainIds EVM chain IDs.
+    /// @param cctpDomains CCTP domains.
+    function registerCCTPDomains(
+        uint256[] calldata chainIds,
+        uint32[] calldata cctpDomains
+    ) external {
+        _checkElevatedPermissions();
+
+        uint256 numChainIds = chainIds.length;
+
+        for (uint256 i; i < numChainIds; ++i) {
+            cctpDomain[chainIds[i]] = cctpDomains[i];
+        }
+    }
+
+    /// @notice Sets an address of gelato sponsor.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
     ///      Emits a {GelatoSponsorSet} event.
     /// @param newGelatoSponsor The new address of new gelato sponsor.

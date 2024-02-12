@@ -243,15 +243,6 @@ contract CVE is ERC20 {
             );
     }
 
-    /// @notice Returns required amount of token for relayer fee.
-    /// @param dstChainId Chain ID of the target blockchain.
-    /// @return Required fee.
-    function relayerFee(uint256 dstChainId) external view returns (uint256) {
-        return
-            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
-                .cveRelayerFee(dstChainId);
-    }
-
     /// @notice Returns required amount of native asset for message fee.
     /// @return Required fee.
     function bridgeFee() external view returns (uint256) {

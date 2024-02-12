@@ -73,7 +73,7 @@ contract BorrowZapper is FeeTokenBridgingHub {
 
         // Bridge the fee token to `dstChainId` via Wormhole.
         _sendFeeToken(
-            centralRegistry.wormholeChainId(dstChainId),
+            dstChainId,
             msg.sender,
             IERC20(feeToken).balanceOf(address(this)) - balancePrior
         );
