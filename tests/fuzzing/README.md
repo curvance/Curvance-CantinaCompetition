@@ -1,6 +1,6 @@
-# Invariants being Tested 
+# Invariants being Tested
 
-## Stateful Deployment Tests 
+## Stateful Deployment Tests
 
 | ID      | Property                                                                    | Result |
 | ------- | --------------------------------------------------------------------------- | ------ |
@@ -21,7 +21,7 @@
 | CURV-15 | The CVE dao’s team allocation per month is greater than zero.               | Passed |
 | CURV-16 | The Lendtroller’s gauge pool is set up correctly.                           | Passed |
 
-## FuzzVECVE – Functional Invariants 
+## FuzzVECVE – Functional Invariants
 
 | ID        | Property                                                                                                                                                                                                                       | Result |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
@@ -29,7 +29,7 @@
 | VECVE-2   | Creating a lock with an amount less than WAD should fail and revert with an error message indicating invalid lock amount.                                                                                                      | Passed |
 | VECVE-3   | Creating a lock with zero amount should fail and revert with an error message indicating an invalid lock amount.                                                                                                               | Passed |
 | VECVE-4   | Combining all continuous locks into a single continuous lock should result in identical user points before and after the operation.                                                                                            | FAILED |
-| VECVE-5   | Combining all continuous locks into a single continuous lock should result in an increase in user points being greater than veCVE balance * MULTIPLIER / WAD.                                                                  | Passed |
+| VECVE-5   | Combining all continuous locks into a single continuous lock should result in an increase in user points being greater than veCVE balance \* MULTIPLIER / WAD.                                                                 | Passed |
 | VECVE-6   | Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.                                                                                                            | Passed |
 | VECVE-7   | Combining all continuous locks into a single continuous lock should result in chainUnlocksByEpoch being equal to 0.                                                                                                            |        |
 | VECVE-8   | Combining all non-continuous locks into a single non-continuous lock should result in the combined lock amount matching the sum of original lock amounts.                                                                      | Passed |
@@ -47,7 +47,7 @@
 | VECVE-20  | Disabling a continuous lock for a user’s continuous lock results in a decrease of user points.                                                                                                                                 | Passed |
 | VECVE-21  | Disable continuous lock for a user’s continuous lock results in a decrease of chain points.                                                                                                                                    | Passed |
 | VECVE-22  | Disable continuous lock for a user’s continuous lock results in an increase of amount to chainUnlocksByEpoch.                                                                                                                  | Passed |
-| VECVE-23  | Disable continuous lock should for a user’s continuous lock results in  preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch                                                                                         | Passed |
+| VECVE-23  | Disable continuous lock should for a user’s continuous lock results in preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch                                                                                          | Passed |
 | VECVE-24  | Trying to extend a lock that is already continuous should fail and revert with an error message indicating a lock type mismatch.                                                                                               | Passed |
 | VECVE-25  | Trying to extend a lock when the system is in shutdown should fail and revert with an error message indicating that the system is shut down.                                                                                   | Passed |
 | VECVE-26  | Shutting down the contract when the caller has elevated permissions should result in the veCVE.isShutdown = 2                                                                                                                  | Passed |
@@ -82,7 +82,7 @@
 | VECVE-55  | Processing expired locks with relock should not change the number of locks a user has.                                                                                                                                         | FAILED |
 | VECVE-56  | Combining locks should not be possible when the system is shut down.                                                                                                                                                           | FAILED |
 
-## FuzzVECVE – System Invariants 
+## FuzzVECVE – System Invariants
 
 | ID        | Property                                                                                        | Result |
 | --------- | ----------------------------------------------------------------------------------------------- | ------ |
@@ -94,7 +94,7 @@
 | S-VECVE-6 | The sum of all user unlock epochs for each epoch must be less than or equal to the user points. | Passed |
 | S-VECVE-7 | The contract should only have a zero cve balance when there are no user locks.                  | Passed |
 
-## Market Manager - Functional Invariants 
+## Market Manager - Functional Invariants
 
 | ID        | Property                                                                                                                                                            | Result |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
@@ -130,7 +130,7 @@
 | MARKET-31 | Calling deposit when totalAssets + amount overflows should revert.                                                                                                  | Passed |
 | MARKET-32 | Calling deposit when oracle price returns <0, deposit should revert.                                                                                                | Passed |
 
-## Market Manager – Access Controls 
+## Market Manager – Access Controls
 
 | ID           | Property                                                                                  | Result |
 | ------------ | ----------------------------------------------------------------------------------------- | ------ |
@@ -150,7 +150,7 @@
 | AC-MARKET-14 | Calling setBorrowPaused(mtoken, true) should set isBorrowPaused to 2.                     | Passed |
 | AC-MARKET-15 | Calling setBorrowPaused(mtoken, false) should set isBorrowPaused to 1.                    | Passed |
 
-## Market Manager - State Checks 
+## Market Manager - State Checks
 
 | ID           | Property                                                                                                                                                                     | Result |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
@@ -180,7 +180,7 @@
 | SC-MARKET-24 | The canSeize function should revert when collateral or debt token are not listed in the Lendtroller.                                                                         | Passed |
 | SC-MARKET-25 | The canSeize function should revert when both tokens do not have the same Lendtroller.                                                                                       | Passed |
 
-## Market Manager – System Invariants 
+## Market Manager – System Invariants
 
 | ID         | Property                                                                                      | Result |
 | ---------- | --------------------------------------------------------------------------------------------- | ------ |
@@ -188,25 +188,24 @@
 | S-MARKET-2 | Market collateral posted should always be less than or equal to collateralCaps for a token.   | Passed |
 | S-MARKET-3 | The total supply of a token should never go down to zero once it has been listed.             | Passed |
 
-
 ## DToken - Functional Invariants
 
-| ID      | Property                                                                                           | Result |
-| ------- | -------------------------------------------------------------------------------------------------- | ------ |
-| DTOK-1  | Calling DToken.mint should succeed with correct preconditions.                                     | Passed |
-| DTOK-2  | Underlying balance for sender DToken should decrease by amount after minting DToken.               | Passed |
-| DTOK-3  | Balance of the recipient after minting DToken should increase by amount * WAD/exchangeRateCached() | Passed |
-| DTOK-4  | DToken totalSupply should increase by amount * WAD/exchangeRateCached() after calling DToken mint. | Passed |
-| DTOK-5  | The borrow function should succeed with proper preconditions, when not accruing interest.          | Passed |
-| DTOK-6  | If interest has not accrued, totalBorrows should increase after calling borrow.                    | Passed |
-| DTOK-7  | If interest has not accrued, the underlying balance of the caller should increase by amount        | Passed |
-| DTOK-8  | The borrow function should succeed with proper preconditions, when accruing interest.              | Passed |
-| DTOK-9  | If interest has accrued, the totalBorrows should increase by the amount.                           | Passed |
-| DTOK-10 | If interest has accrued, the underlying balance should increase by amount.                         | Passed |
-| DTOK-11 | The repay function should succeed with proper preconditions.                                       | Passed |
-| DTOK-12 | A user attempting to repay too much should error gracefully.                                       | FAILED |
-| DTOK-13 | A user should be able to repay between 0 and their accountDebt with the repay function.            | Passed |
-| DTOK-14 | If a user repays with amount = 0, they zero out their accountDebt for their account.               | Passed |
+| ID      | Property                                                                                            | Result |
+| ------- | --------------------------------------------------------------------------------------------------- | ------ |
+| DTOK-1  | Calling DToken.mint should succeed with correct preconditions.                                      | Passed |
+| DTOK-2  | Underlying balance for sender DToken should decrease by amount after minting DToken.                | Passed |
+| DTOK-3  | Balance of the recipient after minting DToken should increase by amount \* WAD/exchangeRateCached() | Passed |
+| DTOK-4  | DToken totalSupply should increase by amount \* WAD/exchangeRateCached() after calling DToken mint. | Passed |
+| DTOK-5  | The borrow function should succeed with proper preconditions, when not accruing interest.           | Passed |
+| DTOK-6  | If interest has not accrued, totalBorrows should increase after calling borrow.                     | Passed |
+| DTOK-7  | If interest has not accrued, the underlying balance of the caller should increase by amount         | Passed |
+| DTOK-8  | The borrow function should succeed with proper preconditions, when accruing interest.               | Passed |
+| DTOK-9  | If interest has accrued, the totalBorrows should increase by the amount.                            | Passed |
+| DTOK-10 | If interest has accrued, the underlying balance should increase by amount.                          | Passed |
+| DTOK-11 | The repay function should succeed with proper preconditions.                                        | Passed |
+| DTOK-12 | A user attempting to repay too much should error gracefully.                                        | FAILED |
+| DTOK-13 | A user should be able to repay between 0 and their accountDebt with the repay function.             | Passed |
+| DTOK-14 | If a user repays with amount = 0, they zero out their accountDebt for their account.                | Passed |
 
 ## DToken – System Invariants
 
@@ -216,99 +215,112 @@
 | S-DTOK-2 | The number of decimals for the DToken must be equivalent to the number of decimals for the underlying token. | Passed |
 | S-DTOK-3 | The isCToken function for a DToken must not return true.                                                     | Passed |
 
-## So you found a failure? 
+## So you found a failure?
 
-Tips and tricks: 
-- Use Echidna as the primary fuzzer 
-- Medusa works really well to test coverage and to debug the correct behaviour of functions 
-- If Echidna or Medusa find an exploit, write a unit test with the same numbers. This can help you sanity check it. Add this unit test to the maintained unit tests. 
+Tips and tricks:
 
-## Coverage Limitations 
+- Use Echidna as the primary fuzzer
+- Medusa works really well to test coverage and to debug the correct behaviour of functions
+- If Echidna or Medusa find an exploit, write a unit test with the same numbers. This can help you sanity check it. Add this unit test to the maintained unit tests.
 
-### VECVE 
+## Coverage Limitations
 
-- Input ranges on creation of lock does not test full range of input – would benefit from additional coverage 
-- Additional stateful functions can be added, including: 
-  - Chainpoints 
-    - equal to user's (CVE locked as non continuous) + (CVE locked * continuousLock point multiplier)
-  - ChainUnlocksByEpoch 
+### System 
+- oracle prices – `allContracts` was turned on at one point to allow the fuzzer to poke huge price deviations, however the test suite was not yet ready to handle this dynamic style of input. 
+- 
+
+### VECVE
+
+- Input ranges on creation of lock does not test full range of input – would benefit from additional coverage
+- Additional stateful functions can be added, including:
+  - Chainpoints
+    - equal to user's (CVE locked as non continuous) + (CVE locked \* continuousLock point multiplier)
+  - ChainUnlocksByEpoch
     - The sum of all chainUnlocksByEpoch map values should always be <= chainPoints
     - The sum of all userPoints should be equal to chainPoints
     - The sum of all chainUnlocksByEpoch maps should be equal to the sum of all userUnlocksByEpoch maps.
 - `createLockfor` and `increaseAmountAndExtendLockFor`
 - `earlyExpire`
-- additional tests on callers 
+- additional tests on callers
 
-## Market Manager 
+## Market Manager
 
 - current debt > max allowed debt after folding
-- partner gauges 
+- partner gauges
 
---- 
+---
 
 ## Installation Requirements
 
 1. Slither/crytic-compile
-2. Echidna 
-3. Medusa 
-4. Foundry 
+2. Echidna
+3. Medusa
+4. Foundry
 5. Cloudexec
-   
-see: 
+
+see:
 https://github.com/curvance/curvance-contracts/blob/1ec341b7e3c2408abf3f3853a5a8145fc6bd67c3/cloudexec.toml#L8
 
 ## Running Echidna
-There are two flavours of the config provided in this code. See below for their differences 
+
+There are two flavours of the config provided in this code. See below for their differences
 
 ### Echidna – Locally
 
 ```bash
-make echidna-local 
+make echidna-local
 ```
 
 See [./tests/fuzzing/echidna-local.yaml](./tests/fuzzing/echidna-local.yaml) for yaml.
 
-The main difference here is the shortened number of runs, so we can run a quick sanity check. 
+The main difference here is the shortened number of runs, so we can run a quick sanity check.
 
-### Echidna – Cloud 
+### Echidna – Cloud
+
 ```bash
 make echidna-cloud
 ```
 
 ```yaml
-testMode: exploration # run in exploration mode to increase coverage 
-testLimit: 10000000 # number may change, but will increase according to coverage   
-coverage: true  # save coverage
-corpusDir: "output/echidna-corpus" #save in echidna-corpus directory 
-cryticArgs: ["--ignore-compile"] # the contracts do not need to be re-compiled 
+testMode: exploration # run in exploration mode to increase coverage
+testLimit: 10000000 # number may change, but will increase according to coverage
+coverage: true # save coverage
+corpusDir: "output/echidna-corpus" #save in echidna-corpus directory
+cryticArgs: ["--ignore-compile"] # the contracts do not need to be re-compiled
 ```
-The above may not always represent the exact config being used, as we may fine-tune it to run longer on weekends, etc. 
 
-### Medusa – Locally 
+The above may not always represent the exact config being used, as we may fine-tune it to run longer on weekends, etc.
 
-```bash 
+### Medusa – Locally
+
+```bash
 make medusa-local
 ```
-Notable differences: 
-- `timeout(# of seconds to run Medusa)`: 2 minutes 
 
-### Medusa – Cloud 
+Notable differences:
 
-```bash 
+- `timeout(# of seconds to run Medusa)`: 2 minutes
+
+### Medusa – Cloud
+
+```bash
 make medusa-cloud
 ```
-Notable differences: 
-- `timeout (# of seconds to run Medusa)`: 16 hours 
 
+Notable differences:
+
+- `timeout (# of seconds to run Medusa)`: 16 hours
 
 ### Running on Cloud
 
-We use [cloudexec](https://github.com/crytic/cloudexec/tree/hotfix) to run this fuzzing suite on the server. As the release has not been cut yet, see below for installation: 
+We use [cloudexec](https://github.com/crytic/cloudexec/tree/hotfix) to run this fuzzing suite on the server. As the release has not been cut yet, see below for installation:
+
 ```bash
 git clone https://github.com/crytic/cloudexec.git
-git checkout hotfix 
+git checkout hotfix
 make
 ```
+
 Add the binary above to your PATH and you should be able to run cloudexec after sufficient setup.
 
 Run `cloudexec pull ./output` to pull the most recent corpus runs (note that both Echidna and Medusa corpus runs have been changed to write to this directory).

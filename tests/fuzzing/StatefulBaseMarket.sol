@@ -37,6 +37,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+// import { AuxiliaryDataDeployer } from "./deployers/AuxiliaryDataDeployer.s.sol";
+
 contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     IHevm constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     address internal _WETH_ADDRESS;
@@ -616,12 +618,20 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _hasPosition(address mToken) internal view returns (bool) {
-        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        (bool hasPosition, , ) = marketManager.tokenDataOf(
+            address(this),
+            mToken
+        );
         return hasPosition;
     }
 
-    function _collateralPostedFor(address mToken) internal view returns (uint256) {
-        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
+    function _collateralPostedFor(
+        address mToken
+    ) internal view returns (uint256) {
+        (, , uint256 collateralPosted) = marketManager.tokenDataOf(
+            address(this),
+            mToken
+        );
         return collateralPosted;
     }
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import {RewardsData} from 'contracts/interfaces/ICVELocker.sol';
+import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
     uint256 internal constant _INITIAL_AMOUNT = 30e18;
@@ -13,34 +13,42 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         deal(address(cve), address(this), _INITIAL_AMOUNT);
         cve.approve(address(veCVE), _INITIAL_AMOUNT);
-
     }
 
-    function test_combine_all_locks_to_non_continuous_terminal_one_wad() public    
+    function test_combine_all_locks_to_non_continuous_terminal_one_wad()
+        public
     {
-        RewardsData memory emptyRewards = RewardsData(address(0),false,false,false);
+        RewardsData memory emptyRewards = RewardsData(
+            address(0),
+            false,
+            false,
+            false
+        );
         setUp();
         veCVE.createLock(1e18, false, emptyRewards, "", 0);
-        // warp time 
+        // warp time
         vm.warp(block.timestamp + 29774646);
-        veCVE.createLock(1000000000000000000, false, emptyRewards, "", 0);
+        veCVE.createLock(1e18, false, emptyRewards, "", 0);
 
         vm.warp(block.timestamp + 986121 + 675582 + 1000);
         veCVE.processExpiredLock(0, false, false, emptyRewards, "", 0);
         assertEq(veCVE.userPoints(address(this)), 2000000000000000000);
-        assertEq(veCVE.queryUserLocksLength(address(this)),1);
-        
+        assertEq(veCVE.queryUserLocksLength(address(this)), 1);
+
         veCVE.createLock(1000000024330411045, false, emptyRewards, "", 0);
         veCVE.combineAllLocks(false, emptyRewards, "", 0);
 
-        assertEq(veCVE.userPoints(address(this)), veCVE.balanceOf(address(this)));
-
+        assertEq(
+            veCVE.userPoints(address(this)),
+            veCVE.balanceOf(address(this))
+        );
     }
 
-    function test_combineAllLocks_fail_whenCombineOneLock(bool shouldLock, bool isFreshLock, bool isFreshLockContinuous)
-        public
-        setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous)
-    {
+    function test_combineAllLocks_fail_whenCombineOneLock(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
         veCVE.combineAllLocks(false, rewardsData, "", 0);
@@ -53,18 +61,34 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         uint256 amount
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
-        amount = bound(amount, _MIN_FUZZ_AMOUNT, _MAX_FUZZ_AMOUNT - _INITIAL_AMOUNT);
+        amount = bound(
+            amount,
+            _MIN_FUZZ_AMOUNT,
+            _MAX_FUZZ_AMOUNT - _INITIAL_AMOUNT
+        );
         deal(address(cve), address(this), amount);
         cve.approve(address(veCVE), amount);
 
         veCVE.createLock(amount, true, rewardsData, "", 0);
 
-        (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(address(this), 1);
+        (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(
+            address(this),
+            1
+        );
 
         assertEq(veCVE.chainPoints(), _INITIAL_AMOUNT + amount * 2);
-        assertEq(veCVE.userPoints(address(this)), _INITIAL_AMOUNT + amount * 2);
+        assertEq(
+            veCVE.userPoints(address(this)),
+            _INITIAL_AMOUNT + amount * 2
+        );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
-        assertEq(veCVE.userUnlocksByEpoch(address(this), veCVE.currentEpoch(unlockTime)), 0);
+        assertEq(
+            veCVE.userUnlocksByEpoch(
+                address(this),
+                veCVE.currentEpoch(unlockTime)
+            ),
+            0
+        );
 
         veCVE.combineAllLocks(true, rewardsData, "", 0);
 
@@ -78,7 +102,13 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         assertEq(veCVE.chainPoints(), (_INITIAL_AMOUNT + amount) * 2);
         assertEq(veCVE.userPoints(address(this)), (30e18 + amount) * 2);
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
-        assertEq(veCVE.userUnlocksByEpoch(address(this), veCVE.currentEpoch(unlockTime)), 0);
+        assertEq(
+            veCVE.userUnlocksByEpoch(
+                address(this),
+                veCVE.currentEpoch(unlockTime)
+            ),
+            0
+        );
     }
 
     function _deal(uint256 amount) internal {
@@ -134,17 +164,33 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         uint256 amount
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
-        amount = bound(amount, _MIN_FUZZ_AMOUNT, _MAX_FUZZ_AMOUNT - _INITIAL_AMOUNT);
+        amount = bound(
+            amount,
+            _MIN_FUZZ_AMOUNT,
+            _MAX_FUZZ_AMOUNT - _INITIAL_AMOUNT
+        );
         _deal(amount);
 
         veCVE.createLock(amount, true, rewardsData, "", 0);
 
-        (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(address(this), 1);
+        (uint256 lockAmount, uint40 unlockTime) = veCVE.userLocks(
+            address(this),
+            1
+        );
 
         assertEq(veCVE.chainPoints(), _INITIAL_AMOUNT + amount * 2);
-        assertEq(veCVE.userPoints(address(this)), _INITIAL_AMOUNT + amount * 2);
+        assertEq(
+            veCVE.userPoints(address(this)),
+            _INITIAL_AMOUNT + amount * 2
+        );
         assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), 0);
-        assertEq(veCVE.userUnlocksByEpoch(address(this), veCVE.currentEpoch(unlockTime)), 0);
+        assertEq(
+            veCVE.userUnlocksByEpoch(
+                address(this),
+                veCVE.currentEpoch(unlockTime)
+            ),
+            0
+        );
 
         veCVE.combineAllLocks(false, rewardsData, "", 0);
 
@@ -157,7 +203,16 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         assertEq(unlockTime, veCVE.freshLockTimestamp());
         assertEq(veCVE.chainPoints(), _INITIAL_AMOUNT + amount);
         assertEq(veCVE.userPoints(address(this)), _INITIAL_AMOUNT + amount);
-        assertEq(veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)), _INITIAL_AMOUNT + amount);
-        assertEq(veCVE.userUnlocksByEpoch(address(this), veCVE.currentEpoch(unlockTime)), _INITIAL_AMOUNT + amount);
+        assertEq(
+            veCVE.chainUnlocksByEpoch(veCVE.currentEpoch(unlockTime)),
+            _INITIAL_AMOUNT + amount
+        );
+        assertEq(
+            veCVE.userUnlocksByEpoch(
+                address(this),
+                veCVE.currentEpoch(unlockTime)
+            ),
+            _INITIAL_AMOUNT + amount
+        );
     }
 }

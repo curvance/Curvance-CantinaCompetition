@@ -867,10 +867,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
         );
     }
 
-    function liquidateAccount_should_succeed(address account) public {
-        try marketManager.liquidateAccount(account) {} catch {}
-    }
-
     // Helper Functions
 
     struct TokenCollateralBounds {

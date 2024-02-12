@@ -3,23 +3,20 @@ pragma solidity ^0.8.17;
 
 import { TestStatefulDeployments } from "tests/fuzzing/system/TestStatefulDeployments.sol";
 import { FuzzVECVE } from "tests/fuzzing/functional/FuzzVECVE.sol";
-import { FuzzMarketManager } from "tests/fuzzing/FuzzMarketManager.sol";
 import { FuzzMarketManagerSystem } from "tests/fuzzing/system/FuzzMarketManagerSystem.sol";
 import { FuzzMarketManagerRBAC } from "tests/fuzzing/functional/FuzzMarketManagerRBAC.sol";
 import { FuzzMarketManagerStateChecks } from "tests/fuzzing/functional/FuzzMarketManagerStateChecks.sol";
 import { FuzzDToken } from "tests/fuzzing/functional/FuzzDToken.sol";
+import { FuzzLiquidations } from "tests/fuzzing/stateless/FuzzLiquidations.sol";
 import { FuzzDTokenSystem } from "tests/fuzzing/system/FuzzDTokenSystem.sol";
 
-//
 contract FuzzingSuite is
-    FuzzDToken,
+    TestStatefulDeployments,
     FuzzDTokenSystem,
-    FuzzMarketManager,
     FuzzMarketManagerSystem,
     FuzzMarketManagerRBAC,
     FuzzMarketManagerStateChecks,
-    FuzzVECVE,
-    TestStatefulDeployments
-{
-
-}
+    FuzzDToken,
+    FuzzLiquidations,
+    FuzzVECVE
+{}

@@ -272,13 +272,10 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
                 postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
         );
         require(_hasPosition(mtoken));
-        (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
-            address(this),
-            mtoken,
-            0,
-            amount
-        );
-        require(liquidityDeficit == 0);
+        (uint256 accountCollateral, uint256 accountDebt) = marketManager
+            .solvencyOf(address(this));
+        require(accountDebt != 0);
+        amount = clampBetween(amount, 1, accountCollateral);
 
         try marketManager.canTransfer(mtoken, address(this), amount) {} catch (
             bytes memory revertData
@@ -370,6 +367,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
     function canBorrow_should_succeed(address mtoken, uint256 amount) public {
+        is_supported_dtoken(mtoken);
         require(marketManager.borrowPaused(mtoken) != 2);
         require(marketManager.isListed(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
