@@ -43,7 +43,7 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of `asset`, an lp token, 
+    /// @notice Retrieves the price of `asset`, an lp token,
     ///         for a Univ2 style volatile pool.
     /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
@@ -66,26 +66,18 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
     /// @param asset The address of the lp token to support pricing for.
-    function addAsset(address asset) external virtual {
-        _checkElevatedPermissions();
-        _addAsset(asset);
-    }
+    function addAsset(address asset) external virtual {}
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into Oracle Router to notify it of its removal.
     ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
-    function removeAsset(
-        address asset
-    ) external virtual override {
-        _checkElevatedPermissions();
-        _removeAsset(asset);
-    }
+    function removeAsset(address asset) external virtual override {}
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of `asset`, an lp token, 
+    /// @notice Retrieves the price of `asset`, an lp token,
     ///         for a Univ2 style volatile pool.
     /// @dev Math source: https://blog.alphaventuredao.io/fair-lp-token-pricing/
     /// @param asset The address of the asset for which the price is needed.
@@ -124,7 +116,9 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         uint256 price1;
         uint256 errorCode;
 
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
         (price0, errorCode) = oracleRouter.getPrice(
             data.token0,
             inUSD,
@@ -150,7 +144,9 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         }
 
         // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply.
-        uint256 finalPrice = (2 * sqrtReserve * FixedPointMathLib.sqrt(price0 * price1)) / totalSupply;
+        uint256 finalPrice = (2 *
+            sqrtReserve *
+            FixedPointMathLib.sqrt(price0 * price1)) / totalSupply;
 
         // Validate price will not overflow on conversion to uint240.
         if (_checkOracleOverflow(finalPrice)) {
@@ -162,7 +158,7 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         pData.price = uint240(finalPrice);
     }
 
-    /// @notice Helper function for pricing support for `asset`, 
+    /// @notice Helper function for pricing support for `asset`,
     ///         an lp token for a Univ2 style volatile liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
@@ -170,7 +166,6 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     function _addAsset(
         address asset
     ) internal returns (AdaptorData memory data) {
-
         IUniswapV2Pair pool = IUniswapV2Pair(asset);
         data.token0 = pool.token0();
         data.token1 = pool.token1();
@@ -203,5 +198,4 @@ abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
-
 }

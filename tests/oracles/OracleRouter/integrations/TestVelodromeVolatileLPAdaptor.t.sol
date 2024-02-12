@@ -87,6 +87,20 @@ contract TestVelodromeVolatileLPAdapter is TestBaseOracleRouter {
         oracleRouter.getPrice(WETH_USDC, true, false);
     }
 
+    function testRevertAddAsset__AssetIsNotVolatileLP() public {
+        vm.expectRevert(
+            VelodromeVolatileLPAdaptor
+                .VelodromeVolatileLPAdaptor__AssetIsNotVolatileLP
+                .selector
+        );
+        adaptor.addAsset(0x19715771E30c93915A5bbDa134d782b81A820076);
+    }
+
+    function testCanUpdateAsset() public {
+        adaptor.addAsset(WETH_USDC);
+        adaptor.addAsset(WETH_USDC);
+    }
+
     function testPriceDoesNotChangeAfterLargeSwap() public {
         uint256 errorCode;
         uint256 priceBefore;

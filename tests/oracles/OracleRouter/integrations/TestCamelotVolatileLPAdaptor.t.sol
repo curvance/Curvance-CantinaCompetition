@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { CamelotVolatileLPAdaptor } from "contracts/oracles/adaptors/camelot/CamelotVolatileLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
+import { BaseVolatileLPAdaptor } from "contracts/oracles/adaptors/utils/BaseVolatileLPAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
@@ -82,5 +83,37 @@ contract TestCamelotVolatileLPAdapter is TestBaseOracleRouter {
         adapter.removeAsset(WETH_USDC);
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(WETH_USDC, true, false);
+    }
+
+    function testRevertAddAsset__AssetIsNotVolatileLP() public {
+        vm.expectRevert(
+            CamelotVolatileLPAdaptor
+                .CamelotVolatileLPAdaptor__AssetIsNotVolatileLP
+                .selector
+        );
+        adapter.addAsset(0x01efEd58B534d7a7464359A6F8d14D986125816B);
+    }
+
+    function testCanUpdateAsset() public {
+        adapter.addAsset(WETH_USDC);
+        adapter.addAsset(WETH_USDC);
+    }
+
+    function testRevertGetPrice__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseVolatileLPAdaptor
+                .BaseVolatileLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adapter.getPrice(address(0), true, false);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseVolatileLPAdaptor
+                .BaseVolatileLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adapter.removeAsset(address(0));
     }
 }
