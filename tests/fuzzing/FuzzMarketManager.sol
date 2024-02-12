@@ -41,7 +41,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         list_token_should_succeed(address(cUSDC));
     }
 
-    function setup() public {
+    function setup() public virtual {
         setUpFeeds();
         c_token_deposit(address(cUSDC), 1 ether, true);
         updateCollateralToken_should_succeed(
