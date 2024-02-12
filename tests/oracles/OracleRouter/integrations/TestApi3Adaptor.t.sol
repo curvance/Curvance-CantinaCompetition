@@ -9,6 +9,7 @@ import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
 contract TestApi3Adaptor is TestBaseOracleRouter {
     address private ARB = 0x912CE59144191C1204E64559FE8253a0e49E6548;
+    address private USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
 
     address private DAPI_PROXY_ARB_USD =
         0x669bFFFAb8866d84F832abF90Dc9c1D73b7525Bc;
@@ -50,11 +51,46 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
         assertGt(price, 0);
     }
 
+    function testRevertGetPrice__AssetIsNotSupported() public {
+        vm.expectRevert(Api3Adaptor.Api3Adaptor__AssetIsNotSupported.selector);
+        adapter.getPrice(USDC, true, false);
+    }
+
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
         adapter.removeAsset(ARB);
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(ARB, true, false);
+    }
+
+    function testRevertAddAsset__InvalidHeartbeat() public {
+        vm.expectRevert(Api3Adaptor.Api3Adaptor__InvalidHeartbeat.selector);
+        adapter.addAsset(
+            ARB,
+            ARB_TICKER,
+            DAPI_PROXY_ARB_USD,
+            1 days + 1,
+            true
+        );
+    }
+
+    function testRevertAddAsset__DAPINameHashError() public {
+        vm.expectRevert(Api3Adaptor.Api3Adaptor__DAPINameHashError.selector);
+        adapter.addAsset(ARB, "ARB/USDC", DAPI_PROXY_ARB_USD, 0, true);
+    }
+
+    function testCanAddSameAsset() public {
+        adapter.addAsset(ARB, ARB_TICKER, DAPI_PROXY_ARB_USD, 0, false);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(Api3Adaptor.Api3Adaptor__AssetIsNotSupported.selector);
+        adapter.removeAsset(address(0));
+    }
+
+    function testRevertGetPriceInETH__NotSupported() public {
+        vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
+        oracleRouter.getPrice(ARB, false, false);
     }
 }
