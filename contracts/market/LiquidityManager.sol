@@ -40,11 +40,11 @@ abstract contract LiquidityManager {
         /// @notice The ratio at which this token can be collateralized.
         /// @dev    in `WAD` format, with 0.8e18 = 80% collateral value.
         uint256 collRatio;
-        /// @notice The collateral requirement where dipping below this will 
+        /// @notice The collateral requirement where dipping below this will
         ///         cause a soft liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
         uint256 collReqSoft;
-        /// @notice The collateral requirement where dipping below this will 
+        /// @notice The collateral requirement where dipping below this will
         ///         cause a hard liquidation.
         /// @dev    in `WAD` format, with 1.2e18 = 120% collateral vs debt value.
         ///         NOTE: Should ALWAYS be less than `collReqSoft`.
@@ -55,9 +55,9 @@ abstract contract LiquidityManager {
         ///         e.g 1.05e18 = 5% incentive, this saves gas for liquidation
         ///         calculations.
         uint256 liqBaseIncentive;
-        /// @notice The liquidation incentive curve length between 
+        /// @notice The liquidation incentive curve length between
         ///         soft liquidation to hard liquidation.
-        ///         e.g. 5% base incentive with 8% curve length results 
+        ///         e.g. 5% base incentive with 8% curve length results
         ///         in 13% liquidation incentive on hard liquidation.
         /// @dev    In `WAD` format.
         ///         e.g 05e18 = 5% maximum additional incentive.
@@ -325,6 +325,30 @@ abstract contract LiquidityManager {
         }
     }
 
+    function LiquidationStatusOf(
+        address account,
+        address debtToken,
+        address collateralToken
+    )
+        public
+        returns (
+            uint256 lfactor,
+            uint256 debtTokenPrice,
+            uint256 collateralTokenPrice
+        )
+    {
+        LiqData memory result = _LiquidationStatusOf(
+            account,
+            debtToken,
+            collateralToken
+        );
+        return (
+            result.lFactor,
+            result.debtTokenPrice,
+            result.collateralTokenPrice
+        );
+    }
+
     /// @notice Determine whether `account` can be liquidated,
     ///         by calculating their lFactor, based on their
     ///         collateral versus outstanding debt.
@@ -406,7 +430,7 @@ abstract contract LiquidityManager {
             result.lFactor =
                 ((accountDebt - accountCollateralSoft) * WAD) /
                 (accountCollateralHard - accountCollateralSoft);
-            
+
             // Its theoretically possible for lFactor calculation to round
             // down here, if the delta between the hard and soft collateral
             // thresholds are significant (> WAD), with a minimal numerator
@@ -522,7 +546,8 @@ abstract contract LiquidityManager {
         ) * WAD;
 
         return (
-            softSumPrior + (assetValue / tokenData[snapshot.asset].collReqSoft),
+            softSumPrior +
+                (assetValue / tokenData[snapshot.asset].collReqSoft),
             hardSumPrior + (assetValue / tokenData[snapshot.asset].collReqHard)
         );
     }
