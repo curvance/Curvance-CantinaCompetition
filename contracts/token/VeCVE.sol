@@ -266,6 +266,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
 
+        // Claim any pending locker rewards.
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -281,9 +286,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (unlockTimestamp == CONTINUOUS_LOCK_VALUE) {
             revert VeCVE__LockTypeMismatch();
         }
-
-        // Claim any pending locker rewards.
-        _claimRewards(msg.sender, rewardsData, params, aux);
 
         uint216 amount = locks[lockIndex].amount;
         uint256 epoch = freshLockEpoch();
@@ -405,6 +407,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
+        // Claim any pending locker rewards.
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -414,9 +421,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (locks[lockIndex].unlockTime != CONTINUOUS_LOCK_VALUE) {
             revert VeCVE__LockTypeMismatch();
         }
-
-        // Claim any pending locker rewards.
-        _claimRewards(msg.sender, rewardsData, params, aux);
 
         uint216 amount = locks[lockIndex].amount;
         uint256 epoch = freshLockEpoch();
@@ -448,8 +452,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
         // Claim any pending locker rewards.
         _claimRewards(msg.sender, rewardsData, params, aux);
 
-        // Need to have this check after _claimRewards as the user could have
-        // created a new lock with their pending rewards.
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
         uint256 numLocks = locks.length;
 
@@ -485,7 +489,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 veBalanceOf = balanceOf(msg.sender);
 
         // Validate that current ve balance matches the aggregate lock
-        // amounts, and invariants are accurate.
+        // amounts as expected.
         if (veBalanceOf != lockedAmount) {
             revert VeCVE__InvariantError();
         }
@@ -569,6 +573,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
+        // Claim any pending locker rewards.
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -579,9 +588,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (block.timestamp < locks[lockIndex].unlockTime && isShutdown != 2) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
-
-        // Claim any pending locker rewards.
-        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory lock = locks[lockIndex];
         uint256 amount = lock.amount;
@@ -649,6 +655,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
             _revert(_VECVE_SHUTDOWN_SELECTOR);
         }
 
+        // Claim any pending locker rewards.
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -660,9 +671,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (block.timestamp >= locks[lockIndex].unlockTime) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
-
-        // Claim any pending locker rewards.
-        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory lock = locks[lockIndex];
         uint256 amount = lock.amount;
@@ -703,6 +711,15 @@ contract VeCVE is ERC20, ReentrancyGuard {
         bytes calldata params,
         uint256 aux
     ) external nonReentrant {
+        if (isShutdown == 2) {
+            _revert(_VECVE_SHUTDOWN_SELECTOR);
+        }
+
+        // Claim any pending locker rewards.
+        _claimRewards(msg.sender, rewardsData, params, aux);
+
+        // Need to cache after _claimRewards as the user could have
+        // created or modifier their locks with their pending rewards.
         Lock[] storage locks = userLocks[msg.sender];
 
         // Length is index + 1 so has to be less than array length.
@@ -721,9 +738,6 @@ contract VeCVE is ERC20, ReentrancyGuard {
         if (penalty == 0) {
             _revert(_INVALID_LOCK_SELECTOR);
         }
-
-        // Claim any pending locker rewards.
-        _claimRewards(msg.sender, rewardsData, params, aux);
 
         Lock memory lock = locks[lockIndex];
         uint256 amount = lock.amount;
@@ -990,7 +1004,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// See claimRewardsFor in CVELocker.
+    /// @notice Claims rewards for any unclaimed reward epochs.
+    /// @param user The address of the user claiming rewards.
+    /// @param rewardsData Rewards data for CVE rewards locker.
+    /// @param params Swap data for token swapping rewards to cve,
+    ///               if necessary.
+    /// @param aux Auxiliary data for veCVE.
     function _claimRewards(
         address user,
         RewardsData memory rewardsData,
@@ -1004,6 +1023,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
     }
 
     /// @notice Internal function to lock tokens for a user.
+    /// @dev Updates `recipients`'s reward claim index if they do not
+    ///      currently have any locks so they do not need to claim empty
+    ///      reward epochs.
     /// @param recipient The address of the user receiving the lock.
     /// @param amount The amount of tokens to lock.
     /// @param continuousLock Whether the lock is continuous or not.

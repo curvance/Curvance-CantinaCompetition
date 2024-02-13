@@ -254,9 +254,9 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @param user The address of the user claiming rewards.
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker.
-    /// @param params Swap data for token swapping rewards to
-    ///               rewardsData.desiredRewardToken, if necessary.
-    /// @param aux Auxiliary data for wrapped assets such as veCVE.
+    /// @param params Swap data for token swapping rewards to cve,
+    ///               if necessary.
+    /// @param aux Auxiliary data for veCVE.
     function claimRewardsFor(
         address user,
         uint256 epochs,
@@ -323,9 +323,9 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @param recipient The address receiving rewards.
     /// @param epochs The number of epochs for which to claim rewards.
     /// @param rewardsData Rewards data for CVE rewards locker.
-    /// @param params Swap data for token swapping rewards to
-    ///               rewardsData.desiredRewardToken, if necessary.
-    /// @param aux Auxiliary data for wrapped assets such as veCVE.
+    /// @param params Swap data for token swapping rewards to cve,
+    ///               if necessary.
+    /// @param aux Auxiliary data for veCVE.
     function _claimRewards(
         address user,
         address recipient,
@@ -440,9 +440,9 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @param recipient The address receiving processed rewards.
     /// @param rewards The amount of rewards to process for `recipient`.
     /// @param rewardsData Rewards data for CVE rewards locker.
-    /// @param params Additional parameters required for reward processing,
-    ///               which may include swap data.
-    /// @param aux Auxiliary data for wrapped assets such as veCVE.
+    /// @param params Swap data for token swapping rewards to cve,
+    ///               if necessary.
+    /// @param aux Auxiliary data for veCVE.
     /// @return The amount of reward token received by `recipient`,
     ///         in either `rewardToken` or CVE.
     function _processRewards(
