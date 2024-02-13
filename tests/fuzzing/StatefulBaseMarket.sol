@@ -57,7 +57,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
 
-    AuraCToken public auraCToken;
     AuraCToken public cBALRETH;
 
     DToken public dUSDC;

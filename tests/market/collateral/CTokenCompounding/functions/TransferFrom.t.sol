@@ -3,41 +3,42 @@ pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
 
-contract CTokenCompounding_TransferFromTest is TestBaseCTokenCompounding {
+contract CTokenCompoundingTransferFromTest is TestBaseCTokenCompounding {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    function test_CTokenCompounding_TransferFrom_fail_whenSenderAndReceiverAreSame()
+    function test_cTokenCompoundingTransferFrom_fail_whenSenderAndReceiverAreSame()
         public
     {
         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
         cBALRETH.transferFrom(address(this), address(this), 1e18);
     }
 
-    function test_CTokenCompounding_TransferFrom_fail_whenTransferZeroAmount()
+    function test_cTokenCompoundingTransferFrom_fail_whenTransferZeroAmount()
         public
     {
         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
         cBALRETH.transferFrom(address(this), user1, 0);
     }
 
-    function test_CTokenCompounding_TransferFrom_fail_whenAllowanceIsInvalid()
+    function test_cTokenCompoundingTransferFrom_fail_whenAllowanceIsInvalid()
         public
     {
         vm.expectRevert();
         cBALRETH.transferFrom(user1, address(this), 100);
     }
 
-    function test_transfer_fail_whenTransferIsNotAllowed() public {
+    function test_cTokenCompoundingTransferFrom_fail_whenTransferIsNotAllowed()
+        public
+    {
         marketManager.setTransferPaused(true);
 
         vm.expectRevert(MarketManager.MarketManager__Paused.selector);
         cBALRETH.transferFrom(address(this), user1, 100);
     }
 
-    function test_CTokenCompounding_TransferFrom_success() public {
+    function test_cTokenCompoundingTransferFrom_success() public {
         cBALRETH.mint(100, address(this));
 
         uint256 balance = cBALRETH.balanceOf(address(this));

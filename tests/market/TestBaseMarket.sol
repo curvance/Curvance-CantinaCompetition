@@ -24,6 +24,7 @@ import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/B
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
+import { MockAuraCTokenWithExitFee } from "contracts/mocks/MockAuraCTokenWithExitFee.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -92,10 +93,10 @@ contract TestBaseMarket is TestBase {
     MarketManager public marketManager;
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
-    AuraCToken public auraCToken;
     DToken public dUSDC;
     DToken public dDAI;
     AuraCToken public cBALRETH;
+    MockAuraCTokenWithExitFee public cBALRETHWithExitFee;
     IERC20 public usdc;
     IERC20 public dai;
     IERC20 public balRETH;
@@ -149,12 +150,14 @@ contract TestBaseMarket is TestBase {
         _deployDUSDC();
         _deployDDAI();
         _deployCBALRETH();
+        _deployCBALRETHWithExitFee();
 
         _deployZapper();
         _deployPositionFolding();
 
         oracleRouter.addMTokenSupport(address(dUSDC));
         oracleRouter.addMTokenSupport(address(cBALRETH));
+        oracleRouter.addMTokenSupport(address(cBALRETHWithExitFee));
     }
 
     function _deployCentralRegistry() internal {
@@ -469,6 +472,22 @@ contract TestBaseMarket is TestBase {
             _AURA_BOOSTER
         );
         return cBALRETH;
+    }
+
+    function _deployCBALRETHWithExitFee()
+        internal
+        returns (MockAuraCTokenWithExitFee)
+    {
+        cBALRETHWithExitFee = new MockAuraCTokenWithExitFee(
+            ICentralRegistry(address(centralRegistry)),
+            IERC20(_BALANCER_WETH_RETH),
+            address(marketManager),
+            109,
+            _REWARDER,
+            _AURA_BOOSTER,
+            200
+        );
+        return cBALRETHWithExitFee;
     }
 
     function _deployZapper() internal returns (Zapper) {
