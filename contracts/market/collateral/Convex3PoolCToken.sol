@@ -104,16 +104,7 @@ contract Convex3PoolCToken is CTokenCompounding {
 
         strategyData.rewarder = IBaseRewardPool(rewarder_);
 
-        // add CRV as a reward token, then let convex tell you what rewards
-        // the vault will receive
-        strategyData.rewardTokens.push() = _CRV;
-        uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
-            .extraRewardsLength();
-        for (uint256 i; i < extraRewardsLength; ++i) {
-            strategyData.rewardTokens.push() = IRewards(
-                IBaseRewardPool(rewarder_).extraRewards(i)
-            ).rewardToken();
-        }
+        reQueryRewardTokens();
 
         // let curve lp tell you what its underlying tokens are
         strategyData.underlyingTokens = new address[](coinsLength);
@@ -132,7 +123,7 @@ contract Convex3PoolCToken is CTokenCompounding {
 
     // PERMISSIONED FUNCTIONS
 
-    function reQueryRewardTokens() external {
+    function reQueryRewardTokens() public {
         delete strategyData.rewardTokens;
 
         // add CRV as a reward token, then let convex tell you what rewards
@@ -200,7 +191,11 @@ contract Convex3PoolCToken is CTokenCompounding {
                     }
 
                     // take protocol fee
-                    protocolFee = FixedPointMathLib.mulDiv(rewardAmount, harvestFee, 1e18);
+                    protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmount,
+                        harvestFee,
+                        1e18
+                    );
                     rewardAmount -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         address(rewardToken),
