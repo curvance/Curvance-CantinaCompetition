@@ -3,18 +3,17 @@ pragma solidity ^0.8.17;
 
 import "forge-std/StdStorage.sol";
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { CTokenBase } from "contracts/market/collateral/CTokenBase.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
-contract CTokenCompounding_DeploymentTest is TestBaseCTokenCompounding {
+contract CTokenCompoundingDeploymentTest is TestBaseCTokenCompounding {
     using stdStorage for StdStorage;
 
     event NewMarketManager(address oldMarketManager, address newMarketManager);
 
-    function test_CTokenCompoundingDeployment_fail_whenCentralRegistryIsInvalid()
+    function test_cTokenCompoundingDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
         vm.expectRevert(
@@ -30,7 +29,7 @@ contract CTokenCompounding_DeploymentTest is TestBaseCTokenCompounding {
         );
     }
 
-    function test_CTokenCompoundingDeployment_fail_whenMarketManagerIsNotSet()
+    function test_cTokenCompoundingDeployment_fail_whenMarketManagerIsNotSet()
         public
     {
         vm.expectRevert(CTokenBase.CTokenBase__InvalidMarketManager.selector);
@@ -44,7 +43,7 @@ contract CTokenCompounding_DeploymentTest is TestBaseCTokenCompounding {
         );
     }
 
-    function test_CTokenCompoundingDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
+    function test_cTokenCompoundingDeployment_fail_whenUnderlyingTotalSupplyExceedsMaximum()
         public
     {
         stdstore
@@ -67,7 +66,7 @@ contract CTokenCompounding_DeploymentTest is TestBaseCTokenCompounding {
         );
     }
 
-    function test_CTokenCompoundingDeployment_success() public {
+    function test_cTokenCompoundingDeployment_success() public {
         cBALRETH = new AuraCToken(
             ICentralRegistry(address(centralRegistry)),
             IERC20(_BALANCER_WETH_RETH),
