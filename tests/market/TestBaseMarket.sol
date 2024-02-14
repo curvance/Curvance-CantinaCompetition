@@ -29,53 +29,50 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract TestBaseMarket is TestBase {
-    address internal constant _ETH_ADDRESS =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    address internal constant _WETH_ADDRESS =
+    address internal _ETH_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address internal _WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address internal constant _USDC_ADDRESS =
+    address internal _USDC_ADDRESS =
         0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address internal constant _USDT_ADDRESS =
+    address internal _USDT_ADDRESS =
         0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    address internal constant _RETH_ADDRESS =
+    address internal _RETH_ADDRESS =
         0xae78736Cd615f374D3085123A210448E74Fc6393;
-    address internal constant _BALANCER_WETH_RETH =
+    address internal _BALANCER_WETH_RETH =
         0x1E19CF2D73a72Ef1332C882F20534B6519Be0276;
-    address internal constant _DAI_ADDRESS =
-        0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address internal constant _WBTC_ADDRESS =
+    address internal _DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address internal _WBTC_ADDRESS =
         0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    address internal constant _FRAX_ADDRESS =
+    address internal _FRAX_ADDRESS =
         0x853d955aCEf822Db058eb8505911ED77F175b99e;
-    address internal constant _CHAINLINK_ETH_USD =
+    address internal _CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-    address internal constant _CHAINLINK_USDC_USD =
+    address internal _CHAINLINK_USDC_USD =
         0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address internal constant _CHAINLINK_USDC_ETH =
+    address internal _CHAINLINK_USDC_ETH =
         0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
-    address internal constant _CHAINLINK_DAI_USD =
+    address internal _CHAINLINK_DAI_USD =
         0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9;
-    address internal constant _CHAINLINK_DAI_ETH =
+    address internal _CHAINLINK_DAI_ETH =
         0x773616E4d11A78F511299002da57A0a94577F1f4;
-    address internal constant _CHAINLINK_RETH_ETH =
+    address internal _CHAINLINK_RETH_ETH =
         0x536218f9E9Eb48863970252233c8F271f554C2d0;
-    address internal constant _BALANCER_VAULT =
+    address internal _BALANCER_VAULT =
         0xBA12222222228d8Ba445958a75a0704d566BF2C8;
-    bytes32 internal constant _BAL_WETH_RETH_POOLID =
+    bytes32 internal _BAL_WETH_RETH_POOLID =
         0x1e19cf2d73a72ef1332c882f20534b6519be0276000200000000000000000112;
-    address internal constant _AURA_BOOSTER =
+    address internal _AURA_BOOSTER =
         0xA57b8d98dAE62B26Ec3bcC4a365338157060B234;
-    address internal constant _REWARDER =
-        0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
-    address internal constant _WORMHOLE_CORE =
+    address internal _REWARDER = 0xDd1fE5AD401D4777cE89959b7fa587e569Bf125D;
+    address internal _WORMHOLE_CORE =
         0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
-    address internal constant _WORMHOLE_RELAYER =
+    address internal _WORMHOLE_RELAYER =
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
-    address internal constant _CIRCLE_TOKEN_MESSENGER =
+    address internal _CIRCLE_TOKEN_MESSENGER =
         0xBd3fa81B58Ba92a82136038B25aDec7066af3155;
-    address internal constant _TOKEN_BRIDGE =
+    address internal _TOKEN_BRIDGE =
         0x3ee18B2214AFF97000D974cf647E7C347E8fa585;
-    address internal constant _GELATO_ONE_BALANCE =
+    address internal _GELATO_ONE_BALANCE =
         0x7506C12a824d73D9b08564d5Afc22c949434755e;
 
     CVE public cve;
@@ -132,13 +129,8 @@ contract TestBaseMarket is TestBase {
         dai = IERC20(_DAI_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
-        _deployCentralRegistry();
-        _deployCVE();
-        _deployCVELocker();
-        _deployVeCVE();
-        _deployProtocolMessagingHub();
-        _deployOneBalanceFeeManager();
-        _deployFeeAccumulator();
+        _deployBaseContracts();
+
         chainlinkEthUsd = new MockV3Aggregator(8, 1500e8, 1e50, 1e6);
         _deployOracleRouter();
         _deployChainlinkAdaptors();
@@ -155,6 +147,16 @@ contract TestBaseMarket is TestBase {
 
         oracleRouter.addMTokenSupport(address(dUSDC));
         oracleRouter.addMTokenSupport(address(cBALRETH));
+    }
+
+    function _deployBaseContracts() internal {
+        _deployCentralRegistry();
+        _deployCVE();
+        _deployCVELocker();
+        _deployVeCVE();
+        _deployProtocolMessagingHub();
+        _deployOneBalanceFeeManager();
+        _deployFeeAccumulator();
     }
 
     function _deployCentralRegistry() internal {
