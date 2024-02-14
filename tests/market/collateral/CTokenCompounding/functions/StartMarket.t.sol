@@ -2,12 +2,11 @@
 pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { CTokenBase } from "contracts/market/collateral/CTokenBase.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
-contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
-    function test_CTokenCompounding_StartMarket_fail_whenCallerIsNotMarketManager()
+contract CTokenCompoundingStartMarketTest is TestBaseCTokenCompounding {
+    function test_cTokenCompoundingStartMarket_fail_whenCallerIsNotMarketManager()
         public
     {
         vm.expectRevert(CTokenBase.CTokenBase__Unauthorized.selector);
@@ -15,7 +14,7 @@ contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
         cBALRETH.startMarket(address(0));
     }
 
-    function test_CTokenCompounding_StartMarket_fail_whenInitializerIsZeroAddress()
+    function test_cTokenCompoundingStartMarket_fail_whenInitializerIsZeroAddress()
         public
     {
         vm.expectRevert(SafeTransferLib.TransferFromFailed.selector);
@@ -24,7 +23,7 @@ contract CTokenCompounding_StartMarketTest is TestBaseCTokenCompounding {
         cBALRETH.startMarket(address(0));
     }
 
-    function test_CTokenCompounding_StartMarket_success() public {
+    function test_cTokenCompoundingStartMarket_success() public {
         vm.prank(user1);
         SafeTransferLib.safeApprove(
             _BALANCER_WETH_RETH,

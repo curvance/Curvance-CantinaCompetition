@@ -4,7 +4,9 @@ pragma solidity 0.8.17;
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
-contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
+contract ProtocolMessagingHubReceiveWormholeMessagesTest is
+    TestBaseProtocolMessagingHub
+{
     address public srcMessagingHub;
 
     function setUp() public override {
@@ -23,7 +25,7 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         );
     }
 
-    function test_receiveWormholeMessages_fail_whenCallerIsNotWormholeRelayer()
+    function test_protocolMessagingHubReceiveWormholeMessages_fail_whenCallerIsNotWormholeRelayer()
         public
     {
         vm.expectRevert(
@@ -38,7 +40,9 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         );
     }
 
-    function test_receiveWormholeMessages_fail_whenNotReceivedToken() public {
+    function test_protocolMessagingHubReceiveWormholeMessages_fail_whenNotReceivedToken()
+        public
+    {
         vm.expectRevert();
 
         vm.prank(_WORMHOLE_RELAYER);
@@ -51,7 +55,7 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         );
     }
 
-    function test_receiveWormholeMessages_fail_whenMessageIsAlreadyDelivered()
+    function test_protocolMessagingHubReceiveWormholeMessages_fail_whenMessageIsAlreadyDelivered()
         public
     {
         deal(_USDC_ADDRESS, address(protocolMessagingHub), 100e6);
@@ -84,7 +88,9 @@ contract ReceiveWormholeMessagesTest is TestBaseProtocolMessagingHub {
         );
     }
 
-    function test_receiveWormholeMessages_success() public {
+    function test_protocolMessagingHubReceiveWormholeMessages_success()
+        public
+    {
         deal(_USDC_ADDRESS, address(protocolMessagingHub), 100e6);
 
         assertEq(usdc.balanceOf(address(protocolMessagingHub)), 100e6);
