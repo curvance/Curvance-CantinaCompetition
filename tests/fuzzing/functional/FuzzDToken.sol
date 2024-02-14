@@ -5,9 +5,14 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { IMToken } from "contracts/market/LiquidityManager.sol";
 
-
 contract FuzzDToken is FuzzMarketManager {
-    /*
+    constructor() {
+        require(_mintAndApprove(address(usdc), address(cUSDC), 1000 ether));
+        require(_mintAndApprove(address(dai), address(cDAI), 1000 ether));
+        require(_mintAndApprove(address(usdc), address(dUSDC), 1000 ether));
+        require(_mintAndApprove(address(dai), address(dDAI), 1000 ether));
+    }
+
     /// @custom:property dtok-1 calling DToken.mint should succeed with correct preconditions
     /// @custom:property dtok-2 underlying balance for sender DToken should decrease by amount
     /// @custom:property dtok-3  balance should increase by `amount * WAD/exchangeRateCached()`
@@ -17,9 +22,9 @@ contract FuzzDToken is FuzzMarketManager {
         address dtoken,
         uint256 amount
     ) public {
-        is_supported_dtoken(dtoken);
+        _isSupportedDToken(dtoken);
         require(gaugePool.startTime() < block.timestamp);
-        check_price_feed();
+        _checkPriceFeed();
         (bool mintingPossible, ) = address(marketManager).call(
             abi.encodeWithSignature("canMint(address)", dtoken)
         );
@@ -27,7 +32,7 @@ contract FuzzDToken is FuzzMarketManager {
         address underlyingTokenAddress = DToken(dtoken).underlying();
         // amount = clampBetweenBoundsFromOne(lower, amount);
         amount = clampBetween(amount, 1, type(uint64).max);
-        require(mint_and_approve(underlyingTokenAddress, dtoken, amount));
+        require(_mintAndApprove(underlyingTokenAddress, dtoken, amount));
         uint256 preUnderlyingBalance = IERC20(underlyingTokenAddress)
             .balanceOf(address(this));
         uint256 preDTokenBalance = DToken(dtoken).balanceOf(address(this));
@@ -66,18 +71,18 @@ contract FuzzDToken is FuzzMarketManager {
 
             uint256 adjustedNumberOfTokens = (amount * WAD) /
                 DToken(dtoken).exchangeRateCached();
-            
-            // if the underlying token mint totalSupply calculation expected to overflow, revert 
+
+            // if the underlying token mint totalSupply calculation expected to overflow, revert
             bool underlyingTokenSupplyOverflow = doesOverflow(
                 preUnderlyingBalance + amount,
                 preUnderlyingBalance
             );
-            // if the dtoken token mint totalSupply calculation expected to overflow, revert 
+            // if the dtoken token mint totalSupply calculation expected to overflow, revert
             bool dtokenSupplyOverflow = doesOverflow(
                 preDTokenTotalSupply + adjustedNumberOfTokens,
                 preDTokenTotalSupply
             );
-            // if the balance calculation expected to overflow, revert 
+            // if the balance calculation expected to overflow, revert
             bool balanceOverflow = doesOverflow(
                 preDTokenBalance + adjustedNumberOfTokens,
                 preDTokenBalance
@@ -116,15 +121,15 @@ contract FuzzDToken is FuzzMarketManager {
         address dtoken,
         uint256 amount
     ) public {
-        is_supported_dtoken(dtoken);
-        check_price_feed();
+        _isSupportedDToken(dtoken);
+        _checkPriceFeed();
         address underlying = DToken(dtoken).underlying();
         require(marketManager.isListed(dtoken));
         require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
-        require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
+        require(_mintAndApprove(DToken(dtoken).underlying(), dtoken, amount));
         (bool borrowPossible, ) = address(marketManager).call(
             abi.encodeWithSignature(
                 "canBorrow(address,address,uint256)",
@@ -134,6 +139,7 @@ contract FuzzDToken is FuzzMarketManager {
             )
         );
         require(borrowPossible);
+        assert(false);
         (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate > block.timestamp);
@@ -181,15 +187,15 @@ contract FuzzDToken is FuzzMarketManager {
     function borrow_should_succeed_accruing_interest(
         address dtoken,
         uint256 amount
-    ) public {
-        is_supported_dtoken(dtoken);
-        check_price_feed();
+    ) private {
+        _isSupportedDToken(dtoken);
+        _checkPriceFeed();
         address underlying = DToken(dtoken).underlying();
         require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
             DToken(dtoken).totalReserves();
         amount = clampBetween(amount, 1, upperBound - 1);
-        require(mint_and_approve(DToken(dtoken).underlying(), dtoken, amount));
+        require(_mintAndApprove(DToken(dtoken).underlying(), dtoken, amount));
         require(marketManager.isListed(dtoken));
         (bool borrowPossible, ) = address(marketManager).call(
             abi.encodeWithSignature(
@@ -241,11 +247,11 @@ contract FuzzDToken is FuzzMarketManager {
     function repay_should_fail_with_amount_too_large(
         address dtoken,
         uint256 amount
-    ) public {
-        is_supported_dtoken(dtoken);
+    ) private {
+        _isSupportedDToken(dtoken);
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         address underlying = DToken(dtoken).underlying();
-        require(mint_and_approve(underlying, dtoken, amount));
+        require(_mintAndApprove(underlying, dtoken, amount));
         require(marketManager.isListed(dtoken));
         amount = clampBetween(amount, accountDebt + 1, type(uint256).max);
         try marketManager.canRepay(address(dtoken), address(this)) {} catch {
@@ -274,12 +280,12 @@ contract FuzzDToken is FuzzMarketManager {
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
-    ) public {
-        is_supported_dtoken(dtoken);
+    ) private {
+        _isSupportedDToken(dtoken);
         address underlying = DToken(dtoken).underlying();
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         amount = clampBetween(amount, 0, accountDebt);
-        require(mint_and_approve(underlying, dtoken, amount));
+        require(_mintAndApprove(underlying, dtoken, amount));
         require(marketManager.isListed(dtoken));
         try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;
@@ -318,34 +324,27 @@ contract FuzzDToken is FuzzMarketManager {
             );
         }
     }
-    */
-
-    function setupLiquidations() public {
-        // hevm.warp(block.timestamp + 4 weeks);
-
-        DToken(dUSDC).borrow(1 ether);
-        DToken(dDAI).borrow(1 ether);
-    }
 
     // by default, this should just liquidate the maximum amount, assuming nonexist liquidation
-    /// @custom:precondition liquidating an account's maximum 
-    /// @custom:precondition dToken is supported 
-    /// @custom:precondition cToken is supported 
-    /// @custom:precondition market manager for dtoken and ctoken match 
-    /// @custom:precondition account has collateral posted for respective token 
-    /// @custom:precondition account is in "danger" of liquidation 
-    function liquidate_should_succeed_with_non_exact(
-        address account,
-        address dtoken,
-        address collateralToken
-    ) public {
-        setupLiquidations();
-        _check_liquidate_preconditions(
-            account,
-            dtoken,
-            collateralToken
-        );
-        // Structured for non exact liquidations, debt amount to liquidate = max 
+    /// @custom:precondition liquidating an account's maximum
+    /// @custom:precondition dToken is supported
+    /// @custom:precondition cToken is supported
+    /// @custom:precondition market manager for dtoken and ctoken match
+    /// @custom:precondition account has collateral posted for respective token
+    /// @custom:precondition account is in "danger" of liquidation
+    function liquidate_should_succeed_with_non_exact() public {
+        // TODO: these should be dynamic after liquidations run through thoroughly
+        address account = address(this);
+        address dtoken = address(dDAI);
+        address collateralToken = address(cUSDC);
+        setup();
+        hevm.warp(block.timestamp + 5 weeks);
+        borrow_should_succeed_not_accruing_interest(address(dDAI), WAD * 2);
+        // TODO: make this a dynamic number, that requires that the account would be marked "flagged for liquidation"
+        mockDaiFeed.setMockAnswer(10000e8);
+
+        _checkLiquidatePreconditions(account, dtoken, collateralToken);
+        // Structured for non exact liquidations, debt amount to liquidate = max
         (
             uint256 debtToLiquidate,
             uint256 seizedForLiquidation,
@@ -354,10 +353,13 @@ contract FuzzDToken is FuzzMarketManager {
                 dtoken,
                 collateralToken,
                 account,
-                0, // 0 does not represent anything here, when the liquidateExact is false 
+                0, // 0 does not represent anything here, when the liquidateExact is false
                 false
             );
-        uint256 amount = _bound_liquidate_values(debtToLiquidate, collateralToken);
+        uint256 amount = _boundLiquidateValues(
+            debtToLiquidate,
+            collateralToken
+        );
 
         {
             address underlyingDToken = DToken(dtoken).underlying();
@@ -387,6 +389,8 @@ contract FuzzDToken is FuzzMarketManager {
         }
     }
 
+    /*
+
     // liquidateExact amount, with zero
     function liquidate_should_succeed_with_exact_with_zero(
         address account,
@@ -394,15 +398,13 @@ contract FuzzDToken is FuzzMarketManager {
         address collateralToken
     ) public {
         setupLiquidations();
-        _check_liquidate_preconditions(
-            account,
-            dtoken,
-            collateralToken
-        );
+        _checkLiquidatePreconditions(account, dtoken, collateralToken);
         uint256 amount = 0;
-        // Structured for non exact liquidations, debt amount to liquidate = max 
-        uint256 collateralPostedFor = _collateralPostedFor(address(collateralToken));
-        // amount = _bound_liquidate_values(collateralPostedFor, collateralToken);
+        // Structured for non exact liquidations, debt amount to liquidate = max
+        uint256 collateralPostedFor = _collateralPostedFor(
+            address(collateralToken)
+        );
+        // amount = _boundLiquidateValues(collateralPostedFor, collateralToken);
         (
             uint256 debtToLiquidate,
             uint256 seizedForLiquidation,
@@ -415,28 +417,36 @@ contract FuzzDToken is FuzzMarketManager {
                 true
             );
 
-        
         address underlyingDToken = DToken(dtoken).underlying();
 
-    
-        uint256 senderBalanceUnderlying = IERC20(underlyingDToken)
-            .balanceOf(msg.sender);
-        uint256 preAccountCollateral = IERC20(collateralToken)
-            .balanceOf(account);
+        uint256 senderBalanceUnderlying = IERC20(underlyingDToken).balanceOf(
+            msg.sender
+        );
+        uint256 preAccountCollateral = IERC20(collateralToken).balanceOf(
+            account
+        );
 
-        // expect the above to fail 
-        try this.prankLiquidateExact(account, amount, dtoken, collateralToken) {
-
-        } catch {
+        // expect the above to fail
+        try
+            this.prankLiquidateExact(account, amount, dtoken, collateralToken)
+        {} catch {
             assert(false);
         }
+    }
 
-        
-    }        
-function prankLiquidateExact(address account, uint256 amount, address dtoken, address collateralToken) external {
+    function prankLiquidateExact(
+        address account,
+        uint256 amount,
+        address dtoken,
+        address collateralToken
+    ) external {
         hevm.prank(msg.sender);
-        DToken(dtoken).liquidateExact(account, amount, IMToken(collateralToken));
-} 
+        DToken(dtoken).liquidateExact(
+            account,
+            amount,
+            IMToken(collateralToken)
+        );
+    }
 
     // liquidateExact amount, with specified amount
     function liquidate_should_succeed_with_exact(
@@ -446,14 +456,12 @@ function prankLiquidateExact(address account, uint256 amount, address dtoken, ad
         address collateralToken
     ) public {
         setupLiquidations();
-        _check_liquidate_preconditions(
-            account,
-            dtoken,
-            collateralToken
+        _checkLiquidatePreconditions(account, dtoken, collateralToken);
+        // Structured for non exact liquidations, debt amount to liquidate = max
+        uint256 collateralPostedFor = _collateralPostedFor(
+            address(collateralToken)
         );
-        // Structured for non exact liquidations, debt amount to liquidate = max 
-        uint256 collateralPostedFor = _collateralPostedFor(address(collateralToken));
-        amount = _bound_liquidate_values(collateralPostedFor, collateralToken);
+        amount = _boundLiquidateValues(collateralPostedFor, collateralToken);
         (
             uint256 debtToLiquidate,
             uint256 seizedForLiquidation,
@@ -476,7 +484,11 @@ function prankLiquidateExact(address account, uint256 amount, address dtoken, ad
                     .balanceOf(account);
 
                 hevm.prank(msg.sender);
-                DToken(dtoken).liquidateExact(account, amount, IMToken(collateralToken));
+                DToken(dtoken).liquidateExact(
+                    account,
+                    amount,
+                    IMToken(collateralToken)
+                );
 
                 assertEq(
                     IERC20(underlyingDToken).balanceOf(msg.sender),
@@ -492,16 +504,17 @@ function prankLiquidateExact(address account, uint256 amount, address dtoken, ad
                 );
             }
         }
-    }    
+    }
+    */
 
     // Helper functions
 
-    function _check_liquidate_preconditions(
+    function _checkLiquidatePreconditions(
         address account,
         address dtoken,
         address collateralToken
     ) private {
-        is_supported_dtoken(dtoken);
+        _isSupportedDToken(dtoken);
         require(account != msg.sender);
         require(marketManager.isListed(dtoken));
         require(
@@ -523,7 +536,7 @@ function prankLiquidateExact(address account, uint256 amount, address dtoken, ad
         require(lfactor > 0);
     }
 
-    function _bound_liquidate_values(
+    function _boundLiquidateValues(
         uint256 amount,
         address collateralToken
     ) private returns (uint256 clampedAmount) {

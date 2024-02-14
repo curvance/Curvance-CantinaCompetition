@@ -444,7 +444,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         );
     }
 
-    function mint_and_approve(
+    function _mintAndApprove(
         address underlyingAddress,
         address mtoken,
         uint256 amount
@@ -584,7 +584,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     // If the price is stale, update the round data and update lastRoundUpdate
-    function check_price_feed() internal {
+    function _checkPriceFeed() internal {
         // if lastRoundUpdate timestamp is stale
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
@@ -613,7 +613,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         lastRoundUpdate = block.timestamp;
     }
 
-    function is_supported_dtoken(address dtoken) internal view {
+    function _isSupportedDToken(address dtoken) internal view {
         require(dtoken == address(dUSDC) || dtoken == address(dDAI));
     }
 

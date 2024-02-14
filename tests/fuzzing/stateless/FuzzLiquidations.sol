@@ -47,18 +47,19 @@ contract FuzzLiquidations is FuzzDToken {
     }
 
     function calculateLiquidation_exact(uint256 amount) public {
+        setup();
         // Setup state
         debtAmount = 1 ether;
-        _save_current_state();
+        _saveCurrentState();
 
         // Arithmetic calculation
-        _calculate_c_factor();
-        _calculate_incentive();
-        _calculate_max_amount();
-        _calculate_debt_to_collateral_ratio();
-        _calculate_amount_adjusted();
-        _calculate_liquidated_tokens();
-        _calculate_protocol_tokens();
+        _calculateCFactor();
+        _calculateIncentive();
+        _calculateMaxAmount();
+        _calculateDebtToCollateralRatio();
+        _calculateAmountAdjusted();
+        _calculateLiquidatedTokens();
+        _calculateProtocolTokens();
 
         (
             uint256 _canLiq_debt,
@@ -90,7 +91,7 @@ contract FuzzLiquidations is FuzzDToken {
     }
 
     /// @notice saves token data and liquidation status of system
-    function _save_current_state() private {
+    function _saveCurrentState() private {
         (
             bool isListed,
             uint256 collRatio,
@@ -140,7 +141,7 @@ contract FuzzLiquidations is FuzzDToken {
     /// @custom:precondition baseCFactor <= MAX_BASE_CFACTOR
     /// @custom:precondition lFactor > 0
     /// @custom:precondition l factor <= WAD
-    function _calculate_c_factor() private {
+    function _calculateCFactor() private {
         // Preconditions
         assertWithMsg(
             data.baseCFactor >= marketManager.MIN_BASE_CFACTOR(),
@@ -172,7 +173,7 @@ contract FuzzLiquidations is FuzzDToken {
     /// @custom:property incentive must be >= MIN_LIQUIDATION_INCENTIVE
     /// @custom:precondition liqBaseIncentive must be <= MAX_LIQUIDATION_INCENTIVE
     /// @custom:precondition incentive must be >= MIN_LIQUIDATION_INCENTIVE
-    function _calculate_incentive() private {
+    function _calculateIncentive() private {
         // Preconditions
         assertWithMsg(
             data.liqBaseIncentive >= marketManager.MIN_LIQUIDATION_INCENTIVE(),
@@ -202,7 +203,7 @@ contract FuzzLiquidations is FuzzDToken {
     /// @custom:property if cfactor == 0, maxAmount to be liquidated = 0
     /// @custom:property if cFactor == WAD, maxAmount to be liquidated = debtBalanceCached
     /// @custom:property if cFactor is between [0, WAD], maxAmount to be liquidated must be bound between [0, debtBalanceCached]
-    function _calculate_max_amount() private {
+    function _calculateMaxAmount() private {
         // Preconditions
 
         uint256 maxAmount = (calculated.cFactor * data.debtBalanceCached) /
@@ -230,8 +231,8 @@ contract FuzzLiquidations is FuzzDToken {
         calculated.maxAmount = maxAmount;
     }
 
-    // No property bounds
-    function _calculate_debt_to_collateral_ratio() private {
+    /// @custom:notice No property bounds as debt to collateral ratio can be unbounded
+    function _calculateDebtToCollateralRatio() private {
         // No Preconditions
 
         uint256 debtToCollateralRatio = (calculated.incentive *
@@ -245,7 +246,7 @@ contract FuzzLiquidations is FuzzDToken {
     /// @custom:property if collateral token and debt token have the same number of decimals, amountAdjusted = debtBalanceCached
     /// @custom:property if collateral token decimals > debtTokenDecimals, amountAdjusted > debtBalanceCached
     /// @custom:property if collateral token decimals < debtTokenDecimals, amountAdjusted < debtBalanceCached
-    function _calculate_amount_adjusted() private {
+    function _calculateAmountAdjusted() private {
         // Saves state
         uint256 collateralTokenDecimals = IMToken(collateralToken).decimals();
         uint256 debtTokenDecimals = IMToken(debtToken).decimals();
@@ -278,7 +279,7 @@ contract FuzzLiquidations is FuzzDToken {
 
     /// @custom:property if amountAdjusted == 0, tokens to be liquidated = 0
     /// @custom:property if debtToCollateralRatio == 0, tokens to be liquidated = 0
-    function _calculate_liquidated_tokens() private {
+    function _calculateLiquidatedTokens() private {
         uint256 liquidatedTokens = (calculated.amountAdjusted *
             calculated.debtToCollateralRatio) / WAD;
 
@@ -297,7 +298,7 @@ contract FuzzLiquidations is FuzzDToken {
     }
 
     // No pre or post conditions relevant here
-    function _calculate_protocol_tokens() private {
+    function _calculateProtocolTokens() private {
         calculated.liquidatedTokenToProtocol =
             (calculated.liquidatedTokens * data.liqFee) /
             WAD;

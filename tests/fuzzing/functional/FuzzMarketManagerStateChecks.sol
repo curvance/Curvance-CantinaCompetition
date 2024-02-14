@@ -367,7 +367,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
     function canBorrow_should_succeed(address mtoken, uint256 amount) public {
-        is_supported_dtoken(mtoken);
+        _isSupportedDToken(mtoken);
         require(marketManager.borrowPaused(mtoken) != 2);
         require(marketManager.isListed(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(

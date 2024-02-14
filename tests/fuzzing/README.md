@@ -226,8 +226,15 @@ Tips and tricks:
 ## Coverage Limitations
 
 ### System 
-- oracle prices – `allContracts` was turned on at one point to allow the fuzzer to poke huge price deviations, however the test suite was not yet ready to handle this dynamic style of input. 
-- 
+- oracle prices – `allContracts` was turned on at one point to allow the fuzzer to poke huge price deviations, however the test suite was not yet ready to handle this dynamic style of input. eventually, this style of function can be added to the system to test dynamic range of price feeds: 
+```
+    function set_price_feeds(uint256 usdcPrice, uint256 daiPrice) public {
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
+    }
+```
 
 ### VECVE
 

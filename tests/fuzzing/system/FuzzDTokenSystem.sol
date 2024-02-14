@@ -9,7 +9,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
     function marketUnderlyingHeld_equivalent_to_balanceOf_underlying(
         address dtoken
     ) public {
-        is_supported_dtoken(dtoken);
+        _isSupportedDToken(dtoken);
 
         uint256 marketUnderlyingHeld = DToken(dtoken).marketUnderlyingHeld();
 
@@ -30,7 +30,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
     function decimals_for_dtoken_equivalent_to_underlying(
         address dtoken
     ) public {
-        is_supported_dtoken(dtoken);
+        _isSupportedDToken(dtoken);
         address underlying = DToken(dtoken).underlying();
 
         assertEq(
@@ -43,7 +43,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
     // @custom:property s-dtok-3 isCToken() should return false for dtoken
     // @custom:precondition dtoken is either dUSDC or dDAI
     function isCToken_returns_false(address dtoken) public {
-        is_supported_dtoken(dtoken);
+        _isSupportedDToken(dtoken);
         assertWithMsg(
             !DToken(dtoken).isCToken(),
             "DTOKEN - isCToken() should return false"

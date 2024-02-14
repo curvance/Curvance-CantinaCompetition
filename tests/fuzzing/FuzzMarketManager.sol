@@ -1,6 +1,7 @@
 pragma solidity 0.8.17;
 import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
+import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
@@ -41,7 +42,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         list_token_should_succeed(address(cUSDC));
     }
 
-    function setup() public virtual {
+    function setup() public {
         setUpFeeds();
         c_token_deposit(address(cUSDC), 1 ether, true);
         updateCollateralToken_should_succeed(
@@ -54,8 +55,8 @@ contract FuzzMarketManager is StatefulBaseMarket {
             0,
             0
         );
-        setCToken_should_succeed(address(cUSDC), 10 ether);
-        post_collateral_should_succeed(address(cUSDC), WAD * 2, true);
+        setCToken_should_succeed(address(cUSDC), 10000 ether);
+        post_collateral_should_succeed(address(cUSDC), WAD * 2, false);
     }
 
     /// @custom:property market-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
@@ -73,7 +74,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 mtoken == address(dDAI)
         );
         require(
-            mint_and_approve(IMToken(mtoken).underlying(), mtoken, amount)
+            _mintAndApprove(IMToken(mtoken).underlying(), mtoken, amount)
         );
 
         try marketManager.listToken(mtoken) {
@@ -133,7 +134,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
         address underlyingAddress = MockCToken(mtoken).underlying();
         amount = clampBetweenBoundsFromOne(lower, amount);
-        require(mint_and_approve(underlyingAddress, mtoken, amount));
+        require(_mintAndApprove(underlyingAddress, mtoken, amount));
         uint256 preCTokenBalanceThis = MockCToken(mtoken).balanceOf(
             address(this)
         );
@@ -204,12 +205,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
     }
 
     /// @custom:property market-5 – Calling updateCollateralToken with variables in correct bounds should succeed.
+    /// @custom:property - calling updateCollateralToken for token prices that deviate too much results in a PriceError
+    /// @custom:property - calling updateCollateralToken for token prices that are <0 results in a PriceError
+    /// @custom:property - calling updateCollateralToken for PriceRouter that returns error results in a PriceError
     /// @custom:precondition price feed must be recent
     /// @custom:precondition price feed must be setup
     /// @custom:precondition address(this) must have dao permissions
     /// @custom:precondition cap is bound between [1, uint256.max], inclusive
     /// @custom:precondition mtoken must be listed in the marketManager
-    /// @custom:precondition get_safe_update_collateral_bounds must be in correct bounds
+    /// @custom:precondition _getSafeUpdateCollateralBounds must be in correct bounds
     function updateCollateralToken_should_succeed(
         address mtoken,
         uint256 collRatio,
@@ -225,13 +229,13 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(feedsSetup);
 
-        (bool divergenceTooLarge, bool priceError) = check_price_divergence(
+        (bool divergenceTooLarge, bool priceError) = _checkPriceDivergence(
             mtoken
         );
 
         {
-            check_price_feed();
-            get_safe_update_collateral_bounds(
+            _checkPriceFeed();
+            _getSafeUpdateCollateralBounds(
                 collRatio,
                 collReqSoft,
                 collReqHard,
@@ -264,15 +268,15 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 if (divergenceTooLarge || priceError) {
                     assertWithMsg(
                         errorSelector == marketManager_priceErrorSelectorHash,
-                        "marketManager - expected updateCollateralToken to fail if price diverge too much"
+                        "marketManager - expected updateCollateralToken to fail if price diverge too much or encounters error"
+                    );
+                } else {
+                    // market-5
+                    assertWithMsg(
+                        false,
+                        "marketManager - updateCollateralToken should succeed"
                     );
                 }
-
-                // market-5
-                assertWithMsg(
-                    false,
-                    "marketManager - updateCollateralToken should succeed"
-                );
             }
         }
     }
@@ -292,7 +296,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
             maxCollateralCap[mtoken] = cap;
         }
 
-        check_price_feed();
+        _checkPriceFeed();
 
         address[] memory tokens = new address[](1);
         tokens[0] = mtoken;
@@ -367,7 +371,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         caps[0] = cap;
 
         {
-            get_safe_update_collateral_bounds(
+            _getSafeUpdateCollateralBounds(
                 collRatio,
                 collReqSoft,
                 collReqHard,
@@ -413,7 +417,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         bool lower
     ) public {
         require(collateralCapsUpdated[mtoken]);
-        check_price_feed();
+        _checkPriceFeed();
 
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
             c_token_deposit(
@@ -509,7 +513,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         bool lower
     ) public {
         require(collateralCapsUpdated[mtoken]);
-        check_price_feed();
+        _checkPriceFeed();
 
         if (IMToken(mtoken).balanceOf(address(this)) == 0) {
             c_token_deposit(
@@ -563,7 +567,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(postedCollateral[mtoken]);
         require(marketManager.isListed(mtoken));
-        check_price_feed();
+        _checkPriceFeed();
 
         emit LogUint256("posted collateral at: ", postedCollateralAt[mtoken]);
         emit LogUint256("MIN_HOLD_PERIOD: ", marketManager.MIN_HOLD_PERIOD());
@@ -663,7 +667,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     ) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.isListed(mtoken));
-        check_price_feed();
+        _checkPriceFeed();
         require(!_hasPosition(mtoken));
 
         (bool success, bytes memory revertData) = address(marketManager).call(
@@ -704,7 +708,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     ) public {
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(marketManager.isListed(mtoken));
-        check_price_feed();
+        _checkPriceFeed();
         require(_hasPosition(mtoken));
         uint256 oldCollateralForUser = _collateralPostedFor(mtoken);
 
@@ -775,7 +779,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(marketManager.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(_hasPosition(mtoken));
-        check_price_feed();
+        _checkPriceFeed();
         uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser > 0);
         require(
@@ -809,7 +813,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 );
             }
         } else {
-            check_close_position_post_conditions(mtoken, preAssetsOf.length);
+            _checkClosePositionPostConditions(mtoken, preAssetsOf.length);
         }
     }
 
@@ -826,7 +830,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(marketManager.redeemPaused() != 2);
         require(mtoken == address(cDAI) || mtoken == address(cUSDC));
         require(_hasPosition(mtoken));
-        check_price_feed();
+        _checkPriceFeed();
         uint256 collateralPostedForUser = _collateralPostedFor(mtoken);
         require(collateralPostedForUser == 0);
         require(
@@ -844,27 +848,44 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 "MARKET MANAGER - closePosition should succeed if collateral is 0"
             );
         } else {
-            check_close_position_post_conditions(mtoken, preAssetsOf.length);
+            _checkClosePositionPostConditions(mtoken, preAssetsOf.length);
         }
     }
 
-    function check_close_position_post_conditions(
-        address mtoken,
-        uint256 preAssetsOfLength
-    ) private {
-        assertWithMsg(
-            !_hasPosition(mtoken),
-            "marketManager - closePosition should remove position in mtoken if successful"
-        );
-        assertWithMsg(
-            _collateralPostedFor(mtoken) == 0,
-            "marketManager - closePosition should reduce collateralPosted for user to 0"
-        );
-        IMToken[] memory postAssetsOf = marketManager.assetsOf(address(this));
-        assertWithMsg(
-            preAssetsOfLength - 1 == postAssetsOf.length,
-            "marketManager - closePosition expected to remove asset from assetOf"
-        );
+    function liquidateAccount_should_succeed() public {
+        address account = address(this);
+        IMToken[] memory assets = marketManager.assetsOf(account);
+        require(assets.length > 0);
+        DToken(dDAI).borrow(2 * WAD);
+
+        (uint256 accountCollateral, , uint256 accountDebt) = marketManager
+            .statusOf(account);
+        require(accountCollateral < accountDebt);
+        emit LogUint256("number of assets", assets.length);
+
+        try this.prankLiquidateAccount(account) {
+            assert(false);
+            for (uint256 i = 0; i < assets.length; i++) {
+                (bool hasPosition, uint256 balanceOf, ) = marketManager
+                    .tokenDataOf(address(this), address(assets[i]));
+                assertWithMsg(
+                    !hasPosition,
+                    "marketManager - liquidations should remove user's position for their assets"
+                );
+                assertEq(
+                    balanceOf,
+                    0,
+                    "marketManager - liquidateAccount should zero out balanceOf"
+                );
+            }
+        } catch {
+            assert(false);
+        }
+    }
+
+    function prankLiquidateAccount(address account) external {
+        hevm.prank(msg.sender);
+        marketManager.liquidateAccount(account);
     }
 
     // Helper Functions
@@ -891,7 +912,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
     // collReqHard = [liqIncHard + MIN_EXCESS_COLLATERAL_REQUIREMENT/1e14, MAX_COLLATERAL_REQUIREMENT()/1e14-1]
     // collReqSoft = [collReqHard+1, MAX_COLLATERAL_REQUIREMENT()/1e14]
     // collateralRatio = [0, min(MAX_COLLATERALIZATION_RATIO/1e14, (WAD*WAD)/(WAD+collReqSoft*1e14))]
-    function get_safe_update_collateral_bounds(
+    function _getSafeUpdateCollateralBounds(
         uint256 collRatio,
         uint256 collReqSoft,
         uint256 collReqHard,
@@ -968,7 +989,26 @@ contract FuzzMarketManager is StatefulBaseMarket {
         }
     }
 
-    function check_price_divergence(
+    function _checkClosePositionPostConditions(
+        address mtoken,
+        uint256 preAssetsOfLength
+    ) private {
+        assertWithMsg(
+            !_hasPosition(mtoken),
+            "marketManager - closePosition should remove position in mtoken if successful"
+        );
+        assertWithMsg(
+            _collateralPostedFor(mtoken) == 0,
+            "marketManager - closePosition should reduce collateralPosted for user to 0"
+        );
+        IMToken[] memory postAssetsOf = marketManager.assetsOf(address(this));
+        assertWithMsg(
+            preAssetsOfLength - 1 == postAssetsOf.length,
+            "marketManager - closePosition expected to remove asset from assetOf"
+        );
+    }
+
+    function _checkPriceDivergence(
         address mtoken
     ) private view returns (bool divergenceTooLarge, bool priceError) {
         (uint256 lowerPrice, uint lowError) = OracleRouter(oracleRouter)
@@ -977,6 +1017,9 @@ contract FuzzMarketManager is StatefulBaseMarket {
             .getPrice(mtoken, true, false);
 
         priceError = lowError == 2 || highError == 2;
+        if (lowerPrice < 0 || higherPrice < 0) {
+            priceError = true;
+        }
 
         if (
             higherPrice - lowerPrice >
