@@ -12,8 +12,8 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// CONSTANTS ///
 
-    /// @notice Chain id for Polygon.
-    uint16 public immutable POLYGON_CHAIN_ID = 137;
+    /// @notice GETH Chain ID for Polygon.
+    uint256 public constant POLYGON_CHAIN_ID = 137;
 
     /// STORAGE ///
 
@@ -36,13 +36,13 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
         address gelatoOneBalance_,
         address polygonOneBalanceFeeManager_
     ) FeeTokenBridgingHub(centralRegistry_) {
-        if (block.chainid == 137) {
+        if (block.chainid == POLYGON_CHAIN_ID) {
             if (gelatoOneBalance_ == address(0)) {
                 revert OneBalanceFeeManager__InvalidGelatoOneBalance();
             }
 
-            // We infinite approve fee token so that Gelato 1Balance
-            // can drag funds to proper chain
+            // We infinite approve `feeToken` so that Gelato 1Balance
+            // can pull funds to proper chain.
             SafeTransferLib.safeApprove(
                 feeToken,
                 gelatoOneBalance_,
@@ -64,7 +64,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     function depositOneBalanceFee() external nonReentrant {
         _checkDaoPermissions();
 
-        if (block.chainid == 137) {
+        if (block.chainid == POLYGON_CHAIN_ID) {
             _depositOneBalanceFee();
         } else {
             _sendFeeToken(
@@ -91,7 +91,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
         uint16 /* srcChainId */,
         bytes32 /* deliveryHash */
     ) external payable {
-        if (block.chainid != 137) {
+        if (block.chainid != POLYGON_CHAIN_ID) {
             return;
         }
 
@@ -112,9 +112,11 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
         }
     }
 
-    /// @notice Set Gelato Network 1Balance destination address
+    /// @notice Set Gelato Network 1Balance destination address.
+    /// @param newGelatoOneBalance The address of the new gelato one balance
+    ///                            account.
     function setOneBalanceAddress(address newGelatoOneBalance) external {
-        if (block.chainid != 137) {
+        if (block.chainid != POLYGON_CHAIN_ID) {
             return;
         }
 
@@ -137,6 +139,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Deposit fee token to Gelato 1Balance.
+    /// @dev Only callable on Polygon PoS chain.
     function _depositOneBalanceFee() internal {
         // Transfer fees to Gelato Network 1Balance or equivalent
         gelatoOneBalance.depositToken(
