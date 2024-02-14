@@ -22,7 +22,7 @@ abstract contract Delegable {
     /// @dev Account address => approval index => Spender address => Can act
     ///      on behalf of account.
     mapping(address => mapping(uint256 => mapping(address => bool)))
-        public isDelegate;
+        internal _isDelegate;
 
     /// EVENTS ///
 
@@ -114,7 +114,7 @@ abstract contract Delegable {
         }
 
         uint256 approvalIndex = getUserApprovalIndex(msg.sender);
-        isDelegate[msg.sender][approvalIndex][delegate] = isApproved;
+        _isDelegate[msg.sender][approvalIndex][delegate] = isApproved;
 
         emit DelegateApproval(
             msg.sender, 
@@ -137,7 +137,7 @@ abstract contract Delegable {
         address user,
         address delegate
     ) public view returns (bool) {
-        return isDelegate[user][getUserApprovalIndex(user)][delegate];
+        return _isDelegate[user][getUserApprovalIndex(user)][delegate];
     }
     
 }

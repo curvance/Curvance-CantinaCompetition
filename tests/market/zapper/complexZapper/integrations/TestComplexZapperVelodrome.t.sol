@@ -30,7 +30,7 @@ contract TestComplexZapperVelodrome is TestBaseMarket {
         _deployGaugePool();
         _deployMarketManager();
 
-        complexZapper = new Zapper(
+        complexZapper = new ComplexZapper(
             ICentralRegistry(address(centralRegistry)),
             address(marketManager),
             _WETH
@@ -52,7 +52,7 @@ contract TestComplexZapperVelodrome is TestBaseMarket {
         vm.startPrank(user);
         complexZapper.velodromeIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 address(0),
                 ethAmount,
                 _VELODROME_WETH_USDC,
@@ -79,7 +79,7 @@ contract TestComplexZapperVelodrome is TestBaseMarket {
         IERC20(_VELODROME_WETH_USDC).approve(address(complexZapper), withdrawAmount);
         complexZapper.velodromeOut(
             _VELODROME_ROUTER,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _VELODROME_WETH_USDC,
                 withdrawAmount,
                 _WETH,

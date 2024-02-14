@@ -21,8 +21,6 @@ contract CVELocker is Delegable, ReentrancyGuard {
 
     /// @notice The address of the CVE contract.
     address public immutable cve;
-    /// @notice Curvance DAO hub.
-    ICentralRegistry public immutable centralRegistry;
     /// @notice CVE Locker Reward token.
     address public immutable rewardToken;
     /// @notice Genesis Epoch timestamp.
@@ -83,7 +81,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address rewardToken_) {
+    constructor(ICentralRegistry centralRegistry_, address rewardToken_) Delegable(centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -97,7 +95,6 @@ contract CVELocker is Delegable, ReentrancyGuard {
             revert CVELocker__RewardTokenIsZeroAddress();
         }
 
-        centralRegistry = centralRegistry_;
         genesisEpoch = centralRegistry.genesisEpoch();
         rewardToken = rewardToken_;
         cve = centralRegistry.cve();
@@ -362,7 +359,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @dev May emit a {RewardPaid} event.
     /// @param user The address of the user claiming rewards.
     /// @param epochs The number of epochs for which to claim rewards.
-    /// @return How much rewards were claimed for `user` from the locker.
+    /// @return rewards How much rewards were claimed for `user` from the locker.
     function _claimRewardsDirect(
         address user,
         uint256 epochs

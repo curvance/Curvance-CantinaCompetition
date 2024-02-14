@@ -82,8 +82,6 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
     /// @dev `bytes4(keccak256(bytes("PositionFolding__Unauthorized()")))`
     uint256 internal constant _UNAUTHORIZED_SELECTOR = 0x1d52945b;
 
-    /// @notice Curvance DAO hub.
-    ICentralRegistry public immutable centralRegistry;
     /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
 
@@ -136,7 +134,7 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address marketManager_) {
+    constructor(ICentralRegistry centralRegistry_, address marketManager_) Delegable(centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -152,7 +150,6 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
             revert PositionFolding__InvalidMarketManager();
         }
 
-        centralRegistry = centralRegistry_;
         marketManager = IMarketManager(marketManager_);
     }
 

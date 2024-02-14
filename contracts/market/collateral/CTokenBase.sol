@@ -72,8 +72,6 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
 
     /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
-    /// @notice Curvance DAO Hub.
-    ICentralRegistry public immutable centralRegistry;
 
     /// @notice Underlying asset for the CToken.
     IERC20 internal immutable _asset;
@@ -102,7 +100,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
         address MarketManager_
-    ) {
+    ) Delegable(centralRegistry_) {
         _asset = asset_;
         _name = string.concat("Curvance collateralized ", asset_.name());
         _symbol = string.concat("c", asset_.symbol());
@@ -116,8 +114,6 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         ) {
             revert CTokenBase__InvalidCentralRegistry();
         }
-
-        centralRegistry = centralRegistry_;
 
         // Ensure that marketManager parameter is a marketManager.
         if (!centralRegistry.isMarketManager(MarketManager_)) {

@@ -92,6 +92,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
     error VeCVE__InvalidLock();
     error VeCVE__VeCVEShutdown();
     error VeCVE__ParametersAreInvalid();
+    error VeCVE__InvariantError();
 
     /// CONSTRUCTOR ///
 

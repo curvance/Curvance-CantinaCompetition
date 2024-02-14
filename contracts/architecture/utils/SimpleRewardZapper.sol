@@ -327,7 +327,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
 
     /// @notice Removes an authorized reward token.
     /// @dev Only callable on by an entity with DAO permissions or higher.
-    /// @param token The address of the token to deauthorize.
+    /// @param outputToken The address of the token to deauthorize.
     function removeAuthorizedOutputToken(address outputToken) external {
         _checkDaoPermissions();
 

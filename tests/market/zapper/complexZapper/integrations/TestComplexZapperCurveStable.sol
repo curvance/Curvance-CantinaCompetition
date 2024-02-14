@@ -43,7 +43,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         tokens[2] = _WETH_ADDRESS;
         complexZapper.curveIn{ value: ethAmount }(
             address(0),
-            ComplexZapper.ComplexZapperData(
+            ComplexZapper.ZapperData(
                 address(0),
                 ethAmount,
                 _CURVE_TRICRYPTO_LP,
@@ -73,7 +73,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         tokens[2] = _WETH_ADDRESS;
         complexZapper.curveIn(
             address(0),
-            ComplexZapper.ComplexZapperData(
+            ComplexZapper.ZapperData(
                 _WETH_ADDRESS,
                 wethAmount,
                 _CURVE_TRICRYPTO_LP,
@@ -104,7 +104,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         IERC20(_CURVE_TRICRYPTO_LP).approve(address(complexZapper), withdrawAmount);
         complexZapper.curveOut(
             _CURVE_TRICRYPTO_MINTER,
-            ComplexZapper.ComplexZapperData(
+            ComplexZapper.ZapperData(
                 _CURVE_TRICRYPTO_LP,
                 withdrawAmount,
                 _WETH_ADDRESS,

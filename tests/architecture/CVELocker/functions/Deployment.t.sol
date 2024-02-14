@@ -4,12 +4,13 @@ pragma solidity 0.8.17;
 import { TestBaseCVELocker } from "../TestBaseCVELocker.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { Delegable } from "contracts/libraries/Delegable.sol";
 
 contract CVELockerDeploymentTest is TestBaseCVELocker {
     function test_cveLockerDeployment_fail_whenCentralRegistryIsInvalid()
         public
     {
-        vm.expectRevert(CVELocker.CVELocker__InvalidCentralRegistry.selector);
+        vm.expectRevert(Delegable.Delegable__InvalidCentralRegistry.selector);
         new CVELocker(ICentralRegistry(address(0)), _USDC_ADDRESS);
     }
 

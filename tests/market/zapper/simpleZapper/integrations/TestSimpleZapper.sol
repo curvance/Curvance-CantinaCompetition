@@ -166,7 +166,7 @@ contract TestSimpleZapper is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.marketManager()), address(marketManager));
+        assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
     function testZapAndDeposit() public {
@@ -176,15 +176,15 @@ contract TestSimpleZapper is TestBaseMarket {
         SwapperLib.ZapperCall memory zapperCall;
         zapperCall.inputToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         zapperCall.inputAmount = ethAmount;
-        zapperCall.target = address(zapper);
+        zapperCall.target = address(complexZapper);
 
         address[] memory tokens = new address[](2);
         tokens[0] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         tokens[1] = _STETH_ADDRESS;
         zapperCall.call = abi.encodeWithSelector(
-            Zapper.curveIn.selector,
+            ComplexZapper.curveIn.selector,
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
                 ethAmount,
                 _CURVE_STETH_LP,

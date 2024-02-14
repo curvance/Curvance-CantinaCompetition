@@ -61,8 +61,6 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
 
     /// @notice The underlying asset for the DToken.
     address public immutable underlying;
-    /// @notice Curvance DAO hub.
-    ICentralRegistry public immutable centralRegistry;
     /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
 
@@ -161,7 +159,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         address underlying_,
         address marketManager_,
         address interestRateModel_
-    ) {
+    ) Delegable(centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -170,8 +168,6 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         ) {
             revert DToken__InvalidCentralRegistry();
         }
-
-        centralRegistry = centralRegistry_;
 
         // Set the marketManager after consulting Central Registry.
         // Ensure that marketManager parameter is a marketManager.

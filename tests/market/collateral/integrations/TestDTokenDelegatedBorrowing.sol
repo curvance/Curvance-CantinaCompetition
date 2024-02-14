@@ -138,7 +138,7 @@ contract TestDTokenDelegatedBorrowing is TestBaseMarket {
         marketManager.postCollateral(user1, address(cBALRETH), 1 ether - 1);
 
         // delegate borrow
-        dDAI.setBorrowApproval(user2, true);
+        dDAI.setDelegateApproval(user2, true);
         vm.stopPrank();
 
         // try borrow()

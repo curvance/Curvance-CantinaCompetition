@@ -120,11 +120,11 @@ contract CentralRegistry is ERC165 {
     ///      have their delegation authority revoked across all Curvance
     ///      contracts.
     ///      User => Approval Index.
-    mapping(address => uint256) public approvalIndex;
+    mapping(address => uint256) public userApprovalIndex;
 
     /// @notice Whether a user wants to allow new delegating to be disabled.
     /// @dev User => Has new delegation  disabled.
-    mapping(address => uint256) public delegatingDisabled;
+    mapping(address => bool) public delegatingDisabled;
 
     // DAO PERMISSION DATA
 
@@ -650,8 +650,8 @@ contract CentralRegistry is ERC165 {
     ///      contracts.
     ///      Emits an {ApprovalIndexIncremented} event.
     function incrementApprovalIndex() external {
-        uint256 newIndex = approvalIndex[msg.sender] + 1;
-        approvalIndex[msg.sender] = newIndex;
+        uint256 newIndex = userApprovalIndex[msg.sender] + 1;
+        userApprovalIndex[msg.sender] = newIndex;
 
         emit ApprovalIndexIncremented(msg.sender, newIndex);
     }
@@ -660,7 +660,7 @@ contract CentralRegistry is ERC165 {
     ///         or not.
     /// @param delegable Whether caller wants to allow new delegation or not.
     ///      Emits a {DelegableStatusSet} event.
-    function setDelegable(bool delegable) external {
+    function disableDelegable(bool delegable) external {
         delegatingDisabled[msg.sender] = delegable;
 
         emit DelegableStatusSet(msg.sender, delegable);

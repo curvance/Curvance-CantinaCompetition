@@ -181,7 +181,7 @@ contract TestBorrowAndBridge is TestBaseMarket {
         // try borrow()
         vm.startPrank(user1);
 
-        dDAI.setBorrowApproval(address(borrowZapper), true);
+        dDAI.setDelegateApproval(address(borrowZapper), true);
         borrowZapper.borrowAndBridge{ value: messageFee }(
             address(dDAI),
             500e18,

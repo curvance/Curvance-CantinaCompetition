@@ -42,7 +42,7 @@ contract TestComplexZapperCurveETH is TestBaseMarket {
         tokens[1] = _STETH_ADDRESS;
         complexZapper.curveIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _ETH_ADDRESS,
                 ethAmount,
                 _CURVE_STETH_LP,
@@ -72,7 +72,7 @@ contract TestComplexZapperCurveETH is TestBaseMarket {
         IERC20(_CURVE_STETH_LP).approve(address(complexZapper), withdrawAmount);
         complexZapper.curveOut(
             _CURVE_STETH_MINTER,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _CURVE_STETH_LP,
                 withdrawAmount,
                 _ETH_ADDRESS,

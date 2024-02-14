@@ -13,7 +13,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
 
     constructor() {
         caller = address(this);
-        defaultRewardData = RewardsData(address(usdc), false, false, false);
+        defaultRewardData = RewardsData(false, false, false, false);
         // seeds the execution with creating a lock
         create_lock_when_not_shutdown(uint(0), false);
     }
@@ -40,7 +40,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
             veCVE.createLock(
                 amount,
                 continuousLock,
-                RewardsData(address(usdc), false, false, false),
+                RewardsData(false, false, false, false),
                 bytes(""),
                 0
             )
@@ -451,7 +451,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
             veCVE.extendLock(
                 lockIndex,
                 continuousLock,
-                RewardsData(address(0), true, true, true),
+                RewardsData(false, true, true, true),
                 bytes(""),
                 0
             )
@@ -482,7 +482,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
             veCVE.extendLock(
                 lockIndex,
                 continuousLock,
-                RewardsData(address(0), true, true, true),
+                RewardsData(false, true, true, true),
                 bytes(""),
                 0
             )
@@ -729,7 +729,8 @@ contract FuzzVeCVE is StatefulBaseMarket {
         public
     {
         require(veCVE.isShutdown() != 2);
-        uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(caller);
+        uint256 numberOfExistingLocks = lockAmounts.length;
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
         (uint256 amount, uint256 unlockTime) = get_user_locks_info(
@@ -807,7 +808,8 @@ contract FuzzVeCVE is StatefulBaseMarket {
         public
     {
         require(veCVE.isShutdown() != 2);
-        uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(caller);
+        uint256 numberOfExistingLocks = lockAmounts.length;
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
 
@@ -1082,7 +1084,9 @@ contract FuzzVeCVE is StatefulBaseMarket {
             caller
         ];
         for (uint i = 0; i < senders.length; i++) {
-            require(veCVE.queryUserLocksLength(senders[i]) == 0);
+            (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(senders[i]);
+            uint256 numberOfExistingLocks = lockAmounts.length;
+            require(numberOfExistingLocks == 0);
         }
         assertEq(
             cve.balanceOf(address(veCVE)),
