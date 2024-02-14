@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { Math } from "contracts/libraries/external/Math.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IStakedGMX } from "contracts/interfaces/external/gmx/IStakedGMX.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
@@ -10,8 +10,6 @@ import { StakedGMXCToken, IERC20 } from "contracts/market/collateral/StakedGMXCT
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
 contract TestStakedGMXCToken is TestBaseMarket {
-    using Math for uint256;
-
     address private _GMX_REWARD_ROUTER =
         0x159854e14A862Df9E39E1D128b8e5F70B4A3cE9B;
     address private _GMX_FEE_GMX_TRACKER =
@@ -79,7 +77,8 @@ contract TestStakedGMXCToken is TestBaseMarket {
         uint256 amount = IStakedGMX(_GMX_FEE_GMX_TRACKER).claimable(
             address(cStakedGMX)
         );
-        amount -= amount.mulDivDown(
+        amount -= FixedPointMathLib.mulDiv(
+            amount,
             centralRegistry.protocolHarvestFee(),
             1e18
         );
@@ -119,7 +118,8 @@ contract TestStakedGMXCToken is TestBaseMarket {
         amount = IStakedGMX(_GMX_FEE_GMX_TRACKER).claimable(
             address(cStakedGMX)
         );
-        amount -= amount.mulDivDown(
+        amount -= FixedPointMathLib.mulDiv(
+            amount,
             centralRegistry.protocolHarvestFee(),
             1e18
         );

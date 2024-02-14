@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, SafeTransferLib, IERC20, FixedPointMathLib, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-
-import { WAD } from "contracts/libraries/Constants.sol";
-
 import { IStakedGMX } from "contracts/interfaces/external/gmx/IStakedGMX.sol";
 import { IRewardRouter } from "contracts/interfaces/external/gmx/IRewardRouter.sol";
 
 contract StakedGMXCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// CONSTANTS ///
 
     IERC20 public immutable WETH;
@@ -79,7 +74,8 @@ contract StakedGMXCToken is CTokenCompounding {
 
             if (rewardAmount > 0) {
                 // Take protocol fee.
-                uint256 protocolFee = rewardAmount.mulDivDown(
+                uint256 protocolFee = FixedPointMathLib.mulDiv(
+                    rewardAmount,
                     centralRegistry.protocolHarvestFee(),
                     1e18
                 );
@@ -114,13 +110,8 @@ contract StakedGMXCToken is CTokenCompounding {
             SafeTransferLib.safeApprove(asset(), stakedGmxTracker, yield);
             rewardRouter.stakeGmx(yield);
 
-            // Update vesting info.
-            // Cache vest period so we do not need to load it twice.
-            uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, _vestPeriod),
-                block.timestamp + _vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }
