@@ -115,7 +115,6 @@ contract TestStakedGMXCToken is TestBaseMarket {
         centralRegistry.addSwapper(_UNISWAP_V3_ROUTER);
 
         cStakedGMX.harvest(abi.encode(swapData));
-        initialAssets
 
         assertEq(
             cStakedGMX.totalAssets(),
@@ -133,6 +132,7 @@ contract TestStakedGMXCToken is TestBaseMarket {
         amount = IStakedGMX(_GMX_FEE_GMX_TRACKER).claimable(
             address(cStakedGMX)
         );
+
         amount -= FixedPointMathLib.mulDiv(
             amount,
             centralRegistry.protocolHarvestFee(),
