@@ -70,7 +70,16 @@ contract StakedGMXCToken is CTokenCompounding {
             _updateVestingPeriodIfNeeded();
 
             // Claim StakedGMX rewards.
-            uint256 rewardAmount = _claimReward();
+            rewardRouter.handleRewards(
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                false
+            );
+            uint256 rewardAmount = WETH.balanceOf(address(this));
 
             if (rewardAmount > 0) {
                 // Take protocol fee.
@@ -101,14 +110,16 @@ contract StakedGMXCToken is CTokenCompounding {
             SwapperLib.swap(centralRegistry, swapData);
 
             yield = IERC20(asset()).balanceOf(address(this)) - balance;
-            address stakedGmxTracker = rewardRouter.stakedGmxTracker();
-            _totalAssets = IStakedGMX(stakedGmxTracker).stakedAmounts(
-                address(this)
-            );
 
             // Deposit swapped reward to StakedGMX.
-            SafeTransferLib.safeApprove(asset(), stakedGmxTracker, yield);
+            SafeTransferLib.safeApprove(
+                asset(),
+                rewardRouter.stakedGmxTracker(),
+                yield
+            );
             rewardRouter.stakeGmx(yield);
+
+            _totalAssets += yield;
 
             // Update vesting info, query `vestPeriod` here to cache it.
             _setNewVaultData(yield, vestPeriod);
@@ -152,15 +163,5 @@ contract StakedGMXCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         rewardRouter.unstakeGmx(assets);
-    }
-
-    /// @notice Claim reward from StakedGMX.
-    function _claimReward() internal returns (uint256 rewardAmount) {
-        uint256 balance = WETH.balanceOf(address(this));
-
-        // claim reward from StakedGMX.
-        rewardRouter.handleRewards(true, true, true, true, true, true, false);
-
-        return WETH.balanceOf(address(this)) - balance;
     }
 }

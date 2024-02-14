@@ -15,6 +15,8 @@ contract TestStakedGMXCToken is TestBaseMarket {
         0x159854e14A862Df9E39E1D128b8e5F70B4A3cE9B;
     address private _GMX_FEE_GMX_TRACKER =
         0xd2D1162512F927a7e282Ef43a362659E4F2a728F;
+    address private _GMX_STAKED_GMX_TRACKER =
+        0x908C4D94D34924765f1eDc22A1DD098397c59dD4;
     address private _GMX = 0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a;
     address private _WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
     address private _UNISWAP_V3_ROUTER =
@@ -114,7 +116,9 @@ contract TestStakedGMXCToken is TestBaseMarket {
 
         assertEq(
             cStakedGMX.totalAssets(),
-            assets + 42069,
+            IStakedGMX(_GMX_STAKED_GMX_TRACKER).stakedAmounts(
+                address(cStakedGMX)
+            ),
             "Total Assets should equal user deposit plus initial mint."
         );
 
