@@ -130,7 +130,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         // reports pricing in 8 decimal format, requiring multiplication by
         // 10e10 to standardize to 18 decimal format, which could overflow 
         // when trying to save the final value into an uint240.
-        data.max = (type(uint192).max * 9) / 10;
+        data.max = uint192(uint256(type(uint192).max) * 9 / 10);
         data.symbolHash = symbolHash;
         data.isConfigured = true;
 
