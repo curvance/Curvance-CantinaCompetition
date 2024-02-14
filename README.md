@@ -77,16 +77,16 @@ forge script script/<something>.s.sol
 
 ## Code Reviews
 
-Reviews are a very imporant part of our development process. 2 approvals are required to merge a pull request.
+Reviews are a very important part of our development process. Two approvals are required to merge a pull request.
 
-For certain topics that come up again and again during review discussions, this document is the source of truth if it covers the topic (e.g. best practices in Solidity).
+For certain topics, that come up several times during review discussions, this document is the source of truth if it covers the topic (e.g. best practices in Solidity).
 
-If you think something needs to be changed in the code please require changes. Often times reviewers just mention something they feel should maybe look different, but they approve anyways. Your input is important and it is not a negative thing to discuss it with the pull request author before merging.
+If you think something needs to be changed in the code, please require changes. Often times reviewers just mention something they feel should maybe look different, but they approve anyways. Your input is important, and it is not a bad thing to discuss it with the pull request author before merging.
 
 ### Assignment
 
 Github will automatically assign 2 developers in round robin manner, counted against to how many pull request reviews
-they are allready assigned to.
+they are already assigned to.
 
 ## Branching strategy
 
@@ -95,7 +95,7 @@ For now we are using a simple `feature` -> `develop` -> `main` branching model.
 ### Steps for working on a new feature
 
 - Branch feature branch off of `develop`
-  - Branch name should be `clickupIssueId-branch-name-based-on-task-title`
+- Branch name should be `clickupIssueId-branch-name-based-on-task-title`
 - Once your branch is ready, open a pull request and set `develop` as target branch
 
 ### Release
