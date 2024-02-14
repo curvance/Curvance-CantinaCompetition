@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IStakedGMX } from "contracts/interfaces/external/gmx/IStakedGMX.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { StakedGMXCToken, IERC20 } from "contracts/market/collateral/StakedGMXCToken.sol";
-import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 contract TestStakedGMXCToken is TestBaseMarket {
     address private _GMX_REWARD_ROUTER =
@@ -51,6 +52,11 @@ contract TestStakedGMXCToken is TestBaseMarket {
     }
 
     function testGmxStakedGMX() public {
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V3_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V3_ROUTER))
+        );
+
         uint256 assets = 100e18;
         deal(_GMX, user1, assets);
         deal(_GMX, address(this), 42069);

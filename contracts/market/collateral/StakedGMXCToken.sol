@@ -98,7 +98,7 @@ contract StakedGMXCToken is CTokenCompounding {
                 revert StakedGMXCToken__InvalidSwapper(swapData.target);
             }
 
-            SwapperLib.swap(swapData);
+            SwapperLib.swap(centralRegistry, swapData);
 
             yield = IERC20(asset()).balanceOf(address(this)) - balance;
             address stakedGmxTracker = rewardRouter.stakedGmxTracker();
@@ -152,17 +152,6 @@ contract StakedGMXCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         rewardRouter.unstakeGmx(assets);
-    }
-
-    /// @notice Gets the balance of assets inside StakedGMX.
-    /// @return The current balance of assets.
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return IERC20(asset()).balanceOf(address(this));
     }
 
     /// @notice Claim reward from StakedGMX.
