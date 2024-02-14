@@ -72,8 +72,10 @@ contract TestStakedGMXCToken is TestBaseMarket {
         vm.prank(user1);
         cStakedGMX.deposit(assets, user1);
 
+        uint256 initialAssets = cStakedGMX.totalAssets();
+
         assertEq(
-            cStakedGMX.totalAssets(),
+            initialAssets,
             assets + 42069,
             "Total Assets should equal user deposit plus initial mint."
         );
@@ -113,13 +115,16 @@ contract TestStakedGMXCToken is TestBaseMarket {
         centralRegistry.addSwapper(_UNISWAP_V3_ROUTER);
 
         cStakedGMX.harvest(abi.encode(swapData));
+        initialAssets
 
         assertEq(
             cStakedGMX.totalAssets(),
-            IStakedGMX(_GMX_STAKED_GMX_TRACKER).stakedAmounts(
-                address(cStakedGMX)
-            ),
-            "Total Assets should equal user deposit plus initial mint."
+            initialAssets,
+            "New Total Assets should equal user deposit plus initial mint."
+        );
+
+        uint256 updatedStakedBalance = IStakedGMX(_GMX_STAKED_GMX_TRACKER).stakedAmounts(
+            address(cStakedGMX)
         );
 
         skip(8 days);
@@ -143,6 +148,14 @@ contract TestStakedGMXCToken is TestBaseMarket {
         );
 
         cStakedGMX.harvest(abi.encode(swapData));
+
+        // Now that first vest should have occurred, assets should
+        // equal previous staked balance.
+        assertEq(
+            cStakedGMX.totalAssets(),
+            updatedStakedBalance,
+            "Total Assets should equal user deposit plus initial mint and previous vest."
+        );
 
         skip(7 days);
 
