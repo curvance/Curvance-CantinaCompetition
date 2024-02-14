@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
@@ -63,7 +63,7 @@ contract FeeAccumulator is ReentrancyGuard {
     mapping(address => RewardToken) public rewardTokenInfo;
 
     /// @notice ChainID => Epoch => 2 = yes; 0 = no.
-    mapping(uint16 => mapping(uint256 => uint256)) public lockedTokenDataSent;
+    mapping(uint256 => mapping(uint256 => uint256)) public lockedTokenDataSent;
 
     /// ERRORS ///
 
@@ -219,7 +219,7 @@ contract FeeAccumulator is ReentrancyGuard {
             //       We route liquidity to 1Inch with tight slippage
             //       requirement, meaning we do not need to separately check
             //       for slippage here.
-            SwapperLib.swap(swapDataArray[i]);
+            SwapperLib.swap(centralRegistry, swapDataArray[i]);
         }
 
         SafeTransferLib.safeTransfer(
@@ -249,7 +249,9 @@ contract FeeAccumulator is ReentrancyGuard {
         }
 
         // Cache router to save gas
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
 
         (uint256 priceSwap, uint256 errorCodeSwap) = oracleRouter.getPrice(
             tokenToOTC,
@@ -289,11 +291,11 @@ contract FeeAccumulator is ReentrancyGuard {
     }
 
     /// @notice Sends veCVE locked token data to destination chain.
-    /// @param dstChainId Wormhole specific destination chain ID where
-    ///                   the message data should be sent.
+    /// @param dstChainId Destination chain ID where the message data
+    ///                   should be sent.
     /// @param toAddress The destination address specified by `dstChainId`.
     function sendWormholeMessages(
-        uint16 dstChainId,
+        uint256 dstChainId,
         address toAddress
     ) external {
         if (!centralRegistry.isHarvester(msg.sender)) {
@@ -309,11 +311,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
         lockedTokenDataSent[dstChainId][epoch] = 2;
 
-        uint256 gethChainId = centralRegistry.messagingToGETHChainId(
-            dstChainId
-        );
         ChainData memory chainData = centralRegistry.supportedChainData(
-            gethChainId
+            dstChainId
         );
 
         if (chainData.isSupported < 2) {
@@ -443,12 +442,12 @@ contract FeeAccumulator is ReentrancyGuard {
                 );
 
                 (gas, ) = messagingHub.quoteWormholeFee(
-                    messagingChainId,
+                    uint256(lockData.chainId),
                     false
                 );
 
                 messagingHub.sendWormholeMessages{ value: gas }(
-                    messagingChainId,
+                    uint256(lockData.chainId),
                     chainData.messagingHub,
                     abi.encode(epochRewardsPerCVE)
                 );
@@ -771,7 +770,6 @@ contract FeeAccumulator is ReentrancyGuard {
         feeTokenBalance = IERC20(feeToken).balanceOf(address(this));
 
         uint256 chainId;
-        uint16 messagingChainId;
         uint256 feeTokenBalanceForChain;
 
         // Messaging Hub can pull fee token directly so we do not
@@ -779,13 +777,12 @@ contract FeeAccumulator is ReentrancyGuard {
         for (uint256 i; i < numChains; ) {
             chainId = crossChainLockData[i].chainId;
             chainData = centralRegistry.supportedChainData(chainId);
-            messagingChainId = centralRegistry.GETHToMessagingChainId(chainId);
             feeTokenBalanceForChain =
                 (feeTokenBalance * crossChainLockData[i].lockAmount) /
                 totalLockedTokens;
 
             messagingHub.sendFees(
-                messagingChainId,
+                chainId,
                 chainData.messagingHub,
                 feeTokenBalanceForChain
             );

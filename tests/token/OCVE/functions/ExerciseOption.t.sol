@@ -4,12 +4,11 @@ pragma solidity ^0.8.17;
 import { TestBaseOCVE } from "../TestBaseOCVE.sol";
 
 import { OCVE } from "contracts/token/OCVE.sol";
-import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract ExerciseOptionTest is TestBaseOCVE {
-    address internal _E_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     uint256 public oCVEBalance;
 
     event OptionsExercised(address indexed exerciser, uint256 amount);
@@ -55,18 +54,15 @@ contract ExerciseOptionTest is TestBaseOCVE {
     }
 
     function test_exerciseOption_fail_whenMsgValueIsInvalid() public {
-        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
-
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
-            _E_ADDRESS
+            _ETH_ADDRESS
         );
 
         skip(1000);
 
         (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
-            _E_ADDRESS,
+            _ETH_ADDRESS,
             true,
             true
         );
@@ -86,18 +82,15 @@ contract ExerciseOptionTest is TestBaseOCVE {
     ) public {
         vm.assume(amount >= 1e18 && amount < 1_000_000_000e18);
 
-        chainlinkAdaptor.addAsset(_E_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
-        oracleRouter.addAssetPriceFeed(_E_ADDRESS, address(chainlinkAdaptor));
-
         oCVE = new OCVE(
             ICentralRegistry(address(centralRegistry)),
-            _E_ADDRESS
+            _ETH_ADDRESS
         );
 
         skip(1000);
 
         (uint256 paymentTokenCurrentPrice, ) = oracleRouter.getPrice(
-            _E_ADDRESS,
+            _ETH_ADDRESS,
             true,
             true
         );
@@ -128,9 +121,10 @@ contract ExerciseOptionTest is TestBaseOCVE {
         uint256 oCVEUSDCBalance = usdc.balanceOf(address(oCVE));
         uint256 optionExerciseCost = (amount * oCVE.paymentTokenPerCVE()) /
             1e18;
-        uint256 payAmount = FixedPointMathLib.mulWadUp(
+        uint256 payAmount = FixedPointMathLib.mulDivUp(
             optionExerciseCost,
-            amount * 1e12
+            amount * 1e12,
+            1e18
         );
 
         deal(address(oCVE), address(this), amount);

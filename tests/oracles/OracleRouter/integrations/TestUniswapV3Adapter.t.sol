@@ -14,8 +14,6 @@ contract TestUniswapV3Adapter is TestBaseOracleRouter {
     address private WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address private USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-    address private CHAINLINK_PRICE_FEED_ETH =
-        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address private CHAINLINK_PRICE_FEED_USDC =
         0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 
@@ -34,12 +32,12 @@ contract TestUniswapV3Adapter is TestBaseOracleRouter {
         );
 
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            CHAINLINK_PRICE_FEED_ETH
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
-        chainlinkAdaptor.addAsset(WETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        chainlinkAdaptor.addAsset(_ETH_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
+        chainlinkAdaptor.addAsset(WETH, _CHAINLINK_ETH_USD, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
         adaptor = new UniswapV3Adaptor(
@@ -53,6 +51,10 @@ contract TestUniswapV3Adapter is TestBaseOracleRouter {
         adaptor.addAsset(WBTC, adaptorData);
 
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 

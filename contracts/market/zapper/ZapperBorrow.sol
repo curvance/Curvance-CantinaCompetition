@@ -53,7 +53,7 @@ contract ZapperBorrow is FeeTokenBridgingHub {
                 revert ZapperBorrow__InvalidSwapper(swapData.target);
             }
             unchecked {
-                SwapperLib.swap(swapData);
+                SwapperLib.swap(centralRegistry, swapData);
             }
         } else {
             if (swapData.target != address(0)) {
@@ -62,7 +62,7 @@ contract ZapperBorrow is FeeTokenBridgingHub {
         }
 
         _sendFeeToken(
-            centralRegistry.wormholeChainId(dstChainId),
+            dstChainId,
             msg.sender,
             IERC20(feeToken).balanceOf(address(this)) - balance
         );

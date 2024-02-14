@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-02-01 22:51:55</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">5</td>
@@ -65,7 +65,7 @@
 <a name="3"><span class="lineNum">       3 </span>            : </a>
 <a name="4"><span class="lineNum">       4 </span>            : import { SwapperLib } from &quot;contracts/libraries/SwapperLib.sol&quot;;</a>
 <a name="5"><span class="lineNum">       5 </span>            : import { CommonLib } from &quot;contracts/libraries/CommonLib.sol&quot;;</a>
-<a name="6"><span class="lineNum">       6 </span>            : import { Math } from &quot;contracts/libraries/external/Math.sol&quot;;</a>
+<a name="6"><span class="lineNum">       6 </span>            : import { FixedPointMathLib } from &quot;contracts/libraries/FixedPointMathLib.sol&quot;;</a>
 <a name="7"><span class="lineNum">       7 </span>            : import { ERC20 } from &quot;contracts/libraries/external/ERC20.sol&quot;;</a>
 <a name="8"><span class="lineNum">       8 </span>            : </a>
 <a name="9"><span class="lineNum">       9 </span>            : import { IVeloRouter } from &quot;contracts/interfaces/external/velodrome/IVeloRouter.sol&quot;;</a>
@@ -284,7 +284,7 @@
 <a name="222"><span class="lineNum">     222 </span><span class="lineCov">          4 :             uint256 swapFeeFactor = 10000 - swapFee;</span></a>
 <a name="223"><span class="lineNum">     223 </span><span class="lineCov">          4 :             uint256 a = (10000 + swapFeeFactor) * reserveA;</span></a>
 <a name="224"><span class="lineNum">     224 </span><span class="lineCov">          4 :             uint256 b = amountA * 10000 * reserveA * 4 * swapFeeFactor;</span></a>
-<a name="225"><span class="lineNum">     225 </span><span class="lineCov">          4 :             uint256 c = Math.sqrt(a * a + b);</span></a>
+<a name="225"><span class="lineNum">     225 </span><span class="lineCov">          4 :             uint256 c = FixedPointMathLib.sqrt(a * a + b);</span></a>
 <a name="226"><span class="lineNum">     226 </span><span class="lineCov">          4 :             uint256 d = swapFeeFactor * 2;</span></a>
 <a name="227"><span class="lineNum">     227 </span><span class="lineCov">          4 :             return (c - a) / d;</span></a>
 <a name="228"><span class="lineNum">     228 </span>            :         }</a>

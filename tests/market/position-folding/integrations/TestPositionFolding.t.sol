@@ -6,6 +6,7 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { IUniswapV2Router } from "contracts/interfaces/external/uniswap/IUniswapV2Router.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CTokenPrimitive } from "contracts/market/collateral/CTokenPrimitive.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -132,7 +133,9 @@ contract TestPositionFolding is TestBaseMarket {
         }
 
         // set position folding
-        MarketManager(marketManager).setPositionFolding(address(positionFolding));
+        MarketManager(marketManager).setPositionFolding(
+            address(positionFolding)
+        );
 
         // vm.warp(gaugePool.startTime());
         // vm.roll(block.number + 1000);
@@ -154,6 +157,10 @@ contract TestPositionFolding is TestBaseMarket {
         provideEnoughLiquidityForLeverage();
 
         centralRegistry.addSwapper(_UNISWAP_V2_ROUTER);
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V2_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V2_ROUTER))
+        );
     }
 
     function provideEnoughLiquidityForLeverage() internal {
@@ -175,7 +182,10 @@ contract TestPositionFolding is TestBaseMarket {
             address(positionFolding.centralRegistry()),
             address(centralRegistry)
         );
-        assertEq(address(positionFolding.marketManager()), address(marketManager));
+        assertEq(
+            address(positionFolding.marketManager()),
+            address(marketManager)
+        );
     }
 
     function testLeverage() public {

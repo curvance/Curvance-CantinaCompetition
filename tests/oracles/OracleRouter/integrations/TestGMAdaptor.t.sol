@@ -34,8 +34,7 @@ contract TestGMAdaptor is TestBaseOracleRouter {
         _deployCentralRegistry();
 
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            CHAINLINK_PRICE_FEED_ETH
+            ICentralRegistry(address(centralRegistry))
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
@@ -51,9 +50,19 @@ contract TestGMAdaptor is TestBaseOracleRouter {
         oracleRouter.addApprovedAdaptor(address(adapter));
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
+        chainlinkAdaptor.addAsset(
+            _ETH_ADDRESS,
+            CHAINLINK_PRICE_FEED_ETH,
+            0,
+            true
+        );
         chainlinkAdaptor.addAsset(WBTC, CHAINLINK_PRICE_FEED_WBTC, 0, true);
         chainlinkAdaptor.addAsset(USDC, CHAINLINK_PRICE_FEED_USDC, 0, true);
 
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(WBTC, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
@@ -89,11 +98,6 @@ contract TestGMAdaptor is TestBaseOracleRouter {
             GMX_READER,
             address(0)
         );
-    }
-
-    function testAddAssetRevertWhenGMTokenIsAlreadySupported() public {
-        vm.expectRevert(GMAdaptor.GMAdaptor__AssetIsAlreadySupported.selector);
-        adapter.addAsset(GM_BTC_USDC, WBTC);
     }
 
     function testAddAssetRevertWhenAlteredTokenIsInvalid() public {

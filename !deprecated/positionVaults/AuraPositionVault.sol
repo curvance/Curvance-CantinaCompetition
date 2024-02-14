@@ -240,7 +240,7 @@ contract AuraPositionVault is BasePositionVault {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }

@@ -5,10 +5,10 @@ import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateMo
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import { WAD } from "contracts/libraries/Constants.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -701,6 +701,18 @@ contract DToken is ERC165, ReentrancyGuard {
     function borrowRatePerYear() external view returns (uint256) {
         return
             interestRateModel.getBorrowRatePerYear(
+                marketUnderlyingHeld(),
+                totalBorrows,
+                totalReserves
+            );
+    }
+
+    /// @notice Returns predicted upcoming dToken borrow interest rate
+    ///         per year.
+    /// @return The predicted borrow interest rate per year, in `WAD`.
+    function predictedBorrowRatePerYear() external view returns (uint256) {
+        return
+            interestRateModel.getPredictedBorrowRatePerYear(
                 marketUnderlyingHeld(),
                 totalBorrows,
                 totalReserves

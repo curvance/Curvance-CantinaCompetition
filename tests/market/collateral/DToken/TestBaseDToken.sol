@@ -60,13 +60,14 @@ contract TestBaseDToken is TestBaseMarket {
             _RETH_ADDRESS,
             address(mockRethFeed),
             0,
-            true
+            false
         );
 
         gaugePool.start(address(marketManager));
         vm.warp(gaugePool.startTime());
         vm.roll(block.number + 1000);
 
+        chainlinkEthUsd.updateAnswer(1500e8);
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockWethFeed.setMockUpdatedAt(block.timestamp);

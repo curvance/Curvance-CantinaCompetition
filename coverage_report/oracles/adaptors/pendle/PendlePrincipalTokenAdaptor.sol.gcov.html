@@ -31,17 +31,17 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">31</td>
-            <td class="headerCovTableEntry">43</td>
-            <td class="headerCovTableEntryLo">72.1 %</td>
+            <td class="headerCovTableEntry">33</td>
+            <td class="headerCovTableEntry">45</td>
+            <td class="headerCovTableEntryLo">73.3 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-01-26 11:25:10</td>
+            <td class="headerValue">2024-02-01 22:51:55</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">3</td>
-            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">4</td>
             <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
@@ -101,16 +101,16 @@
 <a name="39"><span class="lineNum">      39 </span>            : </a>
 <a name="40"><span class="lineNum">      40 </span>            :     /// STORAGE ///</a>
 <a name="41"><span class="lineNum">      41 </span>            : </a>
-<a name="42"><span class="lineNum">      42 </span>            :     /// @notice Pendle PT adaptor storage.</a>
+<a name="42"><span class="lineNum">      42 </span>            :     /// @notice Pendle PT address =&gt; AdaptorData.</a>
 <a name="43"><span class="lineNum">      43 </span>            :     mapping(address =&gt; AdaptorData) public adaptorData;</a>
 <a name="44"><span class="lineNum">      44 </span>            : </a>
 <a name="45"><span class="lineNum">      45 </span>            :     /// EVENTS ///</a>
 <a name="46"><span class="lineNum">      46 </span>            : </a>
 <a name="47"><span class="lineNum">      47 </span>            :     event PendlePTAssetAdded(</a>
 <a name="48"><span class="lineNum">      48 </span>            :         address asset,</a>
-<a name="49"><span class="lineNum">      49 </span>            :         AdaptorData assetConfig</a>
-<a name="50"><span class="lineNum">      50 </span>            :     );</a>
-<a name="51"><span class="lineNum">      51 </span>            : </a>
+<a name="49"><span class="lineNum">      49 </span>            :         AdaptorData assetConfig,</a>
+<a name="50"><span class="lineNum">      50 </span>            :         bool isUpdate</a>
+<a name="51"><span class="lineNum">      51 </span>            :     );</a>
 <a name="52"><span class="lineNum">      52 </span>            :     event PendlePTAssetRemoved(address asset);</a>
 <a name="53"><span class="lineNum">      53 </span>            : </a>
 <a name="54"><span class="lineNum">      54 </span>            :     /// ERRORS ///</a>
@@ -122,146 +122,167 @@
 <a name="60"><span class="lineNum">      60 </span>            :     error PendlePrincipalTokenAdaptor__CallIncreaseCardinality();</a>
 <a name="61"><span class="lineNum">      61 </span>            :     error PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();</a>
 <a name="62"><span class="lineNum">      62 </span>            :     error PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();</a>
-<a name="63"><span class="lineNum">      63 </span>            :     error PendlePrincipalTokenAdaptor__ConfigurationError();</a>
-<a name="64"><span class="lineNum">      64 </span>            : </a>
-<a name="65"><span class="lineNum">      65 </span>            :     /// CONSTRUCTOR ///</a>
-<a name="66"><span class="lineNum">      66 </span>            : </a>
-<a name="67"><span class="lineNum">      67 </span>            :     constructor(</a>
-<a name="68"><span class="lineNum">      68 </span>            :         ICentralRegistry centralRegistry_,</a>
-<a name="69"><span class="lineNum">      69 </span>            :         IPendlePTOracle ptOracle_</a>
-<a name="70"><span class="lineNum">      70 </span>            :     ) BaseOracleAdaptor(centralRegistry_) {</a>
-<a name="71"><span class="lineNum">      71 </span>            :         ptOracle = ptOracle_;</a>
-<a name="72"><span class="lineNum">      72 </span>            :     }</a>
-<a name="73"><span class="lineNum">      73 </span>            : </a>
-<a name="74"><span class="lineNum">      74 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
-<a name="75"><span class="lineNum">      75 </span>            : </a>
-<a name="76"><span class="lineNum">      76 </span>            :     /// @notice Called during pricing operations.</a>
-<a name="77"><span class="lineNum">      77 </span>            :     /// @param asset The pendle principal token being priced.</a>
-<a name="78"><span class="lineNum">      78 </span>            :     /// @param inUSD Indicates whether we want the price in USD or ETH.</a>
-<a name="79"><span class="lineNum">      79 </span>            :     /// @param getLower Since this adaptor calls back into the oracle router</a>
-<a name="80"><span class="lineNum">      80 </span>            :     ///                 it needs to know if it should be working with the upper</a>
-<a name="81"><span class="lineNum">      81 </span>            :     ///                 or lower prices of assets.</a>
-<a name="82"><span class="lineNum">      82 </span>            :     function getPrice(</a>
-<a name="83"><span class="lineNum">      83 </span>            :         address asset,</a>
-<a name="84"><span class="lineNum">      84 </span>            :         bool inUSD,</a>
-<a name="85"><span class="lineNum">      85 </span>            :         bool getLower</a>
-<a name="86"><span class="lineNum">      86 </span>            :     ) external view override returns (PriceReturnData memory pData) {</a>
-<a name="87"><span class="lineNum">      87 </span><span class="lineCov">         42 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="88"><span class="lineNum">      88 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();</span></a>
-<a name="89"><span class="lineNum">      89 </span>            :         }</a>
-<a name="90"><span class="lineNum">      90 </span>            : </a>
-<a name="91"><span class="lineNum">      91 </span><span class="lineCov">         42 :         AdaptorData memory data = adaptorData[asset];</span></a>
-<a name="92"><span class="lineNum">      92 </span><span class="lineCov">         42 :         pData.inUSD = inUSD;</span></a>
-<a name="93"><span class="lineNum">      93 </span><span class="lineCov">         42 :         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);</span></a>
-<a name="94"><span class="lineNum">      94 </span>            : </a>
-<a name="95"><span class="lineNum">      95 </span><span class="lineCov">         42 :         (uint256 price, uint256 errorCode) = IOracleRouter(</span></a>
-<a name="96"><span class="lineNum">      96 </span>            :             centralRegistry.oracleRouter()</a>
-<a name="97"><span class="lineNum">      97 </span>            :         ).getPrice(data.quoteAsset, inUSD, getLower);</a>
-<a name="98"><span class="lineNum">      98 </span>            : </a>
-<a name="99"><span class="lineNum">      99 </span><span class="lineCov">         42 :         if (errorCode &gt; 0) {</span></a>
-<a name="100"><span class="lineNum">     100 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
-<a name="101"><span class="lineNum">     101 </span><span class="lineNoCov">          0 :             return pData;</span></a>
-<a name="102"><span class="lineNum">     102 </span>            :         }</a>
-<a name="103"><span class="lineNum">     103 </span>            : </a>
-<a name="104"><span class="lineNum">     104 </span>            :         // Multiply the quote asset price by the ptRate</a>
-<a name="105"><span class="lineNum">     105 </span>            :         // to get the Principal Token fair value.</a>
-<a name="106"><span class="lineNum">     106 </span><span class="lineCov">         42 :         price = (price * ptRate) / WAD;</span></a>
+<a name="63"><span class="lineNum">      63 </span>            : </a>
+<a name="64"><span class="lineNum">      64 </span>            :     /// CONSTRUCTOR ///</a>
+<a name="65"><span class="lineNum">      65 </span>            : </a>
+<a name="66"><span class="lineNum">      66 </span>            :     constructor(</a>
+<a name="67"><span class="lineNum">      67 </span>            :         ICentralRegistry centralRegistry_,</a>
+<a name="68"><span class="lineNum">      68 </span>            :         IPendlePTOracle ptOracle_</a>
+<a name="69"><span class="lineNum">      69 </span>            :     ) BaseOracleAdaptor(centralRegistry_) {</a>
+<a name="70"><span class="lineNum">      70 </span>            :         ptOracle = ptOracle_;</a>
+<a name="71"><span class="lineNum">      71 </span>            :     }</a>
+<a name="72"><span class="lineNum">      72 </span>            : </a>
+<a name="73"><span class="lineNum">      73 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
+<a name="74"><span class="lineNum">      74 </span>            : </a>
+<a name="75"><span class="lineNum">      75 </span>            :     /// @notice Retrieves the price of a given Pendle pt.</a>
+<a name="76"><span class="lineNum">      76 </span>            :     /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.</a>
+<a name="77"><span class="lineNum">      77 </span>            :     /// @param asset The address of the asset for which the price is needed.</a>
+<a name="78"><span class="lineNum">      78 </span>            :     /// @param inUSD A boolean to determine if the price should be returned in</a>
+<a name="79"><span class="lineNum">      79 </span>            :     ///              USD or not.</a>
+<a name="80"><span class="lineNum">      80 </span>            :     /// @param getLower A boolean to determine if lower of two oracle prices</a>
+<a name="81"><span class="lineNum">      81 </span>            :     ///                 should be retrieved.</a>
+<a name="82"><span class="lineNum">      82 </span>            :     /// @return pData A structure containing the price, error status,</a>
+<a name="83"><span class="lineNum">      83 </span>            :     ///                         and the quote format of the price.</a>
+<a name="84"><span class="lineNum">      84 </span>            :     function getPrice(</a>
+<a name="85"><span class="lineNum">      85 </span>            :         address asset,</a>
+<a name="86"><span class="lineNum">      86 </span>            :         bool inUSD,</a>
+<a name="87"><span class="lineNum">      87 </span>            :         bool getLower</a>
+<a name="88"><span class="lineNum">      88 </span>            :     ) external view override returns (PriceReturnData memory pData) {</a>
+<a name="89"><span class="lineNum">      89 </span>            :         // Validate we support pricing `asset`.</a>
+<a name="90"><span class="lineNum">      90 </span><span class="lineCov">         42 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="91"><span class="lineNum">      91 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();</span></a>
+<a name="92"><span class="lineNum">      92 </span>            :         }</a>
+<a name="93"><span class="lineNum">      93 </span>            : </a>
+<a name="94"><span class="lineNum">      94 </span><span class="lineCov">         42 :         AdaptorData memory data = adaptorData[asset];</span></a>
+<a name="95"><span class="lineNum">      95 </span>            :         // Get PT to underlying asset ratio conversion.</a>
+<a name="96"><span class="lineNum">      96 </span><span class="lineCov">         42 :         uint256 ptRate = data.market.getPtToAssetRate(data.twapDuration);</span></a>
+<a name="97"><span class="lineNum">      97 </span>            : </a>
+<a name="98"><span class="lineNum">      98 </span><span class="lineCov">         42 :         (uint256 price, uint256 errorCode) = IOracleRouter(</span></a>
+<a name="99"><span class="lineNum">      99 </span>            :             centralRegistry.oracleRouter()</a>
+<a name="100"><span class="lineNum">     100 </span>            :         ).getPrice(data.quoteAsset, inUSD, getLower);</a>
+<a name="101"><span class="lineNum">     101 </span>            : </a>
+<a name="102"><span class="lineNum">     102 </span>            :         // Validate we did not run into any errors pricing the quote asset.</a>
+<a name="103"><span class="lineNum">     103 </span><span class="lineCov">         42 :         if (errorCode &gt; 0) {</span></a>
+<a name="104"><span class="lineNum">     104 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineNoCov">          0 :             return pData;</span></a>
+<a name="106"><span class="lineNum">     106 </span>            :         }</a>
 <a name="107"><span class="lineNum">     107 </span>            : </a>
-<a name="108"><span class="lineNum">     108 </span><span class="lineCov">         42 :         if (_checkOracleOverflow(price)) {</span></a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
-<a name="110"><span class="lineNum">     110 </span><span class="lineNoCov">          0 :             return pData;</span></a>
-<a name="111"><span class="lineNum">     111 </span>            :         }</a>
-<a name="112"><span class="lineNum">     112 </span>            : </a>
-<a name="113"><span class="lineNum">     113 </span><span class="lineCov">         42 :         pData.price = uint240(price);</span></a>
-<a name="114"><span class="lineNum">     114 </span>            :     }</a>
-<a name="115"><span class="lineNum">     115 </span>            : </a>
-<a name="116"><span class="lineNum">     116 </span>            :     /// @notice Add a Pendle Principal Token as an asset.</a>
-<a name="117"><span class="lineNum">     117 </span>            :     /// @dev Should be called before `OracleRouter:addAssetPriceFeed` is called.</a>
-<a name="118"><span class="lineNum">     118 </span>            :     /// @param asset The address of the Pendle PT.</a>
-<a name="119"><span class="lineNum">     119 </span>            :     /// @param data The adaptor data needed to add `asset`.</a>
-<a name="120"><span class="lineNum">     120 </span>            :     function addAsset(</a>
-<a name="121"><span class="lineNum">     121 </span>            :         address asset,</a>
-<a name="122"><span class="lineNum">     122 </span>            :         AdaptorData memory data</a>
-<a name="123"><span class="lineNum">     123 </span>            :     ) external {</a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineCov">         13 :         _checkElevatedPermissions();</span></a>
-<a name="125"><span class="lineNum">     125 </span>            : </a>
-<a name="126"><span class="lineNum">     126 </span><span class="lineCov">         13 :         if (isSupportedAsset[asset]) {</span></a>
-<a name="127"><span class="lineNum">     127 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__ConfigurationError();</span></a>
-<a name="128"><span class="lineNum">     128 </span>            :         }</a>
-<a name="129"><span class="lineNum">     129 </span>            : </a>
-<a name="130"><span class="lineNum">     130 </span>            :         // Make sure pt and market match.</a>
-<a name="131"><span class="lineNum">     131 </span><span class="lineCov">         13 :         (IStandardizedYield sy, IPPrincipalToken pt, ) = data</span></a>
-<a name="132"><span class="lineNum">     132 </span>            :             .market</a>
-<a name="133"><span class="lineNum">     133 </span>            :             .readTokens();</a>
-<a name="134"><span class="lineNum">     134 </span>            : </a>
-<a name="135"><span class="lineNum">     135 </span><span class="lineCov">         13 :         if (address(pt) != asset) {</span></a>
-<a name="136"><span class="lineNum">     136 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__WrongMarket();</span></a>
-<a name="137"><span class="lineNum">     137 </span>            :         }</a>
+<a name="108"><span class="lineNum">     108 </span>            :         // Multiply the quote asset price by the ptRate</a>
+<a name="109"><span class="lineNum">     109 </span>            :         // to get the Principal Token fair value.</a>
+<a name="110"><span class="lineNum">     110 </span><span class="lineCov">         42 :         price = (price * ptRate) / WAD;</span></a>
+<a name="111"><span class="lineNum">     111 </span>            : </a>
+<a name="112"><span class="lineNum">     112 </span>            :         // Validate price will not overflow on conversion to uint240.</a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineCov">         42 :         if (_checkOracleOverflow(price)) {</span></a>
+<a name="114"><span class="lineNum">     114 </span><span class="lineNoCov">          0 :             pData.hadError = true;</span></a>
+<a name="115"><span class="lineNum">     115 </span><span class="lineNoCov">          0 :             return pData;</span></a>
+<a name="116"><span class="lineNum">     116 </span>            :         }</a>
+<a name="117"><span class="lineNum">     117 </span>            : </a>
+<a name="118"><span class="lineNum">     118 </span><span class="lineCov">         42 :         pData.inUSD = inUSD;</span></a>
+<a name="119"><span class="lineNum">     119 </span><span class="lineCov">         42 :         pData.price = uint240(price);</span></a>
+<a name="120"><span class="lineNum">     120 </span>            :     }</a>
+<a name="121"><span class="lineNum">     121 </span>            : </a>
+<a name="122"><span class="lineNum">     122 </span>            :     /// @notice Adds pricing support for `asset`, a Pendle principal token.</a>
+<a name="123"><span class="lineNum">     123 </span>            :     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`</a>
+<a name="124"><span class="lineNum">     124 </span>            :     ///      is called.</a>
+<a name="125"><span class="lineNum">     125 </span>            :     /// @param asset The address of the Pendle principal token to add pricing</a>
+<a name="126"><span class="lineNum">     126 </span>            :     ///              support for.</a>
+<a name="127"><span class="lineNum">     127 </span>            :     /// @param data The adaptor data needed to add `asset`.</a>
+<a name="128"><span class="lineNum">     128 </span>            :     function addAsset(</a>
+<a name="129"><span class="lineNum">     129 </span>            :         address asset,</a>
+<a name="130"><span class="lineNum">     130 </span>            :         AdaptorData memory data</a>
+<a name="131"><span class="lineNum">     131 </span>            :     ) external {</a>
+<a name="132"><span class="lineNum">     132 </span><span class="lineCov">         13 :         _checkElevatedPermissions();</span></a>
+<a name="133"><span class="lineNum">     133 </span>            : </a>
+<a name="134"><span class="lineNum">     134 </span>            :         // Make sure pt and market match.</a>
+<a name="135"><span class="lineNum">     135 </span><span class="lineCov">         13 :         (IStandardizedYield sy, IPPrincipalToken pt, ) = data</span></a>
+<a name="136"><span class="lineNum">     136 </span>            :             .market</a>
+<a name="137"><span class="lineNum">     137 </span>            :             .readTokens();</a>
 <a name="138"><span class="lineNum">     138 </span>            : </a>
-<a name="139"><span class="lineNum">     139 </span>            :         // Make sure quote asset is the same as SY `assetInfo.assetAddress`.</a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">         13 :         (, address assetAddress, ) = sy.assetInfo();</span></a>
-<a name="141"><span class="lineNum">     141 </span><span class="lineCov">         13 :         if (assetAddress != data.quoteAsset) {</span></a>
-<a name="142"><span class="lineNum">     142 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__WrongQuote();</span></a>
-<a name="143"><span class="lineNum">     143 </span>            :         }</a>
-<a name="144"><span class="lineNum">     144 </span>            : </a>
+<a name="139"><span class="lineNum">     139 </span>            :         // Validate pt pulled from market matches `asset`.</a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">         13 :         if (address(pt) != asset) {</span></a>
+<a name="141"><span class="lineNum">     141 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__WrongMarket();</span></a>
+<a name="142"><span class="lineNum">     142 </span>            :         }</a>
+<a name="143"><span class="lineNum">     143 </span>            : </a>
+<a name="144"><span class="lineNum">     144 </span>            :         // Validate the parameter twap duration is within acceptable bounds.</a>
 <a name="145"><span class="lineNum">     145 </span><span class="lineCov">         13 :         if (data.twapDuration &lt; MINIMUM_TWAP_DURATION) {</span></a>
 <a name="146"><span class="lineNum">     146 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__TwapDurationIsLessThanMinimum();</span></a>
 <a name="147"><span class="lineNum">     147 </span>            :         }</a>
 <a name="148"><span class="lineNum">     148 </span>            : </a>
-<a name="149"><span class="lineNum">     149 </span><span class="lineCov">         13 :         (</span></a>
-<a name="150"><span class="lineNum">     150 </span>            :             bool increaseCardinalityRequired,</a>
-<a name="151"><span class="lineNum">     151 </span>            :             ,</a>
-<a name="152"><span class="lineNum">     152 </span>            :             bool oldestObservationSatisfied</a>
-<a name="153"><span class="lineNum">     153 </span><span class="lineCov">         13 :         ) = ptOracle.getOracleState(address(data.market), data.twapDuration);</span></a>
+<a name="149"><span class="lineNum">     149 </span>            :         // Make sure quote asset is the same as SY `assetInfo.assetAddress`.</a>
+<a name="150"><span class="lineNum">     150 </span><span class="lineCov">         13 :         (, address assetAddress, ) = sy.assetInfo();</span></a>
+<a name="151"><span class="lineNum">     151 </span><span class="lineCov">         13 :         if (assetAddress != data.quoteAsset) {</span></a>
+<a name="152"><span class="lineNum">     152 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__WrongQuote();</span></a>
+<a name="153"><span class="lineNum">     153 </span>            :         }</a>
 <a name="154"><span class="lineNum">     154 </span>            : </a>
-<a name="155"><span class="lineNum">     155 </span><span class="lineCov">         13 :         if (increaseCardinalityRequired) {</span></a>
-<a name="156"><span class="lineNum">     156 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__CallIncreaseCardinality();</span></a>
-<a name="157"><span class="lineNum">     157 </span>            :         }</a>
-<a name="158"><span class="lineNum">     158 </span><span class="lineCov">         13 :         if (!oldestObservationSatisfied) {</span></a>
-<a name="159"><span class="lineNum">     159 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();</span></a>
-<a name="160"><span class="lineNum">     160 </span>            :         }</a>
-<a name="161"><span class="lineNum">     161 </span>            :         if (</a>
-<a name="162"><span class="lineNum">     162 </span><span class="lineCov">         13 :             !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(</span></a>
-<a name="163"><span class="lineNum">     163 </span>            :                 data.quoteAsset</a>
-<a name="164"><span class="lineNum">     164 </span>            :             )</a>
-<a name="165"><span class="lineNum">     165 </span>            :         ) {</a>
-<a name="166"><span class="lineNum">     166 </span><span class="lineCov">          1 :             revert PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();</span></a>
-<a name="167"><span class="lineNum">     167 </span>            :         }</a>
-<a name="168"><span class="lineNum">     168 </span>            : </a>
-<a name="169"><span class="lineNum">     169 </span>            :         // Write to extension storage.</a>
-<a name="170"><span class="lineNum">     170 </span><span class="lineCov">         12 :         adaptorData[asset] = AdaptorData({</span></a>
-<a name="171"><span class="lineNum">     171 </span>            :             market: data.market,</a>
-<a name="172"><span class="lineNum">     172 </span>            :             twapDuration: data.twapDuration,</a>
-<a name="173"><span class="lineNum">     173 </span>            :             quoteAsset: data.quoteAsset,</a>
-<a name="174"><span class="lineNum">     174 </span>            :             quoteAssetDecimals: data.quoteAssetDecimals</a>
-<a name="175"><span class="lineNum">     175 </span>            :         });</a>
-<a name="176"><span class="lineNum">     176 </span>            : </a>
-<a name="177"><span class="lineNum">     177 </span><span class="lineCov">         12 :         isSupportedAsset[asset] = true;</span></a>
-<a name="178"><span class="lineNum">     178 </span><span class="lineCov">         12 :         emit PendlePTAssetAdded(asset, data);</span></a>
-<a name="179"><span class="lineNum">     179 </span>            :     }</a>
-<a name="180"><span class="lineNum">     180 </span>            : </a>
-<a name="181"><span class="lineNum">     181 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
-<a name="182"><span class="lineNum">     182 </span>            :     /// @dev Calls back into oracle router to notify it of its removal.</a>
+<a name="155"><span class="lineNum">     155 </span>            :         // Make sure the underlying PT TWAP is working.</a>
+<a name="156"><span class="lineNum">     156 </span><span class="lineCov">         13 :         _checkPtTwap(address(data.market), data.twapDuration);</span></a>
+<a name="157"><span class="lineNum">     157 </span>            : </a>
+<a name="158"><span class="lineNum">     158 </span>            :         // Validate we support the pricing quote asset for this principal token.</a>
+<a name="159"><span class="lineNum">     159 </span>            :         if (</a>
+<a name="160"><span class="lineNum">     160 </span><span class="lineCov">         13 :             !IOracleRouter(centralRegistry.oracleRouter()).isSupportedAsset(</span></a>
+<a name="161"><span class="lineNum">     161 </span>            :                 data.quoteAsset</a>
+<a name="162"><span class="lineNum">     162 </span>            :             )</a>
+<a name="163"><span class="lineNum">     163 </span>            :         ) {</a>
+<a name="164"><span class="lineNum">     164 </span><span class="lineCov">          1 :             revert PendlePrincipalTokenAdaptor__QuoteAssetIsNotSupported();</span></a>
+<a name="165"><span class="lineNum">     165 </span>            :         }</a>
+<a name="166"><span class="lineNum">     166 </span>            : </a>
+<a name="167"><span class="lineNum">     167 </span>            :         // Save adaptor data and update mapping that we support `asset` now.</a>
+<a name="168"><span class="lineNum">     168 </span><span class="lineCov">         12 :         adaptorData[asset] = data;</span></a>
+<a name="169"><span class="lineNum">     169 </span>            : </a>
+<a name="170"><span class="lineNum">     170 </span>            :         // Check whether this is new or updated support for `asset`.</a>
+<a name="171"><span class="lineNum">     171 </span><span class="lineCov">         12 :         bool isUpdate;</span></a>
+<a name="172"><span class="lineNum">     172 </span><span class="lineCov">         12 :         if (isSupportedAsset[asset]) {</span></a>
+<a name="173"><span class="lineNum">     173 </span><span class="lineNoCov">          0 :             isUpdate = true;</span></a>
+<a name="174"><span class="lineNum">     174 </span>            :         }</a>
+<a name="175"><span class="lineNum">     175 </span>            : </a>
+<a name="176"><span class="lineNum">     176 </span><span class="lineCov">         12 :         isSupportedAsset[asset] = true;</span></a>
+<a name="177"><span class="lineNum">     177 </span><span class="lineCov">         12 :         emit PendlePTAssetAdded(asset, data, isUpdate);</span></a>
+<a name="178"><span class="lineNum">     178 </span>            :     }</a>
+<a name="179"><span class="lineNum">     179 </span>            : </a>
+<a name="180"><span class="lineNum">     180 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
+<a name="181"><span class="lineNum">     181 </span>            :     /// @dev Calls back into Oracle Router to notify it of its removal.</a>
+<a name="182"><span class="lineNum">     182 </span>            :     ///      Requires that `asset` is currently supported.</a>
 <a name="183"><span class="lineNum">     183 </span>            :     /// @param asset The address of the supported asset to remove from</a>
 <a name="184"><span class="lineNum">     184 </span>            :     ///              the adaptor.</a>
 <a name="185"><span class="lineNum">     185 </span>            :     function removeAsset(address asset) external override {</a>
 <a name="186"><span class="lineNum">     186 </span><span class="lineCov">          1 :         _checkElevatedPermissions();</span></a>
 <a name="187"><span class="lineNum">     187 </span>            : </a>
-<a name="188"><span class="lineNum">     188 </span><span class="lineCov">          1 :         if (!isSupportedAsset[asset]) {</span></a>
-<a name="189"><span class="lineNum">     189 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();</span></a>
-<a name="190"><span class="lineNum">     190 </span>            :         }</a>
-<a name="191"><span class="lineNum">     191 </span>            : </a>
-<a name="192"><span class="lineNum">     192 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
-<a name="193"><span class="lineNum">     193 </span><span class="lineCov">          1 :         delete isSupportedAsset[asset];</span></a>
-<a name="194"><span class="lineNum">     194 </span>            : </a>
-<a name="195"><span class="lineNum">     195 </span>            :         // Wipe config mapping entries for a gas refund.</a>
+<a name="188"><span class="lineNum">     188 </span>            :         // Validate that `asset` is currently supported.</a>
+<a name="189"><span class="lineNum">     189 </span><span class="lineCov">          1 :         if (!isSupportedAsset[asset]) {</span></a>
+<a name="190"><span class="lineNum">     190 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__AssetIsNotSupported();</span></a>
+<a name="191"><span class="lineNum">     191 </span>            :         }</a>
+<a name="192"><span class="lineNum">     192 </span>            : </a>
+<a name="193"><span class="lineNum">     193 </span>            :         // Wipe config mapping entries for a gas refund.</a>
+<a name="194"><span class="lineNum">     194 </span>            :         // Notify the adaptor to stop supporting the asset.</a>
+<a name="195"><span class="lineNum">     195 </span><span class="lineCov">          1 :         delete isSupportedAsset[asset];</span></a>
 <a name="196"><span class="lineNum">     196 </span><span class="lineCov">          1 :         delete adaptorData[asset];</span></a>
 <a name="197"><span class="lineNum">     197 </span>            : </a>
-<a name="198"><span class="lineNum">     198 </span>            :         ///Notify the oracle router that we are going to stop supporting the asset.</a>
-<a name="199"><span class="lineNum">     199 </span><span class="lineCov">          1 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
-<a name="200"><span class="lineNum">     200 </span><span class="lineCov">          1 :         emit PendlePTAssetRemoved(asset);</span></a>
-<a name="201"><span class="lineNum">     201 </span>            :     }</a>
-<a name="202"><span class="lineNum">     202 </span>            : }</a>
+<a name="198"><span class="lineNum">     198 </span>            :         // Notify the Oracle Router that we are going to stop supporting</a>
+<a name="199"><span class="lineNum">     199 </span>            :         // the asset.</a>
+<a name="200"><span class="lineNum">     200 </span><span class="lineCov">          1 :         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);</span></a>
+<a name="201"><span class="lineNum">     201 </span><span class="lineCov">          1 :         emit PendlePTAssetRemoved(asset);</span></a>
+<a name="202"><span class="lineNum">     202 </span>            :     }</a>
+<a name="203"><span class="lineNum">     203 </span>            : </a>
+<a name="204"><span class="lineNum">     204 </span>            :     /// @notice Helper function to check whether the underlying PT TWAP</a>
+<a name="205"><span class="lineNum">     205 </span>            :     ///         is working.</a>
+<a name="206"><span class="lineNum">     206 </span>            :     /// @param market The address of the Pendle LP.</a>
+<a name="207"><span class="lineNum">     207 </span>            :     /// @param twapDuration The twap duration to use when pricing.</a>
+<a name="208"><span class="lineNum">     208 </span>            :     function _checkPtTwap(address market, uint32 twapDuration) internal view {</a>
+<a name="209"><span class="lineNum">     209 </span><span class="lineCov">         13 :         (</span></a>
+<a name="210"><span class="lineNum">     210 </span>            :             bool increaseCardinalityRequired,</a>
+<a name="211"><span class="lineNum">     211 </span>            :             ,</a>
+<a name="212"><span class="lineNum">     212 </span>            :             bool oldestObservationSatisfied</a>
+<a name="213"><span class="lineNum">     213 </span><span class="lineCov">         13 :         ) = ptOracle.getOracleState(market, twapDuration);</span></a>
+<a name="214"><span class="lineNum">     214 </span>            : </a>
+<a name="215"><span class="lineNum">     215 </span><span class="lineCov">         13 :         if (increaseCardinalityRequired) {</span></a>
+<a name="216"><span class="lineNum">     216 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__CallIncreaseCardinality();</span></a>
+<a name="217"><span class="lineNum">     217 </span>            :         }</a>
+<a name="218"><span class="lineNum">     218 </span>            : </a>
+<a name="219"><span class="lineNum">     219 </span><span class="lineCov">         13 :         if (!oldestObservationSatisfied) {</span></a>
+<a name="220"><span class="lineNum">     220 </span><span class="lineNoCov">          0 :             revert PendlePrincipalTokenAdaptor__OldestObservationIsNotSatisfied();</span></a>
+<a name="221"><span class="lineNum">     221 </span>            :         }</a>
+<a name="222"><span class="lineNum">     222 </span>            :     }</a>
+<a name="223"><span class="lineNum">     223 </span>            : }</a>
 </pre>
       </td>
     </tr>

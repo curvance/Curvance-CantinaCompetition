@@ -11,16 +11,14 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
     /// EVENTS ///
 
     event CamelotVolatileLPAssetAdded(
-        address asset,
-        AdaptorData assetConfig
+        address asset, 
+        AdaptorData assetConfig, 
+        bool isUpdate
     );
-
     event CamelotVolatileLPAssetRemoved(address asset);
 
     /// ERRORS ///
 
-    error CamelotVolatileLPAdaptor__AssetIsNotSupported();
-    error CamelotVolatileLPAdaptor__AssetIsAlreadyAdded();
     error CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
 
     /// CONSTRUCTOR ///
@@ -31,55 +29,36 @@ contract CamelotVolatileLPAdaptor is BaseVolatileLPAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Called during pricing operations.
-    /// @param asset The bpt being priced
-    /// @param inUSD Indicates whether we want the price in USD or ETH
-    /// @param getLower Since this adaptor calls back into the oracle router
-    ///                 it needs to know if it should be working with the
-    ///                 upper or lower prices of assets
-    function getPrice(
-        address asset,
-        bool inUSD,
-        bool getLower
-    ) external view override returns (PriceReturnData memory) {
-        if (!isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
-        }
-
-        return _getPrice(asset, inUSD, getLower);
-    }
-
-    /// @notice Add a Balancer Stable Pool Bpt as an asset.
-    /// @dev Should be called before `PriceRotuer:addAssetPriceFeed` is called.
-    /// @param asset The address of the bpt to add
+    /// @notice Adds pricing support for `asset`, a new Camelot Volatile LP.
+    /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
+    ///      is called.
+    /// @param asset The address of the lp token to add pricing support for.
     function addAsset(
         address asset
     ) external override {
         _checkElevatedPermissions();
 
-        if (isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsAlreadyAdded();
-        }
         if (ICamelotPair(asset).stableSwap()) {
             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();
         }
 
+        // Check whether this is new or updated support for `asset`.
+        bool isUpdate;
+        if (isSupportedAsset[asset]) {
+            isUpdate = true;
+        }
+
         AdaptorData memory data = _addAsset(asset);
-        emit CamelotVolatileLPAssetAdded(asset, data);
+        emit CamelotVolatileLPAssetAdded(asset, data, isUpdate);
     }
 
     /// @notice Removes a supported asset from the adaptor.
-    /// @dev Calls back into oracle router to notify it of its removal.
+    /// @dev Calls back into Oracle Router to notify it of its removal.
+    ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
-    function removeAsset(
-        address asset
-    ) external virtual override {
+    function removeAsset(address asset) external virtual override {
         _checkElevatedPermissions();
-
-        if (!isSupportedAsset[asset]) {
-            revert CamelotVolatileLPAdaptor__AssetIsNotSupported();
-        }
 
         _removeAsset(asset);
         emit CamelotVolatileLPAssetRemoved(asset);

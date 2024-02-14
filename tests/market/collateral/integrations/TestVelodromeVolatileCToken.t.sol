@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeVolatileCToken, IVeloGauge, IVeloRouter, IVeloPairFactory, IERC20 } from "contracts/market/collateral/VelodromeVolatileCToken.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -49,6 +50,10 @@ contract TestVelodromeVolatileCToken is TestBaseMarket {
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
         centralRegistry.addSwapper(address(veloRouter));
+        centralRegistry.setExternalCallDataChecker(
+            address(veloRouter),
+            address(new MockCallDataChecker(address(veloRouter)))
+        );
 
         cWETHUSDC = new VelodromeVolatileCToken(
             ICentralRegistry(address(centralRegistry)),

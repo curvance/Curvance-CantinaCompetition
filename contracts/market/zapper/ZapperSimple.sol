@@ -7,9 +7,9 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { CommonLib } from "contracts/libraries/CommonLib.sol";
+import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
-import { ReentrancyGuard } from "contracts/libraries/external/ReentrancyGuard.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -65,7 +65,20 @@ contract ZapperSimple is ReentrancyGuard {
         SwapperLib.ZapperCall memory zapperCall,
         address cToken,
         address recipient
-    ) external returns (uint256) {
+    ) external payable returns (uint256) {
+        if (CommonLib.isETH(zapperCall.inputToken)) {
+            if (zapperCall.inputAmount != msg.value) {
+                revert ZapperSimple__ExecutionError();
+            }
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                zapperCall.inputToken,
+                msg.sender,
+                address(this),
+                zapperCall.inputAmount
+            );
+        }
+
         if (!centralRegistry.isZapper(zapperCall.target)) {
             revert ZapperSimple__InvalidZapper(zapperCall.target);
         }
@@ -76,16 +89,29 @@ contract ZapperSimple is ReentrancyGuard {
     }
 
     function swapAndRepay(
-        SwapperLib.ZapperCall memory zapperCall,
+        SwapperLib.Swap memory swapperData,
         address dToken,
         uint256 repayAmount,
         address recipient
-    ) external {
-        if (!centralRegistry.isZapper(zapperCall.target)) {
-            revert ZapperSimple__InvalidZapper(zapperCall.target);
+    ) external payable {
+        if (CommonLib.isETH(swapperData.inputToken)) {
+            if (swapperData.inputAmount != msg.value) {
+                revert ZapperSimple__ExecutionError();
+            }
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                swapperData.inputToken,
+                msg.sender,
+                address(this),
+                swapperData.inputAmount
+            );
         }
 
-        SwapperLib.zap(zapperCall);
+        if (!centralRegistry.isSwapper(swapperData.target)) {
+            revert ZapperSimple__InvalidZapper(swapperData.target);
+        }
+
+        SwapperLib.swap(centralRegistry, swapperData);
 
         address dTokenUnderlying = DToken(dToken).underlying();
         uint256 balance = IERC20(dTokenUnderlying).balanceOf(address(this));

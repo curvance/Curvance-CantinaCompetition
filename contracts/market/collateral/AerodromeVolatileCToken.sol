@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { WAD } from "contracts/libraries/Constants.sol";
 
 import { IVeloGauge } from "contracts/interfaces/external/velodrome/IVeloGauge.sol";
 import { IVeloRouter } from "contracts/interfaces/external/velodrome/IVeloRouter.sol";
@@ -13,8 +12,6 @@ import { IVeloPairFactory } from "contracts/interfaces/external/velodrome/IVeloP
 import { IVeloPool } from "contracts/interfaces/external/velodrome/IVeloPool.sol";
 
 contract AerodromeVolatileCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// TYPES ///
 
     struct StrategyData {
@@ -136,7 +133,8 @@ contract AerodromeVolatileCToken is CTokenCompounding {
                 uint256 rewardAmount = rewardToken.balanceOf(address(this));
                 if (rewardAmount > 0) {
                     // take protocol fee
-                    uint256 protocolFee = rewardAmount.mulDivDown(
+                    uint256 protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmount,
                         centralRegistry.protocolHarvestFee(),
                         1e18
                     );
@@ -160,7 +158,7 @@ contract AerodromeVolatileCToken is CTokenCompounding {
                             );
                         }
 
-                        SwapperLib.swap(swapData);
+                        SwapperLib.swap(centralRegistry, swapData);
                     }
                 }
             }
@@ -216,13 +214,8 @@ contract AerodromeVolatileCToken is CTokenCompounding {
             // deposit assets into aerodrome gauge
             _afterDeposit(yield, 0);
 
-            // update vesting info
-            // Cache vest period so we do not need to load it twice
-            uint256 _vestPeriod = vestPeriod;
-            _vaultData = _packVaultData(
-                yield.mulDivDown(WAD, _vestPeriod),
-                block.timestamp + _vestPeriod
-            );
+            // Update vesting info, query `vestPeriod` here to cache it.
+            _setNewVaultData(yield, vestPeriod);
 
             emit Harvest(yield);
         }
@@ -245,16 +238,5 @@ contract AerodromeVolatileCToken is CTokenCompounding {
     /// @param assets The amount of assets to withdraw
     function _beforeWithdraw(uint256 assets, uint256) internal override {
         strategyData.gauge.withdraw(assets);
-    }
-
-    /// @notice Gets the balance of assets inside aerodrome gauge pool
-    /// @return The current balance of assets
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return strategyData.gauge.balanceOf(address(this));
     }
 }

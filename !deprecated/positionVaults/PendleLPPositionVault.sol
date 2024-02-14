@@ -174,7 +174,7 @@ contract PendleLPPositionVault is BasePositionVault {
                             );
                         }
 
-                        SwapperLib.swap(swapDataArray[i]);
+                        SwapperLib.swap(centralRegistry, swapDataArray[i]);
                     }
                 }
             }

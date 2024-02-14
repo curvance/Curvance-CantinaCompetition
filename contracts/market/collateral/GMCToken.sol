@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CTokenCompounding, SafeTransferLib, IERC20, Math, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
-
-import { WAD } from "contracts/libraries/Constants.sol";
+import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentralRegistry } from "contracts/market/collateral/CTokenCompounding.sol";
 
 import { IReader } from "contracts/interfaces/external/gmx/IReader.sol";
 import { IGMXDeposit } from "contracts/interfaces/external/gmx/IGMXDeposit.sol";
@@ -11,8 +9,6 @@ import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils
 import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchangeRouter.sol";
 
 contract GMCToken is CTokenCompounding {
-    using Math for uint256;
-
     /// STORAGE ///
 
     /// @notice The address of GMX Deposit Vault.
@@ -117,17 +113,22 @@ contract GMCToken is CTokenCompounding {
             // Claim GM pool rewards.
             uint256[] memory rewardAmounts = _claimReward();
 
+            // Cache Central registry values so we dont pay gas multiple times
+            address feeAccumulator = centralRegistry.feeAccumulator();
+            uint256 harvestFee = centralRegistry.protocolHarvestFee();
+
             for (uint256 i = 0; i < 2; ++i) {
                 if (rewardAmounts[i] > 0) {
                     // Take protocol fee.
-                    uint256 protocolFee = rewardAmounts[i].mulDivDown(
-                        centralRegistry.protocolHarvestFee(),
+                    uint256 protocolFee = FixedPointMathLib.mulDiv(
+                        rewardAmounts[i],
+                        harvestFee,
                         1e18
                     );
                     rewardAmounts[i] -= protocolFee;
                     SafeTransferLib.safeTransfer(
                         underlyingTokens[i],
-                        centralRegistry.feeAccumulator(),
+                        feeAccumulator,
                         protocolFee
                     );
                 }
@@ -142,17 +143,19 @@ contract GMCToken is CTokenCompounding {
                 0.01e18
             );
 
+            uint256 rewardAmount;
             for (uint256 i = 0; i < 2; ) {
+                rewardAmount = rewardAmounts[i];
                 SafeTransferLib.safeApprove(
                     underlyingTokens[i],
                     gmxRouter,
-                    rewardAmounts[i]
+                    rewardAmount
                 );
                 data[++i] = abi.encodeWithSelector(
                     IGMXExchangeRouter.sendTokens.selector,
                     underlyingTokens[i],
                     gmxDepositVault,
-                    rewardAmounts[i]
+                    rewardAmount
                 );
             }
             data[3] = abi.encodeWithSelector(
@@ -196,13 +199,8 @@ contract GMCToken is CTokenCompounding {
 
         uint256 yield = eventData.uintItems.items[0].value;
 
-        // Update vesting info.
-        // Cache vest period so we do not need to load it twice.
-        uint256 _vestPeriod = vestPeriod;
-        _vaultData = _packVaultData(
-            yield.mulDivDown(WAD, _vestPeriod),
-            block.timestamp + _vestPeriod
-        );
+        // Update vesting info, query `vestPeriod` here to cache it.
+        _setNewVaultData(yield, vestPeriod);
 
         delete _isDepositKey[key];
 
@@ -292,17 +290,6 @@ contract GMCToken is CTokenCompounding {
     }
 
     // INTERNAL POSITION LOGIC
-
-    /// @notice Gets the balance of assets inside GM pool.
-    /// @return The current balance of assets.
-    function _getRealPositionBalance()
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return IERC20(asset()).balanceOf(address(this));
-    }
 
     /// @notice Claim rewards from GM pool.
     function _claimReward() internal returns (uint256[] memory rewardAmounts) {

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { WAD } from "contracts/libraries/Constants.sol";
-import { FixedPointMathLib } from "contracts/libraries/external/FixedPointMathLib.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
 
@@ -242,7 +242,7 @@ contract CurvanceDAOLBP {
         }
 
         // Equivalent to (amount * WAD) / cveAmountForSale rounded up.
-        return FixedPointMathLib.divWadUp(amount, cveAmountForSale);
+        return FixedPointMathLib.mulDivUp(amount, WAD, cveAmountForSale);
     }
 
     /// @notice Returns the current price based on current commitments.
@@ -266,7 +266,7 @@ contract CurvanceDAOLBP {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Preconditional check to determine whether the LBP is active.
-    function _canCommit() internal {
+    function _canCommit() internal view {
         SaleStatus saleStatus = currentStatus();
         if (saleStatus == SaleStatus.NotStarted) {
             revert CurvanceDAOLBP__NotStarted();

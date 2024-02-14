@@ -120,23 +120,23 @@ contract CentralRegistryDeployer is DeployConfiguration {
         console.log("centralRegistry.setWormholeRelayer: ", wormholeRelayer);
     }
 
-    function _setCircleRelayer(address circleRelayer) internal {
+    function _setCircleTokenMessenger(address circleTokenMessenger) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
 
-        CentralRegistry(centralRegistry).setCircleRelayer(circleRelayer);
-        console.log("centralRegistry.setCircleRelayer: ", circleRelayer);
-    }
-
-    function _setTokenBridgeRelayer(address tokenBridgeRelayer) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-
-        CentralRegistry(centralRegistry).setTokenBridgeRelayer(
-            tokenBridgeRelayer
+        CentralRegistry(centralRegistry).setCircleTokenMessenger(
+            circleTokenMessenger
         );
         console.log(
-            "centralRegistry.setTokenBridgeRelayer: ",
-            tokenBridgeRelayer
+            "centralRegistry.setCircleTokenMessenger: ",
+            circleTokenMessenger
         );
+    }
+
+    function _setTokenBridge(address tokenBridge) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+
+        CentralRegistry(centralRegistry).setTokenBridge(tokenBridge);
+        console.log("centralRegistry.setTokenBridge: ", tokenBridge);
     }
 
     function _setVoteBoostMultiplier(uint256 voteBoostMultiplier) internal {
@@ -149,6 +149,14 @@ contract CentralRegistryDeployer is DeployConfiguration {
             "centralRegistry.setVoteBoostMultiplier: ",
             voteBoostMultiplier
         );
+    }
+
+    function _setOracleRouter(address oracleRouter) internal {
+        require(centralRegistry != address(0), "Set the centralRegistry!");
+        require(oracleRouter != address(0), "Set the oracleRouter!");
+
+        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
+        console.log("centralRegistry._setOracleRouter: ", oracleRouter);
     }
 
     function _addGaugeController(address gaugePool) internal {
@@ -213,13 +221,5 @@ contract CentralRegistryDeployer is DeployConfiguration {
             "centralRegistry.transferEmergencyCouncil: ",
             emergencyCouncil
         );
-    }
-
-    function setOracleRouter(address oracleRouter) internal {
-        require(centralRegistry != address(0), "Set the centralRegistry!");
-        require(oracleRouter != address(0), "Set the oracleRouter!");
-
-        CentralRegistry(centralRegistry).setOracleRouter(oracleRouter);
-        console.log("centralRegistry.setOracleRouter: ", oracleRouter);
     }
 }

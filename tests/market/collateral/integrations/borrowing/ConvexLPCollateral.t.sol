@@ -13,9 +13,6 @@ contract ConvexLPCollateral is TestBaseMarket {
 
     address internal constant _STETH_ADDRESS =
         0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-    // Curve internally uses this address to represent the address for native ETH
-    address internal constant ETH_ADDRESS =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     IERC20 public CONVEX_STETH_ETH_POOL =
         IERC20(0x21E27a5E5513D6e65C4f830167390997aA84843a);
@@ -43,13 +40,6 @@ contract ConvexLPCollateral is TestBaseMarket {
     }
 
     function testBorrowWithConvexLPCollateral() public {
-        chainlinkAdaptor.addAsset(
-            ETH_ADDRESS,
-            address(chainlinkEthUsd),
-            0,
-            true
-        );
-        oracleRouter.addAssetPriceFeed(ETH_ADDRESS, address(chainlinkAdaptor));
         chainlinkStethUsd = new MockV3Aggregator(8, 1500e8, 3000e12, 1000e6);
         chainlinkAdaptor.addAsset(
             _STETH_ADDRESS,
@@ -68,7 +58,7 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = address(CONVEX_STETH_ETH_POOL);
-        data.underlyingOrConstituent0 = ETH_ADDRESS;
+        data.underlyingOrConstituent0 = _ETH_ADDRESS;
         data.underlyingOrConstituent1 = _STETH_ADDRESS;
         data.divideRate0 = true;
         data.divideRate1 = true;

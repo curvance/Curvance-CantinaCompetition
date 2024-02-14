@@ -6,6 +6,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IUniswapV3Router } from "contracts/interfaces/external/uniswap/IUniswapV3Router.sol";
 import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { PendleLPCToken, IERC20 } from "contracts/market/collateral/PendleLPCToken.sol";
+import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
 import "tests/market/TestBaseMarket.sol";
 
@@ -21,14 +22,6 @@ contract TestPendleLPCToken is TestBaseMarket {
         IERC20(0xD0354D4e7bCf345fB117cabe41aCaDb724eccCa2); // PT-stETH-26DEC24/SY-stETH Market
 
     PendleLPCToken cSTETH;
-
-    /*
-    LP token address	0xf5f5B97624542D72A9E06f04804Bf81baA15e2B4
-    Deposit contract address	0xF403C135812408BFbE8713b5A23a04b3D48AAE31
-    Rewards contract address	0xb05262D4aaAA38D0Af4AaB244D446ebDb5afd4A7
-    Convex pool id	188
-    Convex pool url	https://www.convexfinance.com/stake/ethereum/188
-    */
 
     receive() external payable {}
 
@@ -60,6 +53,10 @@ contract TestPendleLPCToken is TestBaseMarket {
         );
 
         centralRegistry.addSwapper(_UNISWAP_V3_SWAP_ROUTER);
+        centralRegistry.setExternalCallDataChecker(
+            _UNISWAP_V3_SWAP_ROUTER,
+            address(new MockCallDataChecker(_UNISWAP_V3_SWAP_ROUTER))
+        );
 
         gaugePool.start(address(marketManager));
         vm.warp(veCVE.nextEpochStartTime());
@@ -90,6 +87,7 @@ contract TestPendleLPCToken is TestBaseMarket {
 
         // Mint some extra rewards for Vault.
         deal(address(_PENDLE), address(cSTETH), 100e18);
+        deal(address(cSTETH), 1e18);
 
         uint256 rewardAmount = (100e18 * 84) / 100; // 16% for protocol harvest fee;
         SwapperLib.Swap[] memory swaps = new SwapperLib.Swap[](1);
@@ -131,5 +129,61 @@ contract TestPendleLPCToken is TestBaseMarket {
 
         vm.prank(user1);
         cSTETH.withdraw(assets, user1, user1);
+    }
+
+    function testRevertWithInvalidSwapper() external {
+        uint256 assets = 100e18;
+        deal(address(_LP_STETH), user1, assets);
+        deal(address(_LP_STETH), address(this), 42069);
+
+        _LP_STETH.approve(address(cSTETH), 42069);
+        marketManager.listToken(address(cSTETH));
+
+        vm.prank(user1);
+        _LP_STETH.approve(address(cSTETH), assets);
+
+        vm.prank(user1);
+        cSTETH.deposit(assets, user1);
+
+        // Advance time to earn CRV and CVX rewards
+        vm.warp(block.timestamp + 3 days);
+
+        // Mint some extra rewards for Vault.
+        deal(address(_PENDLE), address(cSTETH), 100e18);
+
+        uint256 rewardAmount = (100e18 * 84) / 100; // 16% for protocol harvest fee;
+        SwapperLib.Swap[] memory swaps = new SwapperLib.Swap[](1);
+        swaps[0].inputToken = _PENDLE;
+        swaps[0].inputAmount = rewardAmount;
+        swaps[0].outputToken = _WETH_ADDRESS;
+        swaps[0].target = address(0);
+
+        ApproxParams memory approx;
+        approx.guessMin = 1e10;
+        approx.guessMax = 1e18;
+        approx.guessOffchain = 0;
+        approx.maxIteration = 200;
+        approx.eps = 1e18;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PendleLPCToken.PendleLPCToken__InvalidSwapper.selector,
+                0,
+                address(0)
+            )
+        );
+        cSTETH.harvest(abi.encode(swaps, 0, approx));
+    }
+
+    function testReQueryRewardTokens() external {
+        cSTETH.reQueryRewardTokens();
+
+        assertEq(cSTETH.rewardTokens().length, 1);
+    }
+
+    function testReQueryUnderlyingTokens() external {
+        cSTETH.reQueryUnderlyingTokens();
+
+        assertEq(cSTETH.underlyingTokens().length, 4);
     }
 }

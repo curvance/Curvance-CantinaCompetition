@@ -10,7 +10,6 @@ import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
-import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 
 import { CVE } from "contracts/token/CVE.sol";
@@ -184,8 +183,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
 
     function _deployOracleRouter() internal {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            address(chainlinkEthUsd)
+            ICentralRegistry(address(centralRegistry))
         );
 
         centralRegistry.setOracleRouter(address(oracleRouter));
@@ -617,12 +615,20 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _hasPosition(address mToken) internal view returns (bool) {
-        (bool hasPosition, ,) = marketManager.tokenDataOf(address(this), mToken);
+        (bool hasPosition, , ) = marketManager.tokenDataOf(
+            address(this),
+            mToken
+        );
         return hasPosition;
     }
 
-    function _collateralPostedFor(address mToken) internal view returns (uint256) {
-        ( , ,uint256 collateralPosted) = marketManager.tokenDataOf(address(this), mToken);
+    function _collateralPostedFor(
+        address mToken
+    ) internal view returns (uint256) {
+        (, , uint256 collateralPosted) = marketManager.tokenDataOf(
+            address(this),
+            mToken
+        );
         return collateralPosted;
     }
 }

@@ -51,7 +51,10 @@ contract SendWormholeMessagesTest is TestBaseFeeAccumulator {
         );
 
         vm.prank(harvester);
-        feeAccumulator.sendWormholeMessages(23, address(protocolMessagingHub));
+        feeAccumulator.sendWormholeMessages(
+            42161,
+            address(protocolMessagingHub)
+        );
     }
 
     function test_sendWormholeMessages_fail_whenHasNoEnoughNativeAssetForGas()
@@ -70,6 +73,9 @@ contract SendWormholeMessagesTest is TestBaseFeeAccumulator {
         vm.expectRevert();
 
         vm.prank(harvester);
-        feeAccumulator.sendWormholeMessages(23, address(protocolMessagingHub));
+        feeAccumulator.sendWormholeMessages(
+            42161,
+            address(protocolMessagingHub)
+        );
     }
 }

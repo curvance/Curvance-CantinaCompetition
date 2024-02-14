@@ -29,6 +29,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract TestBaseMarket is TestBase {
+    address internal constant _ETH_ADDRESS =
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address internal constant _WETH_ADDRESS =
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant _USDC_ADDRESS =
@@ -69,10 +71,10 @@ contract TestBaseMarket is TestBase {
         0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B;
     address internal constant _WORMHOLE_RELAYER =
         0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
-    address internal constant _CIRCLE_RELAYER =
-        0x4cb69FaE7e7Af841e44E1A1c30Af640739378bb2;
-    address internal constant _TOKEN_BRIDGE_RELAYER =
-        0xCafd2f0A35A4459fA40C0517e17e6fA2939441CA;
+    address internal constant _CIRCLE_TOKEN_MESSENGER =
+        0xBd3fa81B58Ba92a82136038B25aDec7066af3155;
+    address internal constant _TOKEN_BRIDGE =
+        0x3ee18B2214AFF97000D974cf647E7C347E8fa585;
     address internal constant _GELATO_ONE_BALANCE =
         0x7506C12a824d73D9b08564d5Afc22c949434755e;
 
@@ -122,6 +124,10 @@ contract TestBaseMarket is TestBase {
     function setUp() public virtual {
         _fork(18031848);
 
+        _init();
+    }
+
+    function _init() internal {
         usdc = IERC20(_USDC_ADDRESS);
         dai = IERC20(_DAI_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
@@ -162,21 +168,35 @@ contract TestBaseMarket is TestBase {
         );
         centralRegistry.transferEmergencyCouncil(address(this));
         centralRegistry.setLockBoostMultiplier(lockBoostMultiplier);
-        centralRegistry.setCircleRelayer(_CIRCLE_RELAYER);
+        centralRegistry.setCircleTokenMessenger(_CIRCLE_TOKEN_MESSENGER);
         centralRegistry.setWormholeRelayer(_WORMHOLE_RELAYER);
         centralRegistry.setWormholeCore(_WORMHOLE_CORE);
-        centralRegistry.setTokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
+        centralRegistry.setTokenBridge(_TOKEN_BRIDGE);
         centralRegistry.setGelatoSponsor(address(1));
+
+        uint256[] memory chainIds = new uint256[](3);
+        uint16[] memory wormholeChainIds = new uint16[](3);
+        uint32[] memory cctpDomains = new uint32[](3);
+
+        chainIds[0] = 1;
+        wormholeChainIds[0] = 2;
+        cctpDomains[0] = 0;
+        chainIds[1] = 137;
+        wormholeChainIds[1] = 5;
+        cctpDomains[1] = 7;
+        chainIds[2] = 42161;
+        wormholeChainIds[2] = 23;
+        cctpDomains[2] = 3;
+
+        centralRegistry.registerWormholeChainIDs(chainIds, wormholeChainIds);
+        centralRegistry.registerCCTPDomains(chainIds, cctpDomains);
     }
 
     function _deployCVE() internal {
         // If TokenBridgeRelayer doesn't exist on the address,
         // deploy mock TokenBridgeRelayer on the address.
-        if (_TOKEN_BRIDGE_RELAYER.code.length == 0) {
-            vm.etch(
-                _TOKEN_BRIDGE_RELAYER,
-                address(new MockTokenBridgeRelayer()).code
-            );
+        if (_TOKEN_BRIDGE.code.length == 0) {
+            vm.etch(_TOKEN_BRIDGE, address(new MockTokenBridgeRelayer()).code);
         }
 
         cve = new CVE(ICentralRegistry(address(centralRegistry)), address(0));
@@ -200,8 +220,7 @@ contract TestBaseMarket is TestBase {
 
     function _deployOracleRouter() internal {
         oracleRouter = new OracleRouter(
-            ICentralRegistry(address(centralRegistry)),
-            address(chainlinkEthUsd)
+            ICentralRegistry(address(centralRegistry))
         );
 
         centralRegistry.setOracleRouter(address(oracleRouter));
@@ -246,6 +265,12 @@ contract TestBaseMarket is TestBase {
             ICentralRegistry(address(centralRegistry))
         );
         chainlinkAdaptor.addAsset(
+            _ETH_ADDRESS,
+            address(chainlinkEthUsd),
+            0,
+            true
+        );
+        chainlinkAdaptor.addAsset(
             _WETH_ADDRESS,
             address(chainlinkEthUsd),
             0,
@@ -283,6 +308,10 @@ contract TestBaseMarket is TestBase {
         );
 
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
         oracleRouter.addAssetPriceFeed(
             _WETH_ADDRESS,
             address(chainlinkAdaptor)
