@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 
-contract registerWormholeChainIDsTest is TestBaseMarket {
+contract RegisterWormholeChainIDsTest is TestBaseMarket {
     uint256[] public chainIDs;
     uint16[] public wormholeChainIDs;
 

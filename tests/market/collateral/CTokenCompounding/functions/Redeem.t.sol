@@ -4,17 +4,17 @@ pragma solidity ^0.8.17;
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 
-contract CTokenCompounding_RedeemTest is TestBaseCTokenCompounding {
+contract CTokenCompoundingRedeemTest is TestBaseCTokenCompounding {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    function test_CTokenCompounding_Redeem_fail_whenNoEnoughToRedeem() public {
+    function test_cTokenCompoundingRedeem_fail_whenNoEnoughToRedeem() public {
         vm.prank(address(1));
 
         vm.expectRevert();
         cBALRETH.redeem(100, address(this), address(this));
     }
 
-    function test_CTokenCompounding_Redeem_fail_whenAmountIsZero() public {
+    function test_cTokenCompoundingRedeem_fail_whenAmountIsZero() public {
         cBALRETH.mint(100, address(this));
 
         vm.expectRevert(
@@ -23,7 +23,7 @@ contract CTokenCompounding_RedeemTest is TestBaseCTokenCompounding {
         cBALRETH.redeem(0, address(this), address(this));
     }
 
-    function test_CTokenCompounding_Redeem_success() public {
+    function test_cTokenCompoundingRedeem_success() public {
         cBALRETH.mint(100, address(this));
 
         uint256 underlyingBalance = balRETH.balanceOf(address(this));
