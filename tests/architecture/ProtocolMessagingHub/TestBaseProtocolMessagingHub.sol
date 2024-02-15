@@ -10,12 +10,6 @@ contract TestBaseProtocolMessagingHub is TestBaseMarket {
 
         usdc = IERC20(_USDC_ADDRESS);
 
-        _deployCentralRegistry();
-        _deployCVE();
-        _deployCVELocker();
-        _deployVeCVE();
-        _deployProtocolMessagingHub();
-        _deployOneBalanceFeeManager();
-        _deployFeeAccumulator();
+        _deployBaseContracts();
     }
 }

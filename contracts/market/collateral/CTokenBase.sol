@@ -13,7 +13,6 @@ import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
-import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
@@ -77,7 +76,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     IERC20 internal immutable _asset;
     /// @notice CToken decimals.
     uint8 internal immutable _decimals;
-    
+
     /// STORAGE ///
 
     /// @notice Token name metadata.
@@ -241,7 +240,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     /// @dev Used by MarketManager to efficiently perform liquidity checks.
     /// @param account Address of the account to snapshot.
     /// @return Current account shares balance.
-    /// @return Current account borrow balance, which will be 0, 
+    /// @return Current account borrow balance, which will be 0,
     ///         kept for composability.
     /// @return Current exchange rate between assets and shares, in `WAD`.
     function getSnapshot(
@@ -306,9 +305,9 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         address to
     ) public view override returns (uint256 maxAssets) {
         if (
-            !marketManager.isListed(address(this)) || 
+            !marketManager.isListed(address(this)) ||
             marketManager.mintPaused(address(this)) == 2
-            ) {
+        ) {
             // We do not need to set maxAssets here since its initialized
             // as 0 so we can just return.
             return maxAssets;
@@ -324,9 +323,9 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         address to
     ) public view override returns (uint256 maxShares) {
         if (
-            !marketManager.isListed(address(this)) || 
+            !marketManager.isListed(address(this)) ||
             marketManager.mintPaused(address(this)) == 2
-            ) {
+        ) {
             // We do not need to set maxShares here since its initialized
             // as 0 so we can just return.
             return maxShares;
@@ -540,7 +539,15 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     // ACCOUNTING LOGIC
 
     /// @notice Returns the total number of assets backing shares, safely.
-    function totalAssetsSafe() public view virtual nonReadReentrant returns (uint256) {
+    function totalAssetsSafe()
+        public
+        view
+        virtual
+        nonReadReentrant
+        returns (uint256)
+    {
+        // Returns stored internal balance.
+        // Has added re-entry lock for protocols building ontop of us to have confidence in data quality
         return _totalAssets;
     }
 
@@ -796,11 +803,9 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     ) internal view returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
-        assets = totalShares == 0 ? shares : FixedPointMathLib.mulDivUp(
-            shares, 
-            ta, 
-            totalShares
-        );
+        assets = totalShares == 0
+            ? shares
+            : FixedPointMathLib.mulDivUp(shares, ta, totalShares);
     }
 
     /// @notice Simulates the effects of a user withdrawal at the current
@@ -815,11 +820,9 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     ) internal view returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        shares = totalShares == 0 ? assets : FixedPointMathLib.mulDivUp(
-            assets, 
-            totalShares, 
-            ta
-        );
+        shares = totalShares == 0
+            ? assets
+            : FixedPointMathLib.mulDivUp(assets, totalShares, ta);
     }
 
     /// @notice Simulates the effects of a user redemption at the current
