@@ -35,7 +35,7 @@ contract TestRedstoneCoreAdaptor is TestBaseOracleRouter {
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
         oracleRouter.addApprovedAdaptor(address(adapter));
-        oracleRouter.addAssetPriceFeed(WBTC, address(adapter));
+        // oracleRouter.addAssetPriceFeed(WBTC, address(adapter));
     }
 
     function testReturnsCorrectPrice() public {
