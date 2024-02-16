@@ -83,4 +83,76 @@ contract TestPendleLPTokenAdaptor is TestBaseOracleRouter {
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(_LP_STETH, true, false);
     }
+
+    function testRevertAddAsset__WrongMarket() public {
+        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.twapDuration = 12;
+        adapterData.quoteAsset = _STETH;
+        adapterData.pt = address(0);
+        adapterData.quoteAssetDecimals = 18;
+
+        vm.expectRevert(PendleLPTokenAdaptor.PendleLPTokenAdaptor__WrongMarket.selector);
+        adapter.addAsset(_LP_STETH, adapterData);
+    }
+
+    function testRevertAddAsset__CallIncreaseCardinality() public {
+        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.twapDuration = 1000;
+        adapterData.quoteAsset = _STETH;
+        adapterData.pt = _PT_STETH;
+        adapterData.quoteAssetDecimals = 18;
+
+        vm.expectRevert(PendleLPTokenAdaptor.PendleLPTokenAdaptor__CallIncreaseCardinality.selector);
+        adapter.addAsset(_LP_STETH, adapterData);
+    }
+
+    function testRevertAddAsset__TwapDurationIsLessThanMinimum() public {
+        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.twapDuration = 6;
+        adapterData.quoteAsset = _STETH;
+        adapterData.pt = _PT_STETH;
+        adapterData.quoteAssetDecimals = 18;
+
+        vm.expectRevert(PendleLPTokenAdaptor.PendleLPTokenAdaptor__TwapDurationIsLessThanMinimum.selector);
+        adapter.addAsset(_LP_STETH, adapterData);
+    }
+
+    function testRevertAddAsset__WrongQuote() public {
+        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.twapDuration = 12;
+        adapterData.quoteAsset = address(0);
+        adapterData.pt = _PT_STETH;
+        adapterData.quoteAssetDecimals = 18;
+
+        vm.expectRevert(PendleLPTokenAdaptor.PendleLPTokenAdaptor__WrongQuote.selector);
+        adapter.addAsset(_LP_STETH, adapterData);
+    }
+
+    function testCanUpdateAsset() public {
+        // set quote asset
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(_ETH_ADDRESS, _CHAINLINK_ETH_USD, 0, true);
+        chainlinkAdaptor.addAsset(_STETH, _CHAINLINK_ETH_USD, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(
+            _ETH_ADDRESS,
+            address(chainlinkAdaptor)
+        );
+        oracleRouter.addAssetPriceFeed(_STETH, address(chainlinkAdaptor));
+
+        PendleLPTokenAdaptor.AdaptorData memory adapterData;
+        adapterData.twapDuration = 12;
+        adapterData.quoteAsset = _STETH;
+        adapterData.pt = _PT_STETH;
+        adapterData.quoteAssetDecimals = 18;
+        adapter.addAsset(_LP_STETH, adapterData);
+        adapter.addAsset(_LP_STETH, adapterData);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(PendleLPTokenAdaptor.PendleLPTokenAdaptor__AssetIsNotSupported.selector);
+        adapter.removeAsset(_LP_STETH);
+    }
 }

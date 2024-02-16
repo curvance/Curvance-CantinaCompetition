@@ -88,4 +88,172 @@ contract TestCurve2PoolAssetAdaptor is TestBaseOracleRouter {
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(STETH, true, false);
     }
+    
+    function testRevertAddAsset__UnsupportedPool() public {
+        adaptor.setReentrancyConfig(2, 6000);
+
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 9800;
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__UnsupportedPool.selector);
+        adaptor.addAsset(STETH, data);
+    }
+    
+    function testRevertAddAsset__InvalidAsset() public {
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = ETH_STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 9800;
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidAsset.selector);
+        adaptor.addAsset(ETH, data);
+    }
+    
+    function testRevertAddAsset__InvalidBounds() public {
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = ETH_STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 10201;
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.addAsset(STETH, data);
+
+        data.upperBound = 10400;
+        data.lowerBound = 9800;
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.addAsset(STETH, data);
+    }
+    
+    function testRevertAddAsset__InvalidAssetIndex() public {
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = ETH_STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 0;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 9800;
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidAssetIndex.selector);
+        adaptor.addAsset(STETH, data);
+
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 1;
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidAssetIndex.selector);
+        adaptor.addAsset(STETH, data);
+    }
+    
+    function testUpdateAsset() public {
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = ETH_STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 9800;
+
+        adaptor.addAsset(STETH, data);
+        adaptor.addAsset(STETH, data);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__AssetIsNotSupported.selector);
+        adaptor.removeAsset(STETH);
+    }
+
+
+    function testRaiseBounds() public {
+        chainlinkAdaptor = new ChainlinkAdaptor(
+            ICentralRegistry(address(centralRegistry))
+        );
+        chainlinkAdaptor.addAsset(ETH, CHAINLINK_PRICE_FEED_ETH, 0, true);
+        oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
+        oracleRouter.addAssetPriceFeed(ETH, address(chainlinkAdaptor));
+
+        Curve2PoolAssetAdaptor.AdaptorData memory data;
+        data.pool = ETH_STETH;
+        data.baseToken = ETH;
+        data.quoteTokenIndex = 1;
+        data.baseTokenIndex = 0;
+        data.upperBound = 10200;
+        data.lowerBound = 10000;
+        adaptor.addAsset(STETH, data);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10000, 10000);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10000, 10600);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10000, 10100);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10100, 10200);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10300, 10400);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__InvalidBounds.selector);
+        adaptor.raiseBounds(STETH, 10100, 10500);
+
+        vm.expectRevert(Curve2PoolAssetAdaptor.Curve2PoolAssetAdaptor__BoundsExceeded.selector);
+        adaptor.raiseBounds(STETH, 10100, 10300);
+
+        adaptor.raiseBounds(STETH, 10050, 10300);
+    }
+
+    function testIsLocked() public {
+        vm.expectRevert(CurveBaseAdaptor.CurveBaseAdaptor__PoolNotFound.selector);
+        adaptor.isLocked(STETH, 0);
+
+        adaptor.setReentrancyConfig(3, 10000);
+        assertEq(adaptor.isLocked(STETH, 3), true);
+
+        adaptor.setReentrancyConfig(4, 10000);
+        assertEq(adaptor.isLocked(STETH, 4), true);
+    }
+
+    function testSetReentrancyConfig() public {
+        vm.expectRevert(CurveBaseAdaptor.CurveBaseAdaptor__InvalidConfiguration.selector);
+        adaptor.setReentrancyConfig(4, 100);
+
+        vm.expectRevert(CurveBaseAdaptor.CurveBaseAdaptor__InvalidConfiguration.selector);
+        adaptor.setReentrancyConfig(5, 10000);
+
+        vm.expectRevert(CurveBaseAdaptor.CurveBaseAdaptor__InvalidConfiguration.selector);
+        adaptor.setReentrancyConfig(1, 10000);
+    }
 }

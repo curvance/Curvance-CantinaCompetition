@@ -43,7 +43,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of `asset`, an lp token, 
+    /// @notice Retrieves the price of `asset`, an lp token,
     ///         for a Univ2 style stable pool.
     /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
@@ -66,26 +66,18 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
     /// @param asset The address of the lp token to support pricing for.
-    function addAsset(address asset) external virtual {
-        _checkElevatedPermissions();
-        _addAsset(asset);
-    }
+    function addAsset(address asset) external virtual {}
 
     /// @notice Removes a supported asset from the adaptor.
     /// @dev Calls back into Oracle Router to notify it of its removal.
     ///      Requires that `asset` is currently supported.
     /// @param asset The address of the supported asset to remove from
     ///              the adaptor.
-    function removeAsset(
-        address asset
-    ) external virtual override {
-        _checkElevatedPermissions();
-        _removeAsset(asset);
-    }
+    function removeAsset(address asset) external virtual override {}
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Retrieves the price of `asset`, an lp token, 
+    /// @notice Retrieves the price of `asset`, an lp token,
     ///         for a Univ2 style stable pool.
     /// @dev Math source: https://blog.alphaventuredao.io/fair-lp-token-pricing/
     /// @param asset The address of the asset for which the price is needed.
@@ -126,7 +118,9 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         uint256 price1;
         uint256 errorCode;
 
-        IOracleRouter oracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter oracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
         (price0, errorCode) = oracleRouter.getPrice(
             data.token0,
             inUSD,
@@ -151,7 +145,13 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        uint256 finalPrice = _getFairPrice(reserve0, reserve1, price0, price1, totalSupply);
+        uint256 finalPrice = _getFairPrice(
+            reserve0,
+            reserve1,
+            price0,
+            price1,
+            totalSupply
+        );
 
         // Validate price will not overflow on conversion to uint240.
         if (_checkOracleOverflow(finalPrice)) {
@@ -163,7 +163,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         pData.price = uint240(finalPrice);
     }
 
-    /// @notice Helper function for pricing support for `asset`, 
+    /// @notice Helper function for pricing support for `asset`,
     ///         an lp token for a Univ2 style stable liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
@@ -171,7 +171,6 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     function _addAsset(
         address asset
     ) internal returns (AdaptorData memory data) {
-
         IUniswapV2Pair pool = IUniswapV2Pair(asset);
         data.token0 = pool.token0();
         data.token1 = pool.token1();
@@ -205,7 +204,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
     }
 
-    /// @notice Helper function in calculating the price of an lp token. 
+    /// @notice Helper function in calculating the price of an lp token.
     ///         Uses reserves, and pricing of each underlying token versus
     ///         the total supply of lp tokens making up the pool.
     /// @param reserve0 The amount of underlying token0 inside the liquidity pool.
@@ -224,11 +223,14 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         // constant product = x^3 * y + x * y^3.
         uint256 sqrtReserve = FixedPointMathLib.sqrt(
             FixedPointMathLib.sqrt(reserve0 * reserve1) *
-                FixedPointMathLib.sqrt(reserve0 * reserve0 + reserve1 * reserve1)
+                FixedPointMathLib.sqrt(
+                    reserve0 * reserve0 + reserve1 * reserve1
+                )
         );
         uint256 ratio = ((1e18) * price0) / price1;
         uint256 sqrtPrice = FixedPointMathLib.sqrt(
-            FixedPointMathLib.sqrt((1e18) * ratio) * FixedPointMathLib.sqrt(1e36 + ratio * ratio)
+            FixedPointMathLib.sqrt((1e18) * ratio) *
+                FixedPointMathLib.sqrt(1e36 + ratio * ratio)
         );
         return
             ((((1e18) * sqrtReserve) / sqrtPrice) * price0 * 2) / totalSupply;

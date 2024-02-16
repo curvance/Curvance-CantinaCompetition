@@ -48,8 +48,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// EVENTS ///
 
     event UniswapV3AssetAdded(
-        address asset, 
-        AdaptorData assetConfig, 
+        address asset,
+        AdaptorData assetConfig,
         bool isUpdate
     );
     event UniswapV3AssetRemoved(address asset);
@@ -92,7 +92,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         }
 
         AdaptorData memory data = adaptorData[asset];
-        
+
         address[] memory pools = new address[](1);
         pools[0] = data.priceSource;
         uint256 twapPrice;
@@ -123,7 +123,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        IOracleRouter OracleRouter = IOracleRouter(centralRegistry.oracleRouter());
+        IOracleRouter OracleRouter = IOracleRouter(
+            centralRegistry.oracleRouter()
+        );
         pData.inUSD = inUSD;
 
         // We want the asset price in USD which uniswap cant do,
@@ -179,17 +181,18 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             }
 
             // Adjust decimals if necessary.
-            twapPrice = twapPrice / quoteTokenDenominator;
+            uint256 newPrice = (twapPrice * quoteTokenDenominator) /
+                (10 ** data.quoteDecimals);
 
             // Validate price will not overflow on conversion to uint240.
-            if (_checkOracleOverflow(twapPrice)) {
+            if (_checkOracleOverflow(newPrice)) {
                 pData.hadError = true;
                 return pData;
             }
 
             // We have a route to ETH pricing so we can convert
             // the quote token price to ETH and return.
-            pData.price = uint240(twapPrice);
+            pData.price = uint240(newPrice);
             return pData;
         }
 
