@@ -136,4 +136,22 @@ contract TestVelodromeVolatileLPAdapter is TestBaseOracleRouter {
         assertEq(errorCode, 0);
         assertApproxEqRel(priceBefore, priceAfter, 100000);
     }
+
+    function testRevertGetPrice__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseVolatileLPAdaptor
+                .BaseVolatileLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.getPrice(address(0), true, false);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseVolatileLPAdaptor
+                .BaseVolatileLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.removeAsset(address(0));
+    }
 }

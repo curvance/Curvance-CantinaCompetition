@@ -134,4 +134,22 @@ contract TestVelodromeStableLPAdapter is TestBaseOracleRouter {
         assertEq(errorCode, 0);
         assertApproxEqRel(priceBefore, priceAfter, 100000);
     }
+
+    function testRevertGetPrice__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseStableLPAdaptor
+                .BaseStableLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.getPrice(address(0), true, false);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseStableLPAdaptor
+                .BaseStableLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.removeAsset(address(0));
+    }
 }

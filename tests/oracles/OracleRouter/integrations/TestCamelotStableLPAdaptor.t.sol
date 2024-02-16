@@ -4,11 +4,11 @@ pragma solidity ^0.8.17;
 import { CamelotStableLPAdaptor } from "contracts/oracles/adaptors/camelot/CamelotStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
-import { BaseStableLPAdaptor } from "contracts/oracles/adaptors/utils/BaseStableLPAdaptor.sol";
+import { BaseStableLPAdaptor } from "contracts/oracles/adaptors/uniV2Base/BaseStableLPAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
+contract TestCamelotStableLPAdaptor is TestBaseOracleRouter {
     address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
     address private USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
 
@@ -21,7 +21,7 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
 
     address private DAI_USDC = 0x01efEd58B534d7a7464359A6F8d14D986125816B;
 
-    CamelotStableLPAdaptor public adapter;
+    CamelotStableLPAdaptor public adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_ARBITRUM", 148061500);
@@ -36,10 +36,10 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
-        adapter = new CamelotStableLPAdaptor(
+        adaptor = new CamelotStableLPAdaptor(
             ICentralRegistry(address(centralRegistry))
         );
-        adapter.addAsset(DAI_USDC);
+        adaptor.addAsset(DAI_USDC);
 
         chainlinkAdaptor.addAsset(
             _ETH_ADDRESS,
@@ -58,8 +58,8 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
         oracleRouter.addAssetPriceFeed(DAI, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(USDC, address(chainlinkAdaptor));
 
-        oracleRouter.addApprovedAdaptor(address(adapter));
-        oracleRouter.addAssetPriceFeed(DAI_USDC, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adaptor));
+        oracleRouter.addAssetPriceFeed(DAI_USDC, address(adaptor));
     }
 
     function testRevertWhenUnderlyingChainAssetPriceNotSet() public {
@@ -82,7 +82,7 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(DAI_USDC);
+        adaptor.removeAsset(DAI_USDC);
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(DAI_USDC, true, false);
     }
@@ -93,12 +93,12 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
                 .CamelotStableLPAdaptor__AssetIsNotStableLP
                 .selector
         );
-        adapter.addAsset(0x84652bb2539513BAf36e225c930Fdd8eaa63CE27);
+        adaptor.addAsset(0x84652bb2539513BAf36e225c930Fdd8eaa63CE27);
     }
 
     function testCanUpdateAsset() public {
-        adapter.addAsset(DAI_USDC);
-        adapter.addAsset(DAI_USDC);
+        adaptor.addAsset(DAI_USDC);
+        adaptor.addAsset(DAI_USDC);
     }
 
     function testRevertGetPrice__AssetIsNotSupported() public {
@@ -107,7 +107,7 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
                 .BaseStableLPAdaptor__AssetIsNotSupported
                 .selector
         );
-        adapter.getPrice(address(0), true, false);
+        adaptor.getPrice(address(0), true, false);
     }
 
     function testRevertRemoveAsset__AssetIsNotSupported() public {
@@ -116,6 +116,6 @@ contract TestCamelotStableLPAdapter is TestBaseOracleRouter {
                 .BaseStableLPAdaptor__AssetIsNotSupported
                 .selector
         );
-        adapter.removeAsset(address(0));
+        adaptor.removeAsset(address(0));
     }
 }
