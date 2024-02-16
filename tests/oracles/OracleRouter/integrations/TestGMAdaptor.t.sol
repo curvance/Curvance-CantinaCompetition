@@ -161,4 +161,22 @@ contract TestGMAdaptor is TestBaseOracleRouter {
         assertEq(errorCode, 0);
         assertApproxEqAbs(price, 0.000625e18, 0.000001e18);
     }
+
+    function testRevertSetGMXReader__Unauthorized() public {
+        vm.expectRevert(
+            BaseOracleAdaptor.BaseOracleAdaptor__Unauthorized.selector
+        );
+        vm.startPrank(address(0));
+        adapter.setGMXReader(address(0));
+        vm.stopPrank();
+    }
+
+    function testRevertSetGMXDataStore__Unauthorized() public {
+        vm.expectRevert(
+            BaseOracleAdaptor.BaseOracleAdaptor__Unauthorized.selector
+        );
+        vm.startPrank(address(0));
+        adapter.setGMXDataStore(address(0));
+        vm.stopPrank();
+    }
 }

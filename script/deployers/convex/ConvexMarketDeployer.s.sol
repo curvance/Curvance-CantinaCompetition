@@ -8,7 +8,6 @@ import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/Chainlink
 import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { Convex3PoolCToken } from "contracts/market/collateral/Convex3PoolCToken.sol";
-import { Convex4PoolCToken } from "contracts/market/collateral/Convex4PoolCToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";

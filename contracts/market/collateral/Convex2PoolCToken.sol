@@ -115,14 +115,7 @@ contract Convex2PoolCToken is CTokenCompounding {
 
         // Add CRV as a reward token, then let Convex tell you what rewards
         // the vault will receive.
-        strategyData.rewardTokens.push() = _CRV;
-        uint256 extraRewardsLength = IBaseRewardPool(rewarder_)
-            .extraRewardsLength();
-        for (uint256 i; i < extraRewardsLength; ++i) {
-            strategyData.rewardTokens.push() = IRewards(
-                IBaseRewardPool(rewarder_).extraRewards(i)
-            ).rewardToken();
-        }
+        reQueryRewardTokens();
 
         // Let Curve lp tell you what its underlying tokens are.
         strategyData.underlyingTokens = new address[](coinsLength);
@@ -144,7 +137,7 @@ contract Convex2PoolCToken is CTokenCompounding {
     /// @notice Requeries reward tokens directly from Convex smart contracts.
     /// @dev This can be permissionless since this data is 1:1 with dependent
     ///      contracts and takes no parameters.
-    function reQueryRewardTokens() external {
+    function reQueryRewardTokens() public {
         delete strategyData.rewardTokens;
 
         // Add CRV as a reward token, then let Convex tell you what rewards

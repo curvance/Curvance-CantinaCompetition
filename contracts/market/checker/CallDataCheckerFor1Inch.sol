@@ -11,14 +11,6 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
     uint256 private constant _REVERSE_MASK =
         0x8000000000000000000000000000000000000000000000000000000000000000;
 
-    /// ERRORS ///
-
-    error CallDataChecker__TargetError();
-    error CallDataChecker__RecipientError();
-    error CallDataChecker__InputTokenError();
-    error CallDataChecker__InputAmountError();
-    error CallDataChecker__OutputTokenError();
-
     /// CONSTRUCTOR ///
 
     constructor(address _target) CallDataCheckerBase(_target) {}
@@ -186,6 +178,8 @@ contract CallDataCheckerFor1InchAggregationRouterV5 is CallDataCheckerBase {
             outputToken = (pool & _REVERSE_MASK == 0)
                 ? UniswapV3Pool(address(uint160(pool))).token1()
                 : UniswapV3Pool(address(uint160(pool))).token0();
+        } else {
+            revert CallDataChecker__InvalidFuncSig();
         }
 
         if (recipient != expectedRecipient) {

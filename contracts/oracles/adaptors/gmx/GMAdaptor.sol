@@ -49,7 +49,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     /// EVENTS ///
 
     event GMXGMAssetAdded(
-        address asset, 
+        address asset,
         address[] marketTokens,
         bool isSynthetic,
         address alteredToken,
@@ -96,7 +96,7 @@ contract GMAdaptor is BaseOracleAdaptor {
     ///               and the quote format of the price.
     function getPrice(
         address asset,
-        bool, /* inUSD */
+        bool /* inUSD */,
         bool /* getLower */
     ) external view override returns (PriceReturnData memory pData) {
         // Validate we support pricing `asset`.
@@ -230,10 +230,10 @@ contract GMAdaptor is BaseOracleAdaptor {
 
         isSupportedAsset[asset] = true;
         emit GMXGMAssetAdded(
-            asset, 
-            tokens, 
-            isSynthetic, 
-            alteredToken, 
+            asset,
+            tokens,
+            isSynthetic,
+            alteredToken,
             isUpdate
         );
     }
