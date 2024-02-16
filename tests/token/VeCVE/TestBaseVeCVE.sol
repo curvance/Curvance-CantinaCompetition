@@ -15,7 +15,7 @@ contract TestBaseVeCVE is TestBaseMarket {
         bool isFreshLockContinuous
     ) {
         rewardsData = RewardsData(
-            _USDC_ADDRESS,
+            false,
             shouldLock,
             isFreshLock,
             isFreshLockContinuous
@@ -26,6 +26,6 @@ contract TestBaseVeCVE is TestBaseMarket {
     function setUp() public virtual override {
         super.setUp();
 
-        rewardsData = RewardsData(_USDC_ADDRESS, true, true, true);
+        rewardsData = RewardsData(false, true, true, true);
     }
 }

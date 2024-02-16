@@ -2,8 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
-import { ZapperSimple } from "contracts/market/zapper/ZapperSimple.sol";
+import { SimpleZapper } from "contracts/market/utils/SimpleZapper.sol";
 import { Convex2PoolCToken, IERC20 } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
@@ -13,7 +12,7 @@ import "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestZapperSimple is TestBaseMarket {
+contract TestSimpleZapper is TestBaseMarket {
     address private _UNISWAP_V3_SWAP_ROUTER =
         0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address _CURVE_STETH_LP = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
@@ -31,7 +30,7 @@ contract TestZapperSimple is TestBaseMarket {
     address public user;
 
     Convex2PoolCToken public cSTETH;
-    ZapperSimple public zapperSimple;
+    SimpleZapper public simpleZapper;
 
     receive() external payable {}
 
@@ -43,12 +42,12 @@ contract TestZapperSimple is TestBaseMarket {
         owner = address(this);
         user = user1;
 
-        zapperSimple = new ZapperSimple(
+        simpleZapper = new SimpleZapper(
             ICentralRegistry(address(centralRegistry)),
             address(marketManager),
             _WETH_ADDRESS
         );
-        centralRegistry.addZapper(address(zapperSimple));
+        centralRegistry.addZapper(address(simpleZapper));
 
         centralRegistry.addHarvester(address(this));
         centralRegistry.setFeeAccumulator(address(this));
@@ -86,9 +85,8 @@ contract TestZapperSimple is TestBaseMarket {
         adaptor.setReentrancyConfig(2, 10000);
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = _CURVE_STETH_LP;
-        data
-            .underlyingOrConstituent0 = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-        data.underlyingOrConstituent1 = _STETH_ADDRESS;
+        data.underlying0 = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+        data.underlying1 = _STETH_ADDRESS;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -168,7 +166,7 @@ contract TestZapperSimple is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.marketManager()), address(marketManager));
+        assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
     function testZapAndDeposit() public {
@@ -178,15 +176,15 @@ contract TestZapperSimple is TestBaseMarket {
         SwapperLib.ZapperCall memory zapperCall;
         zapperCall.inputToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         zapperCall.inputAmount = ethAmount;
-        zapperCall.target = address(zapper);
+        zapperCall.target = address(complexZapper);
 
         address[] memory tokens = new address[](2);
         tokens[0] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         tokens[1] = _STETH_ADDRESS;
         zapperCall.call = abi.encodeWithSelector(
-            Zapper.curveIn.selector,
+            ComplexZapper.curveIn.selector,
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
                 ethAmount,
                 _CURVE_STETH_LP,
@@ -196,11 +194,11 @@ contract TestZapperSimple is TestBaseMarket {
             new SwapperLib.Swap[](0),
             _CURVE_STETH_MINTER,
             tokens,
-            address(zapperSimple)
+            address(simpleZapper)
         );
 
         vm.startPrank(user);
-        zapperSimple.zapAndDeposit{ value: ethAmount }(
+        simpleZapper.zapAndDeposit{ value: ethAmount }(
             zapperCall,
             address(cSTETH),
             user
@@ -243,7 +241,7 @@ contract TestZapperSimple is TestBaseMarket {
         params.tokenIn = _USDC_ADDRESS;
         params.tokenOut = _DAI_ADDRESS;
         params.fee = 100;
-        params.recipient = address(zapperSimple);
+        params.recipient = address(simpleZapper);
         params.deadline = block.timestamp;
         params.amountIn = 500e6;
         params.amountOutMinimum = 0;
@@ -255,8 +253,8 @@ contract TestZapperSimple is TestBaseMarket {
 
         deal(_USDC_ADDRESS, user, 500e6);
         vm.startPrank(user);
-        IERC20(_USDC_ADDRESS).approve(address(zapperSimple), 500e6);
-        zapperSimple.swapAndRepay(swapData, address(dDAI), 450e18, user);
+        IERC20(_USDC_ADDRESS).approve(address(simpleZapper), 500e6);
+        simpleZapper.swapAndRepay(swapData, address(dDAI), 450e18, user);
         vm.stopPrank();
 
         assertApproxEqAbs(dai.balanceOf(user), 550 ether, 1 ether);

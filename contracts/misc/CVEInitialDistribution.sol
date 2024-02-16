@@ -80,6 +80,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     }
 
     /// @notice Claim allocated CVE.
+    /// @dev Emits a {DistributionClaimed} event.
     /// @param amount Requested amount to claim.
     /// @param locked Whether the claim should be claimed in boosted lock
     ///               form or not.
@@ -209,6 +210,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
     /// @notice Withdraws unclaimed tokens to the DAO after the claim
     ///         period has ended.
+    /// @dev Emits a {RemainingTokensWithdrawn} event.
     function withdrawRemainingTokens() external {
         _checkDaoPermissions();
 

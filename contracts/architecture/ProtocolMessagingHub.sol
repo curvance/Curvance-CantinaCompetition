@@ -18,7 +18,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// @notice CVE contract address.
     ICVE public immutable cve;
-
     /// @notice veCVE contract address.
     address public immutable veCVE;
 

@@ -13,13 +13,13 @@ import { UniswapV3Pool } from "contracts/interfaces/external/uniswap/UniswapV3Po
 contract UniswapV3Adaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Stores configuration data for Uniswap V3 Twap price sources.
+    /// @notice Stores configuration data for Uniswap V3 twap price sources.
     /// @param priceSource The address location where you query
-    ///                    the associated assets TWAP price.
-    /// @param secondsAgo Period used for TWAP calculation.
+    ///                    the associated assets twap price.
+    /// @param secondsAgo Period used for twap calculation.
     /// @param baseDecimals The decimals of base asset you want to price.
     /// @param quoteDecimals The decimals asset price is quoted in.
-    /// @param quoteToken The asset Twap calulation denominates in.
+    /// @param quoteToken The asset twap calulation denominates in.
     struct AdaptorData {
         address priceSource;
         uint32 secondsAgo;
@@ -30,9 +30,9 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// CONSTANTS ///
 
-    /// @notice The smallest possible TWAP that can be used.
-    ///         300 = 5 minutes.
-    uint32 public constant MINIMUM_SECONDS_AGO = 300;
+    /// @notice The smallest possible twap that can be used.
+    ///         900 = 15 minutes.
+    uint32 public constant MINIMUM_SECONDS_AGO = 900;
 
     /// @notice Chain WETH address.
     address public immutable WETH;
@@ -42,7 +42,8 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Asset Address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Asset Address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///
@@ -118,7 +119,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
             // Extract the twap price from returned calldata.
             twapPrice = abi.decode(returnData, (uint256));
         } else {
-            // Uniswap TWAP check reverted, bubble up an error.
+            // Uniswap twap check reverted, bubble up an error.
             pData.hadError = true;
             return pData;
         }
@@ -134,7 +135,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         if (inUSD) {
             if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our Oracle Router does not know how to value this quote
-                // token, so, we cant use the TWAP data, bubble up an error.
+                // token, so, we cant use the twap data, bubble up an error.
                 pData.hadError = true;
                 return pData;
             }
@@ -166,7 +167,7 @@ contract UniswapV3Adaptor is BaseOracleAdaptor {
         if (data.quoteToken != WETH) {
             if (!OracleRouter.isSupportedAsset(data.quoteToken)) {
                 // Our Oracle Router does not know how to value this quote
-                // token so we cant use the TWAP data.
+                // token so we cant use the twap data.
                 pData.hadError = true;
                 return pData;
             }

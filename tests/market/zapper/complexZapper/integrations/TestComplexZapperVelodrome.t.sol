@@ -7,7 +7,7 @@ import "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestZapperVelodrome is TestBaseMarket {
+contract TestComplexZapperVelodrome is TestBaseMarket {
     address _VELODROME_FACTORY = 0xF1046053aa5682b4F9a81b5481394DA16BE5FF5a;
     address _VELODROME_ROUTER = 0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858;
     address _VELODROME_WETH_USDC = 0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b;
@@ -30,19 +30,19 @@ contract TestZapperVelodrome is TestBaseMarket {
         _deployGaugePool();
         _deployMarketManager();
 
-        zapper = new Zapper(
+        complexZapper = new ComplexZapper(
             ICentralRegistry(address(centralRegistry)),
             address(marketManager),
             _WETH
         );
-        centralRegistry.addZapper(address(zapper));
+        centralRegistry.addZapper(address(complexZapper));
 
         owner = address(this);
         user = user1;
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.marketManager()), address(marketManager));
+        assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
     function testVelodromeIn() public {
@@ -50,9 +50,9 @@ contract TestZapperVelodrome is TestBaseMarket {
         vm.deal(user, ethAmount);
 
         vm.startPrank(user);
-        zapper.velodromeIn{ value: ethAmount }(
+        complexZapper.velodromeIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 address(0),
                 ethAmount,
                 _VELODROME_WETH_USDC,
@@ -76,10 +76,10 @@ contract TestZapperVelodrome is TestBaseMarket {
         uint256 withdrawAmount = IERC20(_VELODROME_WETH_USDC).balanceOf(user);
 
         vm.startPrank(user);
-        IERC20(_VELODROME_WETH_USDC).approve(address(zapper), withdrawAmount);
-        zapper.velodromeOut(
+        IERC20(_VELODROME_WETH_USDC).approve(address(complexZapper), withdrawAmount);
+        complexZapper.velodromeOut(
             _VELODROME_ROUTER,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _VELODROME_WETH_USDC,
                 withdrawAmount,
                 _WETH,

@@ -7,7 +7,7 @@ import "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestZapperCurve is TestBaseMarket {
+contract TestComplexZapperCurveETH is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address _CURVE_STETH_LP = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
@@ -29,7 +29,7 @@ contract TestZapperCurve is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.marketManager()), address(marketManager));
+        assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
     function testCurveInWithETH() public {
@@ -40,9 +40,9 @@ contract TestZapperCurve is TestBaseMarket {
         address[] memory tokens = new address[](2);
         tokens[0] = _ETH_ADDRESS;
         tokens[1] = _STETH_ADDRESS;
-        zapper.curveIn{ value: ethAmount }(
+        complexZapper.curveIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _ETH_ADDRESS,
                 ethAmount,
                 _CURVE_STETH_LP,
@@ -69,10 +69,10 @@ contract TestZapperCurve is TestBaseMarket {
         address[] memory tokens = new address[](2);
         tokens[0] = _ETH_ADDRESS;
         tokens[1] = _STETH_ADDRESS;
-        IERC20(_CURVE_STETH_LP).approve(address(zapper), withdrawAmount);
-        zapper.curveOut(
+        IERC20(_CURVE_STETH_LP).approve(address(complexZapper), withdrawAmount);
+        complexZapper.curveOut(
             _CURVE_STETH_MINTER,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _CURVE_STETH_LP,
                 withdrawAmount,
                 _ETH_ADDRESS,

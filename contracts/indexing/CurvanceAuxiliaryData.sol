@@ -33,9 +33,7 @@ contract CurvanceAuxiliaryData {
 
     /// CONSTRUCTOR ///
 
-    constructor(
-        ICentralRegistry centralRegistry_
-    ) {
+    constructor(ICentralRegistry centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),

@@ -17,10 +17,12 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// TYPES ///
 
-    /// @notice Adaptor storage.
-    /// @param market the Pendle market for the Principal Token being priced.
-    /// @param twapDuration the twap duration to use when pricing.
-    /// @param quoteAsset the asset the twap quote is provided in.
+    /// @notice Stores configuration data for Pendle PT price sources.
+    /// @param market The Pendle market for the Principal Token being priced.
+    /// @param twapDuration The twap duration to use when pricing.
+    /// @param quoteAsset The asset the twap quote is provided in.
+    /// @param quoteAssetDecimals The decimals `quoteAsset` twap quote
+    ///                           is provided in.
     struct AdaptorData {
         IPMarket market;
         uint32 twapDuration;
@@ -39,7 +41,8 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Pendle PT address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Pendle PT address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///

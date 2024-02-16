@@ -4,7 +4,7 @@ import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { DENOMINATOR, WAD } from "contracts/libraries/Constants.sol";
 
-contract FuzzVECVE is StatefulBaseMarket {
+contract FuzzVeCVE is StatefulBaseMarket {
     RewardsData defaultRewardData;
     // uint256.max to represent no locks existing
     uint256 NO_LOCKS = type(uint256).max;
@@ -13,7 +13,7 @@ contract FuzzVECVE is StatefulBaseMarket {
 
     constructor() {
         caller = address(this);
-        defaultRewardData = RewardsData(address(usdc), false, false, false);
+        defaultRewardData = RewardsData(false, false, false, false);
         // seeds the execution with creating a lock
         create_lock_when_not_shutdown(uint(0), false);
     }
@@ -40,7 +40,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             veCVE.createLock(
                 amount,
                 continuousLock,
-                RewardsData(address(usdc), false, false, false),
+                RewardsData(false, false, false, false),
                 bytes(""),
                 0
             )
@@ -443,18 +443,15 @@ contract FuzzVECVE is StatefulBaseMarket {
     ) public {
         require(veCVE.isShutdown() != 2);
         uint256 lockIndex = get_existing_lock(seed);
-        require(lockIndex != NO_LOCKS);
 
-        require(
-            veCVE.getUnlockTime(caller, lockIndex) ==
-                veCVE.CONTINUOUS_LOCK_VALUE()
-        );
+        require(lockIndex != NO_LOCKS);
+        require(get_unlock_time(lockIndex) == veCVE.CONTINUOUS_LOCK_VALUE());
 
         try
             veCVE.extendLock(
                 lockIndex,
                 continuousLock,
-                RewardsData(address(0), true, true, true),
+                RewardsData(false, true, true, true),
                 bytes(""),
                 0
             )
@@ -485,7 +482,7 @@ contract FuzzVECVE is StatefulBaseMarket {
             veCVE.extendLock(
                 lockIndex,
                 continuousLock,
-                RewardsData(address(0), true, true, true),
+                RewardsData(false, true, true, true),
                 bytes(""),
                 0
             )
@@ -732,7 +729,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         public
     {
         require(veCVE.isShutdown() != 2);
-        uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(caller);
+        uint256 numberOfExistingLocks = lockAmounts.length;
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
         (uint256 amount, uint256 unlockTime) = get_user_locks_info(
@@ -810,7 +808,8 @@ contract FuzzVECVE is StatefulBaseMarket {
         public
     {
         require(veCVE.isShutdown() != 2);
-        uint256 numberOfExistingLocks = veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(caller);
+        uint256 numberOfExistingLocks = lockAmounts.length;
         uint256 lockIndex = get_expired_lock();
         require(lockIndex != NO_LOCKS);
 
@@ -1085,7 +1084,9 @@ contract FuzzVECVE is StatefulBaseMarket {
             caller
         ];
         for (uint i = 0; i < senders.length; i++) {
-            require(veCVE.queryUserLocksLength(senders[i]) == 0);
+            (uint256[] memory lockAmounts,)= veCVE.queryUserLocks(senders[i]);
+            uint256 numberOfExistingLocks = lockAmounts.length;
+            require(numberOfExistingLocks == 0);
         }
         assertEq(
             cve.balanceOf(address(veCVE)),
@@ -1262,8 +1263,14 @@ contract FuzzVECVE is StatefulBaseMarket {
         return NO_LOCKS;
     }
 
+    function get_unlock_time(uint256 lockIndex) private view returns (uint256) {
+        ( ,uint256[] memory unlockTimes ) = veCVE.queryUserLocks(caller);
+        return unlockTimes[lockIndex];
+    }
+
     function get_locks_length() private view returns (uint256) {
-        return veCVE.queryUserLocksLength(caller);
+        (uint256[] memory lockAmounts, ) = veCVE.queryUserLocks(caller);
+        return lockAmounts.length;
     }
 
     function approve_cve(uint256 amount, string memory error) private {

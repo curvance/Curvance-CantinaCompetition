@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/StdStorage.sol";
 import { TestBaseCTokenCompoundingWithExitFee } from "../TestBaseCTokenCompoundingWithExitFee.sol";
 import { CTokenBase } from "contracts/market/collateral/CTokenBase.sol";
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { MockAuraCTokenWithExitFee } from "contracts/mocks/MockAuraCTokenWithExitFee.sol";
 import { CTokenCompoundingWithExitFee } from "contracts/market/collateral/CTokenCompoundingWithExitFee.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
@@ -20,7 +21,7 @@ contract CTokenCompoundingWithExitFeeDeploymentTest is
         public
     {
         vm.expectRevert(
-            CTokenBase.CTokenBase__InvalidCentralRegistry.selector
+            Delegable.Delegable__InvalidCentralRegistry.selector
         );
         new MockAuraCTokenWithExitFee(
             ICentralRegistry(address(0)),

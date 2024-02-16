@@ -7,7 +7,7 @@ import "tests/market/TestBaseMarket.sol";
 
 contract User {}
 
-contract TestZapper is TestBaseMarket {
+contract TestComplexZapperCurveStable is TestBaseMarket {
     address internal constant _UNISWAP_V2_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address _CURVE_TRICRYPTO_LP = 0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
@@ -29,7 +29,7 @@ contract TestZapper is TestBaseMarket {
     }
 
     function testInitialize() public {
-        assertEq(address(zapper.marketManager()), address(marketManager));
+        assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
     function testCurveInWithETH() public {
@@ -41,9 +41,9 @@ contract TestZapper is TestBaseMarket {
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        zapper.curveIn{ value: ethAmount }(
+        complexZapper.curveIn{ value: ethAmount }(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 address(0),
                 ethAmount,
                 _CURVE_TRICRYPTO_LP,
@@ -66,14 +66,14 @@ contract TestZapper is TestBaseMarket {
         deal(_WETH_ADDRESS, user, wethAmount);
 
         vm.startPrank(user);
-        IERC20(_WETH_ADDRESS).approve(address(zapper), wethAmount);
+        IERC20(_WETH_ADDRESS).approve(address(complexZapper), wethAmount);
         address[] memory tokens = new address[](3);
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        zapper.curveIn(
+        complexZapper.curveIn(
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _WETH_ADDRESS,
                 wethAmount,
                 _CURVE_TRICRYPTO_LP,
@@ -101,10 +101,10 @@ contract TestZapper is TestBaseMarket {
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        IERC20(_CURVE_TRICRYPTO_LP).approve(address(zapper), withdrawAmount);
-        zapper.curveOut(
+        IERC20(_CURVE_TRICRYPTO_LP).approve(address(complexZapper), withdrawAmount);
+        complexZapper.curveOut(
             _CURVE_TRICRYPTO_MINTER,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _CURVE_TRICRYPTO_LP,
                 withdrawAmount,
                 _WETH_ADDRESS,

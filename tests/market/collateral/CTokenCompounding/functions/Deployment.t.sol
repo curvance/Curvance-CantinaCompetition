@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/StdStorage.sol";
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { CTokenBase } from "contracts/market/collateral/CTokenBase.sol";
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -17,7 +18,7 @@ contract CTokenCompoundingDeploymentTest is TestBaseCTokenCompounding {
         public
     {
         vm.expectRevert(
-            CTokenBase.CTokenBase__InvalidCentralRegistry.selector
+            Delegable.Delegable__InvalidCentralRegistry.selector
         );
         new AuraCToken(
             ICentralRegistry(address(0)),

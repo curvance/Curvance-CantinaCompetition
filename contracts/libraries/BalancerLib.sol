@@ -13,15 +13,17 @@ library BalancerLib {
         uint256 amount,
         uint256 minimum
     );
+    error BalancerLib__InvalidPoolInvariantError();
 
     /// FUNCTIONS ///
 
     /// @notice Enter a balancer position.
-    /// @param balancerVault The balancer vault address.
-    /// @param balancerPoolId The balancer pool ID.
-    /// @param lpToken The Curve LP token address.
-    /// @param tokens The underlying coin addresses of Curve LP.
-    /// @param lpMinOutAmount The minimum output amount.
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The BPT pool ID.
+    /// @param lpToken The BPT address.
+    /// @param tokens The underlying token addresses of the BPT.
+    /// @param lpMinOutAmount The minimum output amount acceptable.
+    /// @return lpOutAmount The output amount of BPT received.
     function enterBalancer(
         address balancerVault,
         bytes32 balancerPoolId,
@@ -32,9 +34,10 @@ library BalancerLib {
         uint256 numTokens = tokens.length;
         uint256[] memory balances = new uint256[](numTokens);
         uint256 value;
+        bool containsEth;
 
-        // approve tokens
-        for (uint256 i; i < numTokens; ) {
+        // Approve tokens to deposit into BPT.
+        for (uint256 i; i < numTokens; ++i) {
             balances[i] = CommonLib.getTokenBalance(tokens[i]);
             SwapperLib._approveTokenIfNeeded(
                 tokens[i],
@@ -43,14 +46,18 @@ library BalancerLib {
             );
 
             if (CommonLib.isETH(tokens[i])) {
-                value = balances[i];
-            }
+                // If eth is somehow contained in a pool twice, 
+                // something is wrong and we need to halt execution.
+                if (containsEth) {
+                    revert BalancerLib__InvalidPoolInvariantError();
+                }
 
-            unchecked {
-                ++i;
+                value = balances[i];
+                containsEth = true;
             }
         }
 
+        // Enter BPT position.
         IBalancerVault(balancerVault).joinPool{ value: value }(
             balancerPoolId,
             address(this),
@@ -63,12 +70,12 @@ library BalancerLib {
                     balances,
                     1
                 ),
-                false // do not use internal balances
+                false // Do not use internal balances.
             )
         );
 
-        // check min out amount
         lpOutAmount = IERC20(lpToken).balanceOf(address(this));
+        // Validate we got an acceptable amount of BPTs.
         if (lpOutAmount < lpMinOutAmount) {
             revert BalancerLib__ReceivedAmountIsLessThanMinimum(
                 lpOutAmount,
@@ -78,11 +85,18 @@ library BalancerLib {
     }
 
     /// @dev Exit a balancer position.
-    /// @param balancerVault The balancer vault address.
-    /// @param balancerPoolId The balancer pool ID.
-    /// @param lpToken The Balancer BPT token address.
-    /// @param tokens The underlying coin addresses of Balancer BPT.
-    /// @param lpAmount The LP amount to exit.
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The BPT pool ID.
+    /// @param lpToken The BPT address.
+    /// @param tokens The underlying token addresses of the BPT.
+    /// @param lpAmount The BPT amount to exit.
+    /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
+    ///                            token or not. 
+    ///                            false = all tokens.
+    ///                            true = single token.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` = true,
+    ///                         indicates the coin index inside the Balancer
+    ///                         BPT to withdraw as.
     function exitBalancer(
         address balancerVault,
         bytes32 balancerPoolId,
@@ -92,14 +106,15 @@ library BalancerLib {
         bool singleAssetWithdraw,
         uint256 singleAssetIndex
     ) internal {
-        // approve lp token
+        // Approve BPT.
         SwapperLib._approveTokenIfNeeded(lpToken, balancerVault, lpAmount);
 
         uint256 numTokens = tokens.length;
         uint256[] memory balances = new uint256[](numTokens);
 
+        // Exit BPT position.
         if (!singleAssetWithdraw) {
-            IBalancerVault(balancerVault).exitPool(
+            return IBalancerVault(balancerVault).exitPool(
                 balancerPoolId,
                 address(this),
                 payable(address(this)),
@@ -110,25 +125,25 @@ library BalancerLib {
                         IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
                         lpAmount
                     ),
-                    false // do not use internal balances
-                )
-            );
-        } else {
-            IBalancerVault(balancerVault).exitPool(
-                balancerPoolId,
-                address(this),
-                payable(address(this)),
-                IBalancerVault.ExitPoolRequest(
-                    tokens,
-                    balances,
-                    abi.encode(
-                        IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-                        lpAmount,
-                        singleAssetIndex
-                    ),
-                    false // do not use internal balances
+                    false // Do not use internal balances.
                 )
             );
         }
+
+        IBalancerVault(balancerVault).exitPool(
+            balancerPoolId,
+            address(this),
+            payable(address(this)),
+            IBalancerVault.ExitPoolRequest(
+                tokens,
+                balances,
+                abi.encode(
+                    IBalancerVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                    lpAmount,
+                    singleAssetIndex
+                ),
+                false // Do not use internal balances.
+            )
+        );
     }
 }

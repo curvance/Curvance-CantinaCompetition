@@ -33,9 +33,6 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// CONSTANTS ///
 
-    uint256 public constant SLIPPED_MINIMUM = 9500; // 5%
-    uint256 public constant SLIPPAGE_DENOMINATOR = 10000;
-
     /// @notice Address of fee token.
     address public immutable feeToken;
     /// @notice Curvance DAO hub.

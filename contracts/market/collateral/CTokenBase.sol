@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ERC4626, SafeTransferLib } from "contracts/libraries/ERC4626.sol";
 import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
@@ -16,7 +17,37 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 /// @notice Vault Positions must have all assets ready for withdraw,
 ///         IE assets can NOT be locked.
 ///         This way assets can be easily liquidated when loans default.
-abstract contract CTokenBase is ERC4626, ReentrancyGuard {
+/// @dev Curvance's cTokens are ERC4626 compliant. However, they follow their
+///      own design flow modifying underlying mechanisms such as totalAssets
+///      following a vesting mechanism in compounding vaults but a direct
+///      conversion in basic or "primitive" vaults.
+///
+///      The "cToken" employs two different methods of engaging with the
+///      Curvance protocol. Users can deposit an unlimited amount of assets,
+///      which may or may not benefit from some form of auto compounded yield.
+///
+///      Users can at any time, choose to "post" their cTokens as collateral
+///      inside the Curvance Protocol, unlocking their ability to borrow
+///      against these assets. Posting collateral carries restrictions,
+///      not all assets inside Curvance can be collateralized, and if they
+///      can, they have a "Collateral Cap" which restricts the total amount of
+///      exogeneous risk introduced by each asset into the system.
+///      Rehypothecation of collateral assets has also been removed from the
+///      system, reducing the likelihood of introducing systematic risk to the
+///      broad DeFi landscape.
+///
+///      These caps can be updated as needed by the DAO and should be
+///      configured based on "sticky" onchain liquidity in the corresponding
+///      asset. 
+///      The vaults have the ability to have their compounding, minting,
+///      or redemption functionality paused. Modifying the maximum mint,
+///      deposit, withdrawal, or redemptions possible.
+///     
+///      "Safe" versions of functions have been added that introduce
+///      additional reentry and update protection logic to minimize risks
+///      when integrating Curvance into external protocols.
+///
+abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     /// CONSTANTS ///
 
     /// @dev `bytes4(keccak256(bytes("CTokenBase__Unauthorized()")))`
@@ -38,10 +69,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// ```
     uint256 internal constant _BALANCE_SLOT_SEED = 0x87a211a2;
 
-    /// @notice Lending Market controller
+    /// @notice Address of the Market Manager linked to this contract.
     IMarketManager public immutable marketManager;
-    /// @notice Curvance DAO Hub.
-    ICentralRegistry public immutable centralRegistry;
 
     /// @notice Underlying asset for the CToken.
     IERC20 internal immutable _asset;
@@ -54,7 +83,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     string internal _name;
     /// @notice Token symbol metadata.
     string internal _symbol;
-    /// @notice Total CToken underlying token assets, minus vesting.
+    /// @notice Total CToken underlying token assets, minus pending vesting.
     uint256 internal _totalAssets;
 
     /// ERRORS ///
@@ -70,7 +99,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         ICentralRegistry centralRegistry_,
         IERC20 asset_,
         address MarketManager_
-    ) {
+    ) Delegable(centralRegistry_) {
         _asset = asset_;
         _name = string.concat("Curvance collateralized ", asset_.name());
         _symbol = string.concat("c", asset_.symbol());
@@ -84,8 +113,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         ) {
             revert CTokenBase__InvalidCentralRegistry();
         }
-
-        centralRegistry = centralRegistry_;
 
         // Ensure that marketManager parameter is a marketManager.
         if (!centralRegistry.isMarketManager(MarketManager_)) {
@@ -104,9 +131,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// EXTERNAL FUNCTIONS ///
 
-    /// @notice Caller deposits assets into the market, receives shares,
-    ///         and turns on collateralization of the assets.
-    /// @param assets The amount of the underlying asset to supply.
+    /// @notice Caller deposits assets into the market, `receiver` receives
+    ///         shares, and turns on collateralization of the assets.
+    /// @dev The caller must be depositing for themselves, or be managing
+    ///      their position through the position folding contract.
+    ///      If the caller is not approved to collateralize the function will
+    ///      simply deposit assets on behalf of `receiver`.
+    /// @param assets The amount of the underlying assets to deposit.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function depositAsCollateral(
@@ -114,17 +145,41 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         address receiver
     ) external nonReentrant returns (uint256 shares) {
         shares = _deposit(assets, receiver);
+
         if (
             msg.sender == receiver ||
             msg.sender == marketManager.positionFolding()
-        ) {
+            ) {
+            marketManager.postCollateral(receiver, address(this), shares);
+        }
+    }
+
+    /// @notice Caller deposits assets into the market, `receivier` receives
+    ///         shares, and turns on collateralization of the assets.
+    /// @dev Requires that `receiver` approves the caller prior to
+    ///      collateralize on their behalf.
+    ///      NOTE: Be careful who you approve here!
+    ///      They can delay redemption of assets through repeated
+    ///      collateralization preventing withdrawal.
+    ///      If the caller is not approved to collateralize the function will
+    ///      simply deposit assets on behalf of `receiver`.
+    /// @param assets The amount of the underlying assets to deposit.
+    /// @param receiver The account that should receive the cToken shares.
+    /// @return shares The amount of cToken shares received by `receiver`.
+    function depositAsCollateralFor(
+        uint256 assets,
+        address receiver
+    ) external nonReentrant returns (uint256 shares) {
+        shares = _deposit(assets, receiver);
+
+        if (_checkIsDelegate(receiver, msg.sender)) {
             marketManager.postCollateral(receiver, address(this), shares);
         }
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.
-    /// @dev   Forces collateral to be withdrawn from `owner` collateralPosted.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @dev Forces collateral to be withdrawn from `owner` collateralPosted.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw assets.
     /// @return shares the amount of cToken shares redeemed by `owner`.
@@ -137,7 +192,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Caller withdraws assets from the market and burns their shares.
-    /// @dev   Forces collateral to be withdrawn from `owner` collateralPosted.
+    /// @dev Forces collateral to be withdrawn from `owner` collateralPosted.
     /// @param shares The amount of shares to redeemed.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw assets.
@@ -150,7 +205,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         assets = _redeem(shares, receiver, owner, true);
     }
 
-    /// @notice Get the underlying balance of the `account`, safely.
+    /// @notice Returns the underlying balance of the `account`, safely.
     /// @param account The address of the account to query.
     /// @return The amount of underlying owned by `account`.
     function balanceOfUnderlyingSafe(
@@ -159,7 +214,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return ((convertToAssetsSafe(WAD) * balanceOf(account)) / WAD);
     }
 
-    /// @notice Get the underlying balance of the `account`.
+    /// @notice Returns the underlying balance of the `account`.
     /// @param account The address of the account to query.
     /// @return The amount of underlying owned by `account`.
     function balanceOfUnderlying(
@@ -168,14 +223,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return ((convertToAssets(WAD) * balanceOf(account)) / WAD);
     }
 
-    /// @notice Queries share -> asset exchange rate, in `WAD`, safely.
-    /// @dev Oracle router calculates CToken value from this exchange rate.
+    /// @notice Returns share -> asset exchange rate, in `WAD`, safely.
+    /// @dev Oracle router calculates cToken value from this exchange rate.
     function exchangeRateSafe() external view returns (uint256) {
         return convertToAssetsSafe(WAD);
     }
 
-    /// @notice Queries share -> asset exchange rate, in `WAD`.
-    /// @dev Oracle router calculates CToken value from this exchange rate.
+    /// @notice Returns share -> asset exchange rate, in `WAD`.
+    /// @dev Oracle router calculates cToken value from this exchange rate.
     function exchangeRateCached() external view returns (uint256) {
         return convertToAssets(WAD);
     }
@@ -194,7 +249,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return (balanceOf(account), 0, convertToAssets(WAD));
     }
 
-    /// @notice Get a snapshot of the cToken and `account` data.
+    /// @notice Returns a snapshot of the cToken and `account` data.
     /// @dev Used by MarketManager to efficiently perform liquidity checks.
     /// NOTE: debtBalance always return 0 to runtime gas in MarketManager
     ///       since it is unused.
@@ -206,7 +261,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
                 asset: address(this),
                 isCToken: true,
                 decimals: decimals(),
-                debtBalance: 0, // This is a cToken so always 0
+                debtBalance: 0, // This is a cToken so always 0.
                 exchangeRate: convertToAssets(WAD)
             })
         );
@@ -231,17 +286,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Returns the address of the underlying asset.
+    /// @dev We have both asset() and underlying() for composability.
     function asset() public view override returns (address) {
         return address(_asset);
     }
 
     /// @notice Returns the address of the underlying asset.
+    /// @dev We have both asset() and underlying() for composability.
     function underlying() external view returns (address) {
         return address(_asset);
     }
 
     /// @notice Returns the maximum assets that can be deposited at a time.
-    /// @dev if depositing is disabled maxAssets should be equal to 0,
+    /// @dev If depositing is disabled maxAssets should be equal to 0,
     ///      according to ERC4626 spec.
     /// @param to The address who would receive minted shares.
     function maxDeposit(
@@ -259,7 +316,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Returns the maximum shares that can be minted at a time.
-    /// @dev if depositing is disabled minMint should be equal to 0,
+    /// @dev If depositing is disabled minMint should be equal to 0,
     ///      according to ERC4626 spec.
     /// @param to The address who would receive minted shares.
     function maxMint(
@@ -279,7 +336,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// TOKEN ACTION FUNCTIONS ///
 
     /// @notice Caller deposits assets into the market and receives shares.
-    /// @param assets The amount of the underlying asset to deposit.
+    /// @param assets The amount of the underlying assets to deposit.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function deposit(
@@ -303,8 +360,8 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     }
 
     /// @notice Withdraws `assets` from the market, and burns `owner` shares.
-    /// @dev   Does not force collateral posted to be withdrawn.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @dev Does not force collateral posted to be withdrawn.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.
@@ -319,7 +376,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Withdraws assets, quoted in `shares` from the market,
     ///         and burns `owner` shares.
-    /// @dev   Does not force collateral to be withdrawn.
+    /// @dev Does not force collateral to be withdrawn.
     /// @param shares The amount of shares to be redeemed.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
@@ -333,7 +390,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         assets = _redeem(shares, receiver, owner, false);
     }
 
-    /// @notice Transfer `amount` tokens from caller to `to`.
+    /// @notice Transfers `amount` tokens from caller to `to`.
     /// @param to The address of the destination account to receive `amount`
     ///           shares.
     /// @param amount The number of tokens to transfer from caller to `to`.
@@ -345,19 +402,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Fails if transfer not allowed.
         marketManager.canTransfer(address(this), msg.sender, amount);
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for caller.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), msg.sender, amount);
 
         // Execute transfer.
         super.transfer(to, amount);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `to`.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
     }
 
-    /// @notice Transfer `amount` tokens from `from` to `to`.
+    /// @notice Transfers `amount` tokens from `from` to `to`.
     /// @param from The address of the account transferring `amount`
     ///             shares from.
     /// @param to The address of the destination account to receive `amount`
@@ -372,13 +429,13 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Fails if transfer not allowed.
         marketManager.canTransfer(address(this), from, amount);
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for `from`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), from, amount);
 
         // Execute transfer.
         super.transferFrom(from, to, amount);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `to`.
         gaugePool.deposit(address(this), to, amount);
 
         return true;
@@ -412,20 +469,20 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         // Calculate tokens to transfer to `liquidator`.
         uint256 liquidatorTokens = liquidatedTokens - protocolTokens;
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values for `account`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), account, liquidatedTokens);
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, liquidatorTokens);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `liquidator`.
         gaugePool.deposit(address(this), liquidator, liquidatorTokens);
 
         if (protocolTokens > 0) {
             address daoAddress = centralRegistry.daoAddress();
             // Efficiently transfer token balances from `account` to `daoAddress`.
             _transferFromWithoutAllowance(account, daoAddress, protocolTokens);
-            // Emit deposit events on gauge pool.
+            // Update gauge pool values for new reserves.
             gaugePool.deposit(address(this), daoAddress, protocolTokens);
         }
     }
@@ -452,17 +509,19 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        // Cache gaugePool then emit withdraw events on gauge pool.
+        // Cache gaugePool, then update gauge pool values, for `account`.
         IGaugePool gaugePool = _gaugePool();
         gaugePool.withdraw(address(this), account, shares);
 
         // Efficiently transfer token balances from `account` to `liquidator`.
         _transferFromWithoutAllowance(account, liquidator, shares);
-        // Emit deposit events on gauge pool.
+        // Update gauge pool values for `liquidator`.
         gaugePool.deposit(address(this), liquidator, shares);
     }
 
-    /// @notice Returns whether the MToken is a cToken or not.
+    /// @notice Returns the type of Curvance token.
+    /// @dev true = Collateral token; false = Debt token.
+    /// @return Whether this token is a cToken or not.
     function isCToken() public pure returns (bool) {
         return true;
     }
@@ -494,7 +553,6 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Returns the total number of assets backing shares.
     function totalAssets() public view virtual override returns (uint256) {
-        // Returns stored internal balance.
         return _totalAssets;
     }
 
@@ -539,7 +597,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// @param shares The number of shares to theoretically use
     ///               for conversion to assets.
     /// @return The number of assets a user would receive for converting
-    ///         `assets`.
+    ///         `shares`.
     function convertToAssets(
         uint256 shares
     ) public view override returns (uint256) {
@@ -590,10 +648,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Efficiently transfers cToken balances without checking approvals.
+    /// @notice Helper function to efficiently transfers cToken balances
+    ///         without checking approvals.
     /// @dev This is only used in liquidations where maximal gas
-    ///      optimization improves protocol mempool competitiveness,
+    ///      optimization improves protocol MEV competitiveness,
     ///      improving protocol safety.
+    ///      Emits a {Transfer} event.
     /// @param from The address of the account transferring `amount`
     ///             shares from.
     /// @param to The address of the destination account to receive `amount`
@@ -637,11 +697,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         }
     }
 
-    /// @notice Used to start a CToken market, executed via marketManager.
+    /// @notice Starts a cToken market, executed via marketManager.
     /// @dev This initial mint is a failsafe against rounding exploits,
-    ///      although, we protect against it in many ways,
+    ///      although, we protect against them in many ways,
     ///      better safe than sorry.
-    /// @param by The account initializing the market.
+    /// @dev Emits a {Deposit} event.
+    /// @param by The account initializing the cToken market.
     function _startMarket(address by) internal {
         if (msg.sender != address(marketManager)) {
             _revert(_UNAUTHORIZED_SELECTOR);
@@ -679,6 +740,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _decimals;
     }
 
+    /// @notice Returns the amount of shares that would be exchanged by the
+    ///         vault for `assets` provided.
+    /// @param assets The number of assets to theoretically use
+    ///               for conversion to shares.
+    /// @param ta The total number of assets to theoretically use
+    ///           for conversion to shares.
+    /// @return shares The number of shares a user would receive for
+    ///                converting `assets`.
     function _convertToShares(
         uint256 assets,
         uint256 ta
@@ -690,6 +759,14 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(assets, totalShares, ta);
     }
 
+    /// @notice Returns the amount of assets that would be exchanged by the
+    ///         vault for `shares` provided.
+    /// @param shares The number of shares to theoretically use
+    ///               for conversion to assets.
+    /// @param ta The total number of assets to theoretically use
+    ///           for conversion to assets.
+    /// @return assets The number of assets a user would receive for
+    ///                converting `shares`.
     function _convertToAssets(
         uint256 shares,
         uint256 ta
@@ -701,6 +778,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDiv(shares, ta, totalShares);
     }
 
+    /// @notice Simulates the effects of a user deposit at the current
+    ///         block.
+    /// @param assets The number of assets to preview a deposit call.
+    /// @param ta The total number of assets to simulate a deposit at the
+    ///           current block.
+    /// @return The shares received for depositing `assets`.
     function _previewDeposit(
         uint256 assets,
         uint256 ta
@@ -708,6 +791,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToShares(assets, ta);
     }
 
+    /// @notice Simulates the effects of a user mint at the current
+    ///         block.
+    /// @param shares The number of shares to preview a mint call.
+    /// @param ta The total number of assets to simulate a mint at the
+    ///           current block.
+    /// @return assets The assets received for minting `shares`.
     function _previewMint(
         uint256 shares,
         uint256 ta
@@ -719,6 +808,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDivUp(shares, ta, totalShares);
     }
 
+    /// @notice Simulates the effects of a user withdrawal at the current
+    ///         block.
+    /// @param assets The number of assets to preview a withdrawal call.
+    /// @param ta The total number of assets to simulate a withdrawal at the
+    ///           current block.
+    /// @return shares The shares received for withdrawing `assets`.
     function _previewWithdraw(
         uint256 assets,
         uint256 ta
@@ -730,6 +825,12 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
             : FixedPointMathLib.mulDivUp(assets, totalShares, ta);
     }
 
+    /// @notice Simulates the effects of a user redemption at the current
+    ///         block.
+    /// @param shares The number of shares to preview a redemption call.
+    /// @param ta The total number of assets to simulate a redemption at the
+    ///           current block.
+    /// @return The assets received for redeeming `shares`.
     function _previewRedeem(
         uint256 shares,
         uint256 ta
@@ -737,7 +838,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
         return _convertToAssets(shares, ta);
     }
 
-    /// @notice Returns gauge pool contract address.
+    /// @notice Returns the gauge pool contract address.
     /// @return The gauge controller contract address, in `IGaugePool` form.
     function _gaugePool() internal view returns (IGaugePool) {
         return marketManager.gaugePool();
@@ -760,7 +861,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
     /// INTERNAL CONVERSION FUNCTIONS TO OVERRIDE ///
 
     /// @notice Deposits `assets` and mints shares to `receiver`.
-    /// @param assets The amount of the underlying asset to supply.
+    /// @param assets The amount of the underlying assets to supply.
     /// @param receiver The account that should receive the cToken shares.
     /// @return shares The amount of cToken shares received by `receiver`.
     function _deposit(
@@ -781,7 +882,7 @@ abstract contract CTokenBase is ERC4626, ReentrancyGuard {
 
     /// @notice Withdraws `assets` to `receiver` from the market and burns
     ///         `owner` shares.
-    /// @param assets The amount of the underlying asset to withdraw.
+    /// @param assets The amount of the underlying assets to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.

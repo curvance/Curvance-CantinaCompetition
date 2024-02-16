@@ -33,7 +33,8 @@ contract BalancerStablePoolAdaptor is BalancerBaseAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Balancer stable pool address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Balancer stable pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///

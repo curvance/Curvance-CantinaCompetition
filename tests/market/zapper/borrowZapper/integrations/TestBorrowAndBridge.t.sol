@@ -5,7 +5,7 @@ import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
-import { ZapperBorrow } from "contracts/market/zapper/ZapperBorrow.sol";
+import { BorrowZapper } from "contracts/market/utils/BorrowZapper.sol";
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { MockCallDataChecker } from "contracts/mocks/MockCallDataChecker.sol";
 
@@ -24,7 +24,7 @@ contract TestBorrowAndBridge is TestBaseMarket {
     MockDataFeed public mockWethFeed;
     MockDataFeed public mockRethFeed;
 
-    ZapperBorrow public zapperBorrow;
+    BorrowZapper public borrowZapper;
 
     function setUp() public override {
         _fork(19140000);
@@ -119,7 +119,7 @@ contract TestBorrowAndBridge is TestBaseMarket {
 
         deal(user1, _ONE);
 
-        zapperBorrow = new ZapperBorrow(
+        borrowZapper = new BorrowZapper(
             ICentralRegistry(address(centralRegistry))
         );
     }
@@ -166,7 +166,7 @@ contract TestBorrowAndBridge is TestBaseMarket {
         params.tokenIn = _DAI_ADDRESS;
         params.tokenOut = _USDC_ADDRESS;
         params.fee = 3000;
-        params.recipient = address(zapperBorrow);
+        params.recipient = address(borrowZapper);
         params.deadline = block.timestamp;
         params.amountIn = 500e18;
         params.amountOutMinimum = 0;
@@ -176,13 +176,13 @@ contract TestBorrowAndBridge is TestBaseMarket {
             params
         );
 
-        uint256 messageFee = zapperBorrow.quoteWormholeFee(42161, false);
+        uint256 messageFee = borrowZapper.quoteWormholeFee(42161, false);
 
         // try borrow()
         vm.startPrank(user1);
 
-        dDAI.setBorrowApproval(address(zapperBorrow), true);
-        zapperBorrow.borrowAndBridge{ value: messageFee }(
+        dDAI.setDelegateApproval(address(borrowZapper), true);
+        borrowZapper.borrowAndBridge{ value: messageFee }(
             address(dDAI),
             500e18,
             swapData,

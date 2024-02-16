@@ -236,11 +236,11 @@ contract TestPositionFolding is TestBaseMarket {
         address[] memory tokens = new address[](2);
         tokens[0] = _RETH_ADDRESS;
         tokens[1] = _WETH_ADDRESS;
-        leverageData.zapperCall.target = address(zapper);
+        leverageData.zapperCall.target = address(complexZapper);
         leverageData.zapperCall.call = abi.encodeWithSelector(
-            Zapper.balancerIn.selector,
+            ComplexZapper.balancerIn.selector,
             address(0),
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 _WETH_ADDRESS,
                 leverageData.zapperCall.inputAmount,
                 address(balRETH),
@@ -292,12 +292,12 @@ contract TestPositionFolding is TestBaseMarket {
         address[] memory tokens = new address[](2);
         tokens[0] = _RETH_ADDRESS;
         tokens[1] = _WETH_ADDRESS;
-        deleverageData.zapperCall.target = address(zapper);
+        deleverageData.zapperCall.target = address(complexZapper);
         deleverageData.zapperCall.call = abi.encodeWithSelector(
-            Zapper.balancerOut.selector,
+            ComplexZapper.balancerOut.selector,
             _BALANCER_VAULT,
             _BAL_WETH_RETH_POOLID,
-            Zapper.ZapperData(
+            ComplexZapper.ZapperData(
                 address(balRETH),
                 deleverageData.zapperCall.inputAmount,
                 _WETH_ADDRESS,

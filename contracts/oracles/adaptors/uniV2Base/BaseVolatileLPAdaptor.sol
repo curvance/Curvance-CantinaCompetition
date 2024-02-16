@@ -10,10 +10,10 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
 import { IUniswapV2Pair } from "contracts/interfaces/external/uniswap/IUniswapV2Pair.sol";
 
-abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
+abstract contract BaseVolatileLPAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
-    /// @notice Stores configuration data for Uniswap V2 stable style
+    /// @notice Stores configuration data for Uniswap V2 volatile style
     ///         Twap price sources.
     /// @param token0 Underlying token0 address.
     /// @param decimals0 Underlying decimals for token0.
@@ -28,12 +28,13 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Stable pool address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Volatile pool address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// ERRORS ///
 
-    error BaseStableLPAdaptor__AssetIsNotSupported();
+    error BaseVolatileLPAdaptor__AssetIsNotSupported();
 
     /// CONSTRUCTOR ///
 
@@ -44,7 +45,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Retrieves the price of `asset`, an lp token,
-    ///         for a Univ2 style stable pool.
+    ///         for a Univ2 style volatile pool.
     /// @dev Price is returned in USD or ETH depending on 'inUSD' parameter.
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
@@ -62,7 +63,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Adds pricing support for `asset`, an lp token for
-    ///         a Univ2 style stable liquidity pool.
+    ///         a Univ2 style volatile liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
     /// @param asset The address of the lp token to support pricing for.
@@ -78,7 +79,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Retrieves the price of `asset`, an lp token,
-    ///         for a Univ2 style stable pool.
+    ///         for a Univ2 style volatile pool.
     /// @dev Math source: https://blog.alphaventuredao.io/fair-lp-token-pricing/
     /// @param asset The address of the asset for which the price is needed.
     /// @param inUSD A boolean to determine if the price should be returned in
@@ -94,10 +95,10 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     ) internal view returns (PriceReturnData memory pData) {
         // Validate we support pricing `asset`.
         if (!isSupportedAsset[asset]) {
-            revert BaseStableLPAdaptor__AssetIsNotSupported();
+            revert BaseVolatileLPAdaptor__AssetIsNotSupported();
         }
 
-        // Read Adaptor storage and grab pool tokens.
+        // Cache AdaptorData and grab pool tokens.
         AdaptorData memory data = adaptorData[asset];
         IUniswapV2Pair pool = IUniswapV2Pair(asset);
 
@@ -106,13 +107,11 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         // Query LP reserves.
         (uint256 reserve0, uint256 reserve1, ) = pool.getReserves();
         // convert to 18 decimals.
-        if (data.decimals0 != 18) {
-            reserve0 = (reserve0 * 1e18) / (10 ** data.decimals0);
-        }
+        reserve0 = (reserve0 * 1e18) / (10 ** data.decimals0);
+        reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
 
-        if (data.decimals1 != 18) {
-            reserve1 = (reserve1 * 1e18) / (10 ** data.decimals1);
-        }
+        // sqrt(reserve0 * reserve1).
+        uint256 sqrtReserve = FixedPointMathLib.sqrt(reserve0 * reserve1);
 
         uint256 price0;
         uint256 price1;
@@ -145,13 +144,10 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
             return pData;
         }
 
-        uint256 finalPrice = _getFairPrice(
-            reserve0,
-            reserve1,
-            price0,
-            price1,
-            totalSupply
-        );
+        // price = 2 * sqrt(reserve0 * reserve1) * sqrt(price0 * price1) / totalSupply.
+        uint256 finalPrice = (2 *
+            sqrtReserve *
+            FixedPointMathLib.sqrt(price0 * price1)) / totalSupply;
 
         // Validate price will not overflow on conversion to uint240.
         if (_checkOracleOverflow(finalPrice)) {
@@ -164,7 +160,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     }
 
     /// @notice Helper function for pricing support for `asset`,
-    ///         an lp token for a Univ2 style stable liquidity pool.
+    ///         an lp token for a Univ2 style volatile liquidity pool.
     /// @dev Should be called before `OracleRouter:addAssetPriceFeed`
     ///      is called.
     /// @param asset The address of the lp token to add pricing support for.
@@ -191,7 +187,7 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
     function _removeAsset(address asset) internal {
         // Validate that `asset` is currently supported.
         if (!isSupportedAsset[asset]) {
-            revert BaseStableLPAdaptor__AssetIsNotSupported();
+            revert BaseVolatileLPAdaptor__AssetIsNotSupported();
         }
 
         // Wipe config mapping entries for a gas refund.
@@ -202,37 +198,5 @@ abstract contract BaseStableLPAdaptor is BaseOracleAdaptor {
         // Notify the oracle router that we are going to stop supporting
         // the asset.
         IOracleRouter(centralRegistry.oracleRouter()).notifyFeedRemoval(asset);
-    }
-
-    /// @notice Helper function in calculating the price of an lp token.
-    ///         Uses reserves, and pricing of each underlying token versus
-    ///         the total supply of lp tokens making up the pool.
-    /// @param reserve0 The amount of underlying token0 inside the liquidity pool.
-    /// @param reserve1 The amount of underlying token1 inside the liquidity pool.
-    /// @param price0 The price of token0 according to the Oracle Router.
-    /// @param price0 The price of token1 according to the Oracle Router.
-    /// @param totalSupply The total supply of lp tokens inside the lp.
-    /// @return Fair value pricing for the lp token.
-    function _getFairPrice(
-        uint256 reserve0,
-        uint256 reserve1,
-        uint256 price0,
-        uint256 price1,
-        uint256 totalSupply
-    ) internal pure returns (uint256) {
-        // constant product = x^3 * y + x * y^3.
-        uint256 sqrtReserve = FixedPointMathLib.sqrt(
-            FixedPointMathLib.sqrt(reserve0 * reserve1) *
-                FixedPointMathLib.sqrt(
-                    reserve0 * reserve0 + reserve1 * reserve1
-                )
-        );
-        uint256 ratio = ((1e18) * price0) / price1;
-        uint256 sqrtPrice = FixedPointMathLib.sqrt(
-            FixedPointMathLib.sqrt((1e18) * ratio) *
-                FixedPointMathLib.sqrt(1e36 + ratio * ratio)
-        );
-        return
-            ((((1e18) * sqrtReserve) / sqrtPrice) * price0 * 2) / totalSupply;
     }
 }

@@ -16,8 +16,8 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
-import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
+import { ComplexZapper } from "contracts/market/utils/ComplexZapper.sol";
+import { PositionFolding } from "contracts/market/utils/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
@@ -117,7 +117,7 @@ contract TestBaseMarket is TestBase {
     uint256 public lockBoostMultiplier = 10000; // 110%
     uint256 public marketInterestFactor = 1000; // 10%
 
-    Zapper public zapper;
+    ComplexZapper public complexZapper;
 
     function setUp() public virtual {
         _fork(18031848);
@@ -144,7 +144,7 @@ contract TestBaseMarket is TestBase {
         _deployCBALRETH();
         _deployCBALRETHWithExitFee();
 
-        _deployZapper();
+        _deployComplexZapper();
         _deployPositionFolding();
 
         oracleRouter.addMTokenSupport(address(dUSDC));
@@ -475,7 +475,7 @@ contract TestBaseMarket is TestBase {
         );
         return cBALRETH;
     }
-
+    
     function _deployCBALRETHWithExitFee()
         internal
         returns (MockAuraCTokenWithExitFee)
@@ -492,14 +492,14 @@ contract TestBaseMarket is TestBase {
         return cBALRETHWithExitFee;
     }
 
-    function _deployZapper() internal returns (Zapper) {
-        zapper = new Zapper(
+    function _deployComplexZapper() internal returns (ComplexZapper) {
+        complexZapper = new ComplexZapper(
             ICentralRegistry(address(centralRegistry)),
             address(marketManager),
             _WETH_ADDRESS
         );
-        centralRegistry.addZapper(address(zapper));
-        return zapper;
+        centralRegistry.addZapper(address(complexZapper));
+        return complexZapper;
     }
 
     function _deployPositionFolding() internal returns (PositionFolding) {

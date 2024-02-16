@@ -36,8 +36,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -61,8 +61,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
         
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -88,8 +88,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -123,8 +123,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -138,8 +138,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
     function testRevertAddAsset__QuoteAssetIsNotSupported() public {
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -162,8 +162,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -188,8 +188,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = address(0);
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = address(0);
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -212,8 +212,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -240,8 +240,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -264,8 +264,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
@@ -288,8 +288,8 @@ contract TestCurve2PoolLPAdaptor is TestBaseOracleRouter {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = 0x21E27a5E5513D6e65C4f830167390997aA84843a;
-        data.underlyingOrConstituent0 = ETH;
-        data.underlyingOrConstituent1 = STETH;
+        data.underlying0 = ETH;
+        data.underlying1 = STETH;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;
