@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
@@ -93,8 +94,8 @@ contract BlastNativeYieldManager is ReentrancyGuard {
             isMarketManager[marketManagers[i++]] = true;
         }
 
-        // Set gas fees yield to claimable and then pass Governor permissioning to
-        // Curvance DAO.
+        // Set gas fees yield to claimable and then pass Governor
+        // permissioning to Curvance DAO.
         CHAIN_YIELD_MANAGER.configureClaimableYield();
         CHAIN_YIELD_MANAGER.configureGovernor(centralRegistry_.daoAddress());
 
@@ -119,15 +120,22 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         uint256 WETHYield,
         uint256 USDBYield
     ) {
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the yield manager.
         if (!isMarketManager[marketManager]) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
+        // Validate that the caller is a token listed inside the associated
+        // Market Manager.
         if (!IMarketManager(marketManager).isListed(msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 
-        uint256 gasYield = CHAIN_YIELD_MANAGER.claimMaxGas(msg.sender, address(this));
+        uint256 gasYield = CHAIN_YIELD_MANAGER.claimMaxGas(
+            msg.sender,
+            address(this)
+        );
         uint256 WETHPrior = WETH_YIELD_MANAGER.balanceOf(address(this));
         uint256 USDBPrior = USDB_YIELD_MANAGER.balanceOf(address(this));
         uint256 WETHPerSecond;
@@ -180,15 +188,33 @@ contract BlastNativeYieldManager is ReentrancyGuard {
 
 
         if (WETHPerSecond > 0){
-            gaugePool.setRewardPerSec(nextEpoch, address(WETH_YIELD_MANAGER), WETHPerSecond);
+            // Approve WETH to the Gauge Pool, if necessary.
+            SwapperLib._approveTokenIfNeeded(
+                address(WETH_YIELD_MANAGER),
+                address(gaugePool),
+                WETHYield
+            );
+
+            gaugePool.setRewardPerSec(
+                nextEpoch,
+                address(WETH_YIELD_MANAGER),
+                WETHPerSecond
+            );
+
+            // Remove any excess approval.
+            SwapperLib._removeApprovalIfNeeded(
+                address(WETH_YIELD_MANAGER),
+                address(gaugePool)
+            );
         }
 
-        // Cache new WETH balance, its possible we received rewards back by calling
-        // gauge system, or if no rewards were set because yield was too low.
+        // Cache new WETH balance, its possible we received rewards back by
+        // calling gauge system, or if no rewards were set because yield was
+        // too low.
         uint256 WETHAfter = WETH_YIELD_MANAGER.balanceOf(address(this));
 
-        // We offset the prior to what we expect to have been removed from prior balance
-        // after streaming native yield via gauge system.
+        // We offset the prior to what we expect to have been removed from
+        // prior balance after streaming native yield via gauge system.
         WETHPrior -= WETHYield;
 
         if (WETHAfter != WETHPrior) {
@@ -209,15 +235,33 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         }
 
         if (USDBPerSecond > 0){
-            gaugePool.setRewardPerSec(nextEpoch, address(USDB_YIELD_MANAGER), USDBPerSecond);
+            // Approve USDB to the Gauge Pool, if necessary.
+            SwapperLib._approveTokenIfNeeded(
+                address(USDB_YIELD_MANAGER),
+                address(gaugePool),
+                USDBYield
+            );
+
+            gaugePool.setRewardPerSec(
+                nextEpoch,
+                address(USDB_YIELD_MANAGER),
+                USDBPerSecond
+            );
+
+            // Remove any excess approval.
+            SwapperLib._removeApprovalIfNeeded(
+                address(USDB_YIELD_MANAGER),
+                address(gaugePool)
+            );
         }
 
-        // Cache new WETH balance, its possible we received rewards back by calling
-        // gauge system, or if no rewards were set because yield was too low.
+        // Cache new WETH balance, its possible we received rewards back by
+        // calling gauge system, or if no rewards were set because yield
+        // was too low.
         uint256 USDBAfter = USDB_YIELD_MANAGER.balanceOf(address(this));
 
-        // We offset the prior to what we expect to have been removed from prior balance
-        // after streaming native yield via gauge system.
+        // We offset the prior to what we expect to have been remove
+        // from prior balance after streaming native yield via gauge system.
         USDBPrior -= USDBYield;
 
         if (USDBAfter != USDBPrior) {
@@ -241,7 +285,10 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     /// @dev Only callable by Curvance Central Registry.
     /// @param notifiedMarketManager The Market Manager contract to modify support
     ///                              for use in Curvance Yield Manager.
-    function notifyIsMarketManager(address notifiedMarketManager, bool isSupported) external {
+    function notifyIsMarketManager(
+        address notifiedMarketManager,
+        bool isSupported
+    ) external {
         address _centralRegistry = address(centralRegistry);
         assembly {
             if iszero(eq(caller(), _centralRegistry)) {
@@ -258,7 +305,9 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     /// @dev Returns 0 if the Yield Router is not a governor of `delegatedAddress`.
     /// @param delegatedAddress The address to check pending gas fees for.
     /// @return The pending claimable native yield.
-    function getClaimableNativeYield(address delegatedAddress) external view returns (uint256) {
+    function getClaimableNativeYield(
+        address delegatedAddress
+    ) external view returns (uint256) {
         if (!CHAIN_YIELD_MANAGER.isGovernor(delegatedAddress)) {
             return 0;
         }
