@@ -134,7 +134,10 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address marketManager_) Delegable(centralRegistry_) {
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address marketManager_
+    ) Delegable(centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),

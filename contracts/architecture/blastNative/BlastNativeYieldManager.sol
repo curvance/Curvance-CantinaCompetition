@@ -112,7 +112,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     /// @param claimUSDBYield Whether USDB native yield should be claimed.
     /// @return WETHYield The amount of WETH yield claimed.
     /// @return USDBYield The amount of USDB yield claimed.
-    function claimGovernorYield(
+    function claimYieldForGauge(
         address marketManager,
         bool claimWETHYield,
         bool claimUSDBYield

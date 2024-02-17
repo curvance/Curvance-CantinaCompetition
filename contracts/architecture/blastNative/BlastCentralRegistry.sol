@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-
-import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { CentralRegistry, ICentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 
 import { IBlastNativeYieldRouter } from "contracts/interfaces/blast/IBlastNativeYieldRouter.sol";
 import { IBlastCentralRegistry } from "contracts/interfaces/blast/IBlastCentralRegistry.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IBlast } from "contracts/interfaces/external/blast/IBlast.sol";
 
 contract BlastCentralRegistry is CentralRegistry {
 
@@ -44,7 +43,13 @@ contract BlastCentralRegistry is CentralRegistry {
         // Provide base dao permissioning to `nativeYieldManager`,
         // so that it can register native yield rewards in the gauge system.
         hasDaoPermissions[daoAddress] = true;
-       
+
+        IBlast yieldConfiguration = IBlast(0x4300000000000000000000000000000000000002);
+
+        // Set gas fees yield to claimable and then pass Governor
+        // permissioning to native yield manager.
+        yieldConfiguration.configureClaimableYield();
+        yieldConfiguration.configureGovernor(.daoAddress());
     }
 
     /// PUBLIC FUNCTIONS ///
