@@ -2,6 +2,9 @@
 pragma solidity ^0.8.17;
 
 interface IGaugePool {
+    /// @notice Returns current epoch number.
+    function currentEpoch() external view returns (uint256);
+
     /// @notice Sets emission rates of tokens of next epoch.
     /// @dev Only the protocol messaging hub can call this.
     /// @param epoch The epoch to set emission rates for, should be the next epoch.
@@ -12,6 +15,18 @@ interface IGaugePool {
         uint256 epoch,
         address[] memory tokens,
         uint256[] memory poolWeights
+    ) external;
+
+    /// @notice Used to update gauge pool rewards for `rewardToken`, 
+    ///         during `epoch` with `newRewardPerSec`.
+    /// @dev This is only be used for updating partner gauge rewards.
+    /// @param epoch The epoch to set rewards for, should be the next epoch.
+    /// @param rewardToken The address of reward token to be updated.
+    /// @param newRewardPerSec The `rewardToken` reward rate, in seconds.
+    function setRewardPerSec(
+        uint256 epoch,
+        address rewardToken,
+        uint256 newRewardPerSec
     ) external;
 
     /// @notice Deposit into gauge pool.

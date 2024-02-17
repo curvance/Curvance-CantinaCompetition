@@ -1028,97 +1028,6 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
-    /// @notice Adds a new Market Manager and associated fee configurations.
-    /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 50% interest fee.
-    ///      Cannot be a supported Market Manager contract prior.
-    ///      Emits a {NewCurvanceContract} and {InterestFeeSet} events.
-    /// @param newMarketManager The new Market Manager contract to support
-    ///                         for use in Curvance.
-    /// @param marketInterestFactor The interest factor associated with
-    ///                             the market manager.
-    function addMarketManager(
-        address newMarketManager,
-        uint256 marketInterestFactor
-    ) external {
-        _checkElevatedPermissions();
-
-        // Validate `newMarketManager` is not currently supported.
-        if (isMarketManager[newMarketManager]) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        // Ensure that `newMarketManager` is a market manager.
-        if (
-            !ERC165Checker.supportsInterface(
-                newMarketManager,
-                type(IMarketManager).interfaceId
-            )
-        ) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        /// Interest fee cannot be more than 50%.
-        if (marketInterestFactor > 5000) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        isMarketManager[newMarketManager] = true;
-        // We store supported markets semi redundantly for offchain querying.
-        marketManagers.push(newMarketManager);
-        // Convert interest factor parameter from basis points to `WAD`
-        // for precision calculations.
-        protocolInterestFactor[newMarketManager] = _bpToWad(
-            marketInterestFactor
-        );
-
-        emit NewCurvanceContract("Market Manager", newMarketManager);
-        emit InterestFeeSet(newMarketManager, marketInterestFactor);
-    }
-
-    /// @notice Removes a current market manager from Curvance.
-    /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Market Manager contract prior. 
-    ///      Emits a {RemovedCurvanceContract} event.
-    /// @param currentMarketManager The supported Market Manager contract
-    ///                             to remove from Curvance.
-    function removeMarketManager(address currentMarketManager) external {
-        _checkElevatedPermissions();
-
-        // Validate `currentMarketManager` is currently supported.
-        if (!isMarketManager[currentMarketManager]) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        delete isMarketManager[currentMarketManager];
-
-        // Cache market list.
-        uint256 numMarkets = marketManagers.length;
-        uint256 marketIndex = numMarkets;
-
-        for (uint256 i; i < numMarkets; ++i) {
-            if (marketManagers[i] == currentMarketManager) {
-                marketIndex = i;
-                break;
-            }
-        }
-
-        // Validate we found the market and remove 1 from numMarkets
-        // so it corresponds to last element index now (starting at index 0).
-        // This is an additional runtime invariant check for extra security.
-        if (marketIndex >= numMarkets--) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        // Copy last `marketManagers` slot to `marketIndex` slot.
-        marketManagers[marketIndex] = marketManagers[numMarkets];
-        // Remove the last element to remove `currentMarketManager`
-        // from marketManagers list.
-        marketManagers.pop();
-
-        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
-    }
-
     /// @notice Adds an Endpoint contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
     ///      Cannot be a supported Endpoint contract prior. 
@@ -1166,10 +1075,106 @@ contract CentralRegistry is ERC165 {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @inheritdoc ERC165
+    /// @notice Adds a new Market Manager and associated fee configurations.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council,
+    ///      can only have a maximum value of 50% interest fee.
+    ///      Cannot be a supported Market Manager contract prior.
+    ///      Emits a {NewCurvanceContract} and {InterestFeeSet} events.
+    /// @param newMarketManager The new Market Manager contract to support
+    ///                         for use in Curvance.
+    /// @param marketInterestFactor The interest factor associated with
+    ///                             the market manager.
+    function addMarketManager(
+        address newMarketManager,
+        uint256 marketInterestFactor
+    ) public virtual {
+        _checkElevatedPermissions();
+
+        // Validate `newMarketManager` is not currently supported.
+        if (isMarketManager[newMarketManager]) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Ensure that `newMarketManager` is a market manager.
+        if (
+            !ERC165Checker.supportsInterface(
+                newMarketManager,
+                type(IMarketManager).interfaceId
+            )
+        ) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        /// Interest fee cannot be more than 50%.
+        if (marketInterestFactor > 5000) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        isMarketManager[newMarketManager] = true;
+        // We store supported markets semi redundantly for offchain querying.
+        marketManagers.push(newMarketManager);
+        // Convert interest factor parameter from basis points to `WAD`
+        // for precision calculations.
+        protocolInterestFactor[newMarketManager] = _bpToWad(
+            marketInterestFactor
+        );
+
+        emit NewCurvanceContract("Market Manager", newMarketManager);
+        emit InterestFeeSet(newMarketManager, marketInterestFactor);
+    }
+
+    /// @notice Removes a current market manager from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Market Manager contract prior. 
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentMarketManager The supported Market Manager contract
+    ///                             to remove from Curvance.
+    function removeMarketManager(
+        address currentMarketManager
+    ) public virtual {
+        _checkElevatedPermissions();
+
+        // Validate `currentMarketManager` is currently supported.
+        if (!isMarketManager[currentMarketManager]) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        delete isMarketManager[currentMarketManager];
+
+        // Cache market list.
+        uint256 numMarkets = marketManagers.length;
+        uint256 marketIndex = numMarkets;
+
+        for (uint256 i; i < numMarkets; ++i) {
+            if (marketManagers[i] == currentMarketManager) {
+                marketIndex = i;
+                break;
+            }
+        }
+
+        // Validate we found the market and remove 1 from numMarkets
+        // so it corresponds to last element index now (starting at index 0).
+        // This is an additional runtime invariant check for extra security.
+        if (marketIndex >= numMarkets--) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Copy last `marketManagers` slot to `marketIndex` slot.
+        marketManagers[marketIndex] = marketManagers[numMarkets];
+        // Remove the last element to remove `currentMarketManager`
+        // from marketManagers list.
+        marketManagers.pop();
+
+        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
+    }
+
+    /// @notice Returns true if this contract implements the interface defined by
+    ///         `interfaceId`.
+    /// @param interfaceId The interface to check for implementation.
+    /// @return Whether `interfaceId` is implemented or not.
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override returns (bool) {
+    ) public view virtual override returns (bool) {
         return
             interfaceId == type(ICentralRegistry).interfaceId ||
             super.supportsInterface(interfaceId);
