@@ -110,8 +110,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
 
     /// @notice Claims delegated yield on behalf of the caller. Will natively
     ///         revert if not delegated, works out of the box for any
-    ///         protocol meaning anyone can benefit from the composable nature
-    ///         of the smart contract.
+    ///         Curvance mToken. Deposits rewards into Gauge System.
     /// @dev Only callable by governee themself. Natively claims gas rebate.
     /// @param marketManager The Market Manager associated with the mToken
     ///                      managing it native yield.
@@ -299,9 +298,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     }
 
     /// @notice Claims delegated yield on behalf of the caller. Will natively
-    ///         revert if not delegated, works out of the box for any
-    ///         protocol meaning anyone can benefit from the composable nature
-    ///         of the smart contract.
+    ///         revert if not delegated. Transfers rewards to governee
     /// @dev Only callable by governee themself. Natively claims gas rebate.
     /// @param marketManager The Market Manager associated with the mToken
     ///                      managing it native yield.
@@ -327,16 +324,6 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         // Market Manager.
         if (!IMarketManager(marketManager).isListed(msg.sender)) {
             _revert(_UNAUTHORIZED_SELECTOR);
-        }
-
-        uint256 gasYield = CHAIN_YIELD_MANAGER.claimMaxGas(
-            msg.sender,
-            address(this)
-        );
-
-        if (gasYield > 0) {
-            IWETH(address(WETH_YIELD_MANAGER)).deposit{ value: gasYield }();
-            WETHYield += gasYield;
         }
 
         if (claimWETHYield) {

@@ -20,6 +20,7 @@ contract BlastCentralRegistry is CentralRegistry {
 
     /// STORAGE ///
 
+    /// @notice The address of Curvance's native Yield Manager.
     address public immutable nativeYieldManager;
 
     /// ERRORS ///
@@ -78,7 +79,6 @@ contract BlastCentralRegistry is CentralRegistry {
         // Cache Yield Manager storage value.
         IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(nativeYieldManager);
         address nonMToken;
-        uint256 yieldClaimed;
 
         for (uint256 i; i < nonMTokensLength; ) {
             nonMToken = nonMTokens[i++];
