@@ -1,20 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { CentralRegistry, ICentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { CentralRegistry, ICentralRegistry, IMToken } from "contracts/architecture/CentralRegistry.sol";
 
-import { IBlastNativeYieldRouter } from "contracts/interfaces/blast/IBlastNativeYieldRouter.sol";
+import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
+
+import { IBlastNativeYieldManager } from "contracts/interfaces/blast/IBlastNativeYieldManager.sol";
 import { IBlastCentralRegistry } from "contracts/interfaces/blast/IBlastCentralRegistry.sol";
 import { IBlast } from "contracts/interfaces/external/blast/IBlast.sol";
+import { IWETH } from "contracts/interfaces/IWETH.sol";
 
 contract BlastCentralRegistry is CentralRegistry {
+
+    /// CONSTANT ///
+
+    /// @notice The address is managing WETH yield, also the token itself.
+    /// @dev Will change when deploying to mainnet.
+    IWETH public constant WETH = IWETH(0x4200000000000000000000000000000000000023);
 
     /// STORAGE ///
 
     address public immutable nativeYieldManager;
- 
+
     /// ERRORS ///
 
+    error BlastCentralRegistry__Unauthorized();
     error BlastCentralRegistry__InvalidNativeYieldManager();
 
     /// CONSTRUCTOR ///
@@ -49,7 +59,42 @@ contract BlastCentralRegistry is CentralRegistry {
         // Set gas fees yield to claimable and then pass Governor
         // permissioning to native yield manager.
         yieldConfiguration.configureClaimableYield();
-        yieldConfiguration.configureGovernor(.daoAddress());
+        yieldConfiguration.configureGovernor(daoAddress);
+    }
+
+    /// EXTERNAL FUNCTIONS ///
+
+    /// @notice Withdraws all native yield fees from non-MToken addresses.
+    /// @param nonMTokens Array of non-MTokens addresses to withdraw native from.
+    function withdrawNativeYield(address[] calldata nonMTokens) external {
+        // Match permissioning check to normal withdrawReserves().
+        _checkDaoPermissions();
+
+        uint256 nonMTokensLength = nonMTokens.length;
+        if (nonMTokensLength == 0) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Cache Yield Manager storage value.
+        IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(nativeYieldManager);
+        address nonMToken;
+        uint256 yieldClaimed;
+
+        for (uint256 i; i < nonMTokensLength; ) {
+            nonMToken = nonMTokens[i++];
+
+            // Try to call isCToken as if the address was an mToken.
+            (bool success, ) = nonMToken.staticcall(
+                abi.encodePacked(IMToken(nonMToken).isCToken.selector)
+            );
+            // If the call was successful we called a Curvance mToken which
+            // DAO should not be able to claim rewards for.
+            if (success) {
+                revert BlastCentralRegistry__Unauthorized();
+            }
+        }
+
+        yieldManager.claimPendingNativeYield(nonMTokens);
     }
 
     /// PUBLIC FUNCTIONS ///
@@ -71,7 +116,7 @@ contract BlastCentralRegistry is CentralRegistry {
     ) public override {
         super.addMarketManager(newMarketManager, marketInterestFactor);
 
-        IBlastNativeYieldRouter(nativeYieldManager).notifyIsMarketManager(
+        IBlastNativeYieldManager(nativeYieldManager).notifyIsMarketManager(
             newMarketManager,
             true
         );
@@ -88,7 +133,7 @@ contract BlastCentralRegistry is CentralRegistry {
     function removeMarketManager(address currentMarketManager) public override {
         super.removeMarketManager(currentMarketManager);
 
-        IBlastNativeYieldRouter(nativeYieldManager).notifyIsMarketManager(
+        IBlastNativeYieldManager(nativeYieldManager).notifyIsMarketManager(
             currentMarketManager,
             false
         );

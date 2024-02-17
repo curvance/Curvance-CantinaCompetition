@@ -11,7 +11,7 @@ import { IBlast } from "contracts/interfaces/external/blast/IBlast.sol";
 import { IERC20Rebasing } from "contracts/interfaces/external/blast/IERC20Rebasing.sol";
 import { IGaugePool } from "contracts/interfaces/IGaugePool.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
-import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
+import { IMarketManager, IMToken } from "contracts/interfaces/market/IMarketManager.sol";
 
 /// @dev The Curvance Blast Native Yield Manager manages all delegated yield
 ///      inside the Curvance protocol. By design Curvance does not support
@@ -51,6 +51,11 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     /// @dev Address => is Market Manager.
     mapping(address => bool) public isMarketManager;
 
+    /// @notice Whether there is a debt token that a cToken should donate
+    ///         its native yield to.
+    /// @dev cToken Address => dToken Address receiving additional rewards.
+    mapping(address => address) public cTokenToDTokenYieldRouted;
+
     /// @notice The amount of pending WETH yield held for an address.
     /// @dev Address => Pending WETH yield.
     mapping(address => uint256) public pendingWETHYield;
@@ -67,6 +72,8 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     error BlastNativeYieldManager__Unauthorized();
     error BlastNativeYieldManager__NoYieldToClaim();
     error BlastNativeYieldManager__InvariantError();
+    error BlastNativeYieldManager__InvalidTokenTypes();
+    error BlastNativeYieldManager__MarketManagerMismatch();
     error BlastNativeYieldManager__InvalidCentralRegistry();
     error BlastNativeYieldManager__InvalidMarketManager();
 
@@ -121,7 +128,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         uint256 USDBYield
     ) {
         // Validate that `marketManager_` is configured as a market manager
-        // inside the yield manager.
+        // inside the Yield Manager.
         if (!isMarketManager[marketManager]) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
@@ -140,6 +147,14 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         uint256 USDBPrior = USDB_YIELD_MANAGER.balanceOf(address(this));
         uint256 WETHPerSecond;
         uint256 USDBPerSecond;
+
+        address yieldDestination = cTokenToDTokenYieldRouted[msg.sender];
+
+        // If the listed token is not currently routing its yield to another token,
+        // route yield to itself.
+        if (yieldDestination == address(0)) {
+            yieldDestination = msg.sender;
+        }
 
         if (gasYield > 0) {
             IWETH(address(WETH_YIELD_MANAGER)).deposit{ value: gasYield }();
@@ -196,6 +211,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
             );
 
             gaugePool.setRewardPerSec(
+                yieldDestination,
                 nextEpoch,
                 address(WETH_YIELD_MANAGER),
                 WETHPerSecond
@@ -243,6 +259,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
             );
 
             gaugePool.setRewardPerSec(
+                yieldDestination,
                 nextEpoch,
                 address(USDB_YIELD_MANAGER),
                 USDBPerSecond
@@ -281,6 +298,172 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         }
     }
 
+    /// @notice Claims delegated yield on behalf of the caller. Will natively
+    ///         revert if not delegated, works out of the box for any
+    ///         protocol meaning anyone can benefit from the composable nature
+    ///         of the smart contract.
+    /// @dev Only callable by governee themself. Natively claims gas rebate.
+    /// @param marketManager The Market Manager associated with the mToken
+    ///                      managing it native yield.
+    /// @param claimWETHYield Whether WETH native yield should be claimed.
+    /// @param claimUSDBYield Whether USDB native yield should be claimed.
+    /// @return WETHYield The amount of WETH yield claimed.
+    /// @return USDBYield The amount of USDB yield claimed.
+    function claimYieldForAutoCompounding(
+        address marketManager,
+        bool claimWETHYield,
+        bool claimUSDBYield
+    ) external nonReentrant returns (
+        uint256 WETHYield,
+        uint256 USDBYield
+    ) {
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the Yield Manager.
+        if (!isMarketManager[marketManager]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        // Validate that the caller is a token listed inside the associated
+        // Market Manager.
+        if (!IMarketManager(marketManager).isListed(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        uint256 gasYield = CHAIN_YIELD_MANAGER.claimMaxGas(
+            msg.sender,
+            address(this)
+        );
+
+        if (gasYield > 0) {
+            IWETH(address(WETH_YIELD_MANAGER)).deposit{ value: gasYield }();
+            WETHYield += gasYield;
+        }
+
+        if (claimWETHYield) {
+            uint256 pendingWETH = pendingWETHYield[msg.sender];
+
+            // Recognize USDB yield, if necessary.
+            if (pendingWETH > 0) {
+                WETHYield += pendingWETH;
+            }
+        }
+
+        if (claimUSDBYield) {
+            uint256 pendingUSDB = pendingUSDBYield[msg.sender];
+
+            // Recognize USDB yield, if necessary.
+            if (pendingUSDB > 0) {
+                USDBYield += pendingUSDB;
+            }
+        }
+
+        // Validate yield was actually claimed.
+        if (USDBYield == 0 && WETHYield == 0) {
+            revert BlastNativeYieldManager__NoYieldToClaim();
+        }
+
+        if (USDBYield != 0) {
+            SafeTransferLib.safeTransfer(
+                address(USDB_YIELD_MANAGER),
+                msg.sender,
+                USDBYield
+            );
+        }
+
+        if (WETHYield != 0) {
+            SafeTransferLib.safeTransfer(
+                address(WETH_YIELD_MANAGER),
+                msg.sender,
+                WETHYield
+            );
+        }
+    }
+
+    /// @notice Sets routing of cToken rewards to dToken lenders.
+    /// @dev This is a 1:1 mapping so in cases of cross margin markets
+    ///      these mappings will need to be monitored.
+    /// @param cToken The collateral token to route native yield from.
+    /// @param cToken The debt token to route native yield to.
+    function setCTokenToDTokenYieldDonation(
+        address cToken,
+        address dToken
+    ) external {
+        _checkElevatedPermissions();
+
+        if (
+            IMToken(cToken).marketManager() != 
+            IMToken(dToken).marketManager()
+            ) {
+                revert BlastNativeYieldManager__MarketManagerMismatch();
+            }
+        
+        if (
+            !IMToken(cToken).isCToken() ||
+            IMToken(dToken).isCToken()
+            ) {
+                revert BlastNativeYieldManager__InvalidTokenTypes();
+            }
+        
+        cTokenToDTokenYieldRouted[cToken] = dToken;
+    }
+
+    /// @notice Withdraws all native yield fees from non-MToken addresses.
+    /// @dev Only callable by Central Registry.
+    /// @param nonMTokens Array of non-MTokens addresses to withdraw native from.
+    function claimPendingNativeYield(address[] calldata nonMTokens) external {
+        _checkIsCentralRegistry();
+
+        uint256 nonMTokensLength = nonMTokens.length;
+        uint256 yieldClaimed;
+
+        for (uint256 i; i < nonMTokensLength; ++i) {
+            yieldClaimed += CHAIN_YIELD_MANAGER.claimMaxGas(
+                nonMTokens[i],
+                address(this)
+            );
+        }
+
+        if (yieldClaimed == 0) {
+            revert BlastNativeYieldManager__NoYieldToClaim();
+        }
+
+        IWETH(address(WETH_YIELD_MANAGER)).deposit{ value: yieldClaimed }();
+        SafeTransferLib.safeTransfer(address(WETH_YIELD_MANAGER), centralRegistry.daoAddress(), yieldClaimed);
+    }
+
+    /// @notice Used by Curvance mTokens to notify the Yield Manager native
+    ///         yield has been claimed to the Yield Manager.
+    /// @param marketManager The Market Manager contract associated with
+    ///                      calling Curvance mToken.
+    /// @param isWETH The yield type of rewards to be notified.
+    ///               true corresponds to WETH, false corresponds to USDB.
+    /// @param marketManager The Market Manager contract associated with
+    ///                      calling Curvance mToken.
+    function notifyRewards(
+        address marketManager,
+        bool isWETH,
+        uint256 amount
+    ) external {
+        // Validate that `marketManager_` is configured as a market manager
+        // inside the Yield Manager.
+        if (!isMarketManager[marketManager]) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        // Validate that the caller is a token listed inside the associated
+        // Market Manager.
+        if (!IMarketManager(marketManager).isListed(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        if (isWETH) {
+            pendingWETHYield[msg.sender] = pendingWETHYield[msg.sender] + amount;
+            return;
+        }
+
+        pendingUSDBYield[msg.sender] = pendingUSDBYield[msg.sender] + amount;
+    }
+
     /// @notice Called by the Central registry on updating isMarketManager on Blast.
     /// @dev Only callable by Curvance Central Registry.
     /// @param notifiedMarketManager The Market Manager contract to modify support
@@ -289,14 +472,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         address notifiedMarketManager,
         bool isSupported
     ) external {
-        address _centralRegistry = address(centralRegistry);
-        assembly {
-            if iszero(eq(caller(), _centralRegistry)) {
-                mstore(0x00, _UNAUTHORIZED_SELECTOR)
-                // Return bytes 29-32 for the selector.
-                revert(0x1c, 0x04)
-            }
-        }
+        _checkIsCentralRegistry();
 
         isMarketManager[notifiedMarketManager] = isSupported;
     }
@@ -322,6 +498,24 @@ contract BlastNativeYieldManager is ReentrancyGuard {
         assembly {
             mstore(0x00, s)
             revert(0x1c, 0x04)
+        }
+    }
+
+    function _checkIsCentralRegistry() internal view {
+        address _centralRegistry = address(centralRegistry);
+        assembly {
+            if iszero(eq(caller(), _centralRegistry)) {
+                mstore(0x00, _UNAUTHORIZED_SELECTOR)
+                // Return bytes 29-32 for the selector.
+                revert(0x1c, 0x04)
+            }
+        }
+    }
+
+    /// @dev Checks whether the caller has sufficient permissioning.
+    function _checkElevatedPermissions() internal view {
+        if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
         }
     }
 }

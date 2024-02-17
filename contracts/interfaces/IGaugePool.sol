@@ -20,10 +20,12 @@ interface IGaugePool {
     /// @notice Used to update gauge pool rewards for `rewardToken`, 
     ///         during `epoch` with `newRewardPerSec`.
     /// @dev This is only be used for updating partner gauge rewards.
+    /// @param token The token to set rewards for.
     /// @param epoch The epoch to set rewards for, should be the next epoch.
     /// @param rewardToken The address of reward token to be updated.
     /// @param newRewardPerSec The `rewardToken` reward rate, in seconds.
     function setRewardPerSec(
+        address token,
         uint256 epoch,
         address rewardToken,
         uint256 newRewardPerSec

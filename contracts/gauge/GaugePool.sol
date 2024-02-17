@@ -28,20 +28,21 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     address public marketManager;
     /// @notice Timestamp when the first first deposit occurred.
     uint256 public firstDeposit;
-    /// @notice cToken => total supply.
+    /// @notice mToken => total supply.
     mapping(address => uint256) public totalSupply;
-    /// @notice  cToken => user => balance.
+    /// @notice mToken => user => balance.
     mapping(address => mapping(address => uint256)) public balanceOf;
-    /// @notice  cToken => lastRewardTimestamp.
+    /// @notice mToken => lastRewardTimestamp.
     mapping(address => uint256) public poolLastRewardTimestamp;
-    /// @notice  Reward tokens attached to this Gauge Pool.
+    /// @notice Reward tokens attached to this Gauge Pool.
     address[] public rewardTokens;
-    /// @notice  epoch => rewardToken => rewardPerSec.
-    mapping(uint256 => mapping(address => uint256)) private _epochRewardPerSec;
-    /// @notice  cToken => rewardToken => accRewardPerShare.
+    /// @notice mToken => epoch => rewardToken => rewardPerSec.
+    mapping(address => mapping(uint256 => mapping(address => uint256)))
+        private _epochRewardPerSec;
+    /// @notice mToken => rewardToken => accRewardPerShare.
     mapping(address => mapping(address => uint256))
         public poolAccRewardPerShare;
-    /// @notice  cToken => user => rewardToken => info.
+    /// @notice mToken => user => rewardToken => info.
     mapping(address => mapping(address => mapping(address => UserRewardInfo)))
         public userDebtInfo;
 
@@ -139,10 +140,12 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// @notice Used to update gauge pool rewards for `rewardToken`, 
     ///         during `epoch` with `newRewardPerSec`.
     /// @dev This is only be used for updating partner gauge rewards.
+    /// @param token The token to set rewards for.
     /// @param epoch The epoch to set rewards for, should be the next epoch.
     /// @param rewardToken The address of reward token to be updated.
     /// @param newRewardPerSec The `rewardToken` reward rate, in seconds.
     function setRewardPerSec(
+        address token,
         uint256 epoch,
         address rewardToken,
         uint256 newRewardPerSec
@@ -159,8 +162,8 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        uint256 prevRewardPerSec = _epochRewardPerSec[epoch][rewardToken];
-        _epochRewardPerSec[epoch][rewardToken] = newRewardPerSec;
+        uint256 prevRewardPerSec = _epochRewardPerSec[token][epoch][rewardToken];
+        _epochRewardPerSec[token][epoch][rewardToken] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
             SafeTransferLib.safeTransfer(
@@ -189,13 +192,14 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     ) public view returns (uint256) {
         if (rewardToken == cve) {
             return _epochInfo[epoch].poolWeights[token];
-        } else {
-            return
-                (EPOCH_WINDOW *
-                    _epochRewardPerSec[epoch][rewardToken] *
-                    _epochInfo[epoch].poolWeights[token]) /
-                _epochInfo[epoch].totalWeights;
         }
+        
+        return
+            (EPOCH_WINDOW *
+                _epochRewardPerSec[token][epoch][rewardToken] *
+                _epochInfo[epoch].poolWeights[token]) /
+            _epochInfo[epoch].totalWeights;
+        
     }
 
     /// @notice Returns pending reward of user.
