@@ -93,6 +93,11 @@ contract BlastNativeYieldManager is ReentrancyGuard {
             isMarketManager[marketManagers[i++]] = true;
         }
 
+        // Set gas fees yield to claimable and then pass Governor permissioning to
+        // Curvance DAO.
+        CHAIN_YIELD_MANAGER.configureClaimableYield();
+        CHAIN_YIELD_MANAGER.configureGovernor(centralRegistry_.daoAddress());
+
     }
 
     /// @notice Claims delegated yield on behalf of the caller. Will natively
@@ -270,5 +275,4 @@ contract BlastNativeYieldManager is ReentrancyGuard {
             revert(0x1c, 0x04)
         }
     }
-
 }
