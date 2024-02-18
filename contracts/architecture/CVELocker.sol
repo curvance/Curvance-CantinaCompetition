@@ -47,7 +47,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
     ///      but can lag behind if crosschain systems are strained.
     uint256 public nextEpochToDeliver;
 
-    /// @notice Important user invariant for rewards.
+    /// @notice The next epoch index to claim for a user.
     /// @dev User => Reward Next Claim Index.
     mapping(address => uint256) public userNextClaimIndex;
 
@@ -108,8 +108,12 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @param rewardsPerCVE The rewards alloted to 1 vote escrowed CVE for
     ///                      the next reward epoch delivered.
     function recordEpochRewards(uint256 rewardsPerCVE) external {
-        // Validate the caller reporting epoch data is the fee accumulator.
-        if (msg.sender != centralRegistry.feeAccumulator()) {
+        // Validate the caller reporting epoch data is the fee accumulator,
+        // or protocol messaging hub.
+        if (
+            msg.sender != centralRegistry.feeAccumulator() &&
+            msg.sender != centralRegistry.protocolMessagingHub() 
+            ) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
 

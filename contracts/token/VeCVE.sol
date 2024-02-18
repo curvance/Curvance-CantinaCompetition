@@ -594,11 +594,21 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 amount = lock.amount;
 
         // If the locker is shutdown, do not allow them to relock,
-        // we'd want them to exit locked positions.
+        // we'd want them to exit locked positions. Decrease points if
+        // necessary.
         if (isShutdown == 2) {
             relock = false;
-            // Update their points to reflect the removed lock
-            _updateDataFromEarlyUnlock(msg.sender, amount, lock.unlockTime);
+            uint256 unlockTime = lock.unlockTime;
+            // This check could also on `nextEpochToDeliver` for global
+            // variable but we check user's value directly here incase somehow
+            // they broke post _claimRewards 
+            // nextEpochToDeliver == userNextClaimIndex invariant.
+            // Next epoch is the current epoch + 1 so we check <= instead of
+            // < for whether unlock epoch has been processed or not.
+            if (cveLocker.userNextClaimIndex() < currentEpoch(unlockTime)) {
+                // Update their points to reflect the removed lock.
+                _updateDataFromEarlyUnlock(msg.sender, amount, unlockTime);
+            }    
         }
 
         if (relock) {
