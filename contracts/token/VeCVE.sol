@@ -605,7 +605,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
             // nextEpochToDeliver == userNextClaimIndex invariant.
             // Next epoch is the current epoch + 1 so we check <= instead of
             // < for whether unlock epoch has been processed or not.
-            if (cveLocker.userNextClaimIndex() < currentEpoch(unlockTime)) {
+            if (cveLocker.userNextClaimIndex(msg.sender) < currentEpoch(unlockTime)) {
                 // Update their points to reflect the removed lock.
                 _updateDataFromEarlyUnlock(msg.sender, amount, unlockTime);
             }    
