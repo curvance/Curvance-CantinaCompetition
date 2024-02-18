@@ -614,16 +614,6 @@ contract FeeAccumulator is ReentrancyGuard {
         tokenToRemove.isRewardToken = 1;
     }
 
-    /// @notice Record rewards for epoch.
-    function recordEpochRewards(uint256 amount) external {
-        // Make sure the caller recording epoch rewards is the Messaging Hub.
-        if (msg.sender != _messagingHubStored) {
-            revert FeeAccumulator__Unauthorized();
-        }
-
-        ICVELocker(centralRegistry.cveLocker()).recordEpochRewards(amount);
-    }
-
     /// @notice Retrieves the balances of all reward tokens currently held by
     ///         the Fee Accumulator.
     /// @return tokenBalances An array of uint256 values,
@@ -795,11 +785,23 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 epochRewardsPerCVE = (feeTokenBalance * WAD) /
             totalLockedTokens;
 
-        address locker = centralRegistry.cveLocker();
+        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
 
+        // If the locker is shutdown, transfer fees to DAO
+        // instead of recording epoch rewards.
+        if (locker.isShutdown() == 2) {
+            SafeTransferLib.safeTransfer(
+                feeToken,
+                centralRegistry.daoAddress(),
+                feeTokenBalanceForChain
+            );
+            return epochRewardsPerCVE;
+        }
+
+        // Transfer fees to locker and record newest epoch rewards.
         SafeTransferLib.safeTransfer(
             feeToken,
-            locker,
+            address(locker),
             feeTokenBalanceForChain
         );
         ICVELocker(locker).recordEpochRewards(epochRewardsPerCVE);

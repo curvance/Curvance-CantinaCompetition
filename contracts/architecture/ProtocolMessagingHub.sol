@@ -10,6 +10,7 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { IFeeAccumulator, EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
@@ -121,9 +122,6 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             return;
         }
 
-        // We can skip validating the source chainId is correct for the
-        // operator, due to fetching from (srcAddress, srcChainID) mapping.
-
         uint8 payloadId = abi.decode(payload, (uint8));
 
         if (payloadId == 1) {
@@ -135,11 +133,27 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             address feeToken = centralRegistry.feeToken();
 
             if (token == feeToken) {
-                address locker = centralRegistry.cveLocker();
-                SafeTransferLib.safeTransfer(feeToken, locker, amount);
+                ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
 
-                IFeeAccumulator(centralRegistry.feeAccumulator())
-                    .recordEpochRewards(amount);
+                // If the locker is shutdown, transfer fees to DAO
+                // instead of recording epoch rewards.
+                if (locker.isShutdown() == 2) {
+                    SafeTransferLib.safeTransfer(
+                        feeToken,
+                        centralRegistry.daoAddress(),
+                        amount
+                    );
+                    return;
+                }
+
+                // Transfer fees to locker and record newest epoch rewards.
+                SafeTransferLib.safeTransfer(
+                    feeToken,
+                    address(locker),
+                    amount
+                );
+                locker.recordEpochRewards(amount);
+                return;
             }
         } else if (payloadId == 4) {
             (, bytes memory emissionData) = abi.decode(
@@ -314,7 +328,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
         _checkMessagingHubStatus();
 
-        _transferTokenViaWormhole(
+        return _transferTokenViaWormhole(
             address(cve),
             dstChainId,
             recipient,

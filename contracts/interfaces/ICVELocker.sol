@@ -96,6 +96,10 @@ interface ICVELocker {
     /// @return A value indicating if the user has any rewards to claim.
     function epochsToClaim(address user) external view returns (uint256);
 
+    /// @notice Whether the CVE Locker is shut down or not.
+    /// @dev 2 = yes; 1 = no.
+    function isShutdown() external view returns (uint256);
+
     /// @notice Shuts down the CVELocker and prevents future reward
     /// distributions.
     /// @dev Should only be used to facilitate migration to a new system.
