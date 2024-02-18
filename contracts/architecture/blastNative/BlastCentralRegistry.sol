@@ -147,7 +147,7 @@ contract BlastCentralRegistry is CentralRegistry {
         bytes4 interfaceId
     ) public pure override returns (bool) {
         return
-            interfaceId == type(ICentralRegistry).interfaceId ||
+            interfaceId == type(IBlastCentralRegistry).interfaceId ||
             interfaceId == type(ICentralRegistry).interfaceId;
     }
 }
