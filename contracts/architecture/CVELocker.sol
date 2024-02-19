@@ -205,6 +205,47 @@ contract CVELocker is Delegable, ReentrancyGuard {
         return false;
     }
 
+    /// @notice Calculates a hypothetical CVE locker rewards claim by `user`.
+    ///         Returns 0 if there are no rewards to claim.
+    /// @param user The user who should have their hypothetical rewards
+    ///             calculated.
+    /// @return The amount of `rewardToken` that `user` would receive if they
+    ///         tried claiming their rewards right now.
+    function hypotheticalRewardsClaim(
+        address user
+    ) external view returns (uint256) {
+        uint256 epochs = epochsToClaim(user);
+        if (epochs == 0) {
+            return 0;
+        }
+
+        uint256 startEpoch = userNextClaimIndex[user];
+        uint256 startPoints = veCVE.userPoints(user);
+        uint256 rewards;
+        uint256 pointsOffset;
+
+        for (uint256 i; i < epochs; ++i) {
+            pointsOffset = veCVE.userUnlocksByEpoch(user, startEpoch + i);
+            // If they have tokens unlocking this epoch we need to offset
+            // their cached points.
+            if (pointsOffset > 0) {
+                // Offset points by how many points would unlock this epoch.
+                startPoints -= pointsOffset;
+            }
+
+            // If all points have unlocked we can stop early.
+            if (startPoints == 0) {
+                break;
+            }
+
+            // Increment points for this epoch.
+            rewards += startPoints * epochRewardsPerCVE[startEpoch + i];
+        }
+
+        // Removes the `WAD` precision offset for proper reward value.
+        return rewards / WAD;
+    }
+
     /// CLAIM INDEX FUNCTIONS ///
 
     /// @notice Updates `user`'s claim index.

@@ -594,18 +594,22 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 amount = lock.amount;
 
         // If the locker is shutdown, do not allow them to relock,
-        // we'd want them to exit locked positions. Decrease points if
-        // necessary.
+        // we will want them to exit locked positions. Decrease points only
+        // if necessary. Likely point adjustments do not matter after a
+        // locker's shutdown but best to avoid invariant errors in all forms.
         if (isShutdown == 2) {
             relock = false;
             uint256 unlockTime = lock.unlockTime;
-            // This check could also on `nextEpochToDeliver` for global
-            // variable but we check user's value directly here incase somehow
-            // they broke post _claimRewards 
+            // This check could also be on `nextEpochToDeliver`, the global
+            // variable. But, we check user's value directly here incase
+            // somehow they broke post condition _claimRewards
             // nextEpochToDeliver == userNextClaimIndex invariant.
-            // Next epoch is the current epoch + 1 so we check <= instead of
+            // Next claim is the current epoch + 1 so we check <= instead of
             // < for whether unlock epoch has been processed or not.
-            if (cveLocker.userNextClaimIndex(msg.sender) < currentEpoch(unlockTime)) {
+            if (
+                cveLocker.userNextClaimIndex(msg.sender) <=
+                currentEpoch(unlockTime)
+                ) {
                 // Update their points to reflect the removed lock.
                 _updateDataFromEarlyUnlock(msg.sender, amount, unlockTime);
             }    
@@ -628,10 +632,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
             }
         } else {
+            // Burn the user's veCVE, then remove their lock.
             _burn(msg.sender, amount);
             _removeLock(locks, lockIndex);
 
-            // Transfer the user the unlocked CVE
+            // Transfer the user the unlocked CVE.
             SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
             emit Unlocked(msg.sender, amount);
