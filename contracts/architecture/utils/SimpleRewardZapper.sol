@@ -59,10 +59,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
 
     receive() external payable {}
 
-    constructor(
-        ICentralRegistry centralRegistry_,
-        address WETH_
-    ) {
+    constructor(ICentralRegistry centralRegistry_, address WETH_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -278,7 +275,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
     function addAuthorizedMarketManager(address newMarketManager) external {
         _checkElevatedPermissions();
 
-        // Validate `newMarketManager` is 
+        // Validate `newMarketManager` is
         if (authorizedMarketManager[newMarketManager] == 2) {
             revert SimpleRewardZapper__IsAlreadyAuthorized();
         }
@@ -296,7 +293,9 @@ contract SimpleRewardZapper is ReentrancyGuard {
     /// @notice Removes authorization of market manager for Zapping.
     /// @dev Only callable on by an entity with DAO permissions or higher.
     /// @param currentMarketManager The address of the market manager to deauthorize.
-    function removeAuthorizedMarketManager(address currentMarketManager) external {
+    function removeAuthorizedMarketManager(
+        address currentMarketManager
+    ) external {
         _checkDaoPermissions();
 
         if (authorizedMarketManager[currentMarketManager] != 2) {
@@ -393,7 +392,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
         // balances since the Zapper should never be holding any reward token,
         // or dToken underlying itself.
         outAmount = IERC20(dTokenUnderlying).balanceOf(address(this));
-        
+
         // Revert if the swap experienced too much slippage.
         if (outAmount < repayAmount) {
             revert SimpleRewardZapper__InsufficientToRepay();
@@ -416,11 +415,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
 
         // Transfer any remaining `dTokenUnderlying` to `recipient`.
         if (outAmount > 0) {
-            _transferToRecipient(
-                dTokenUnderlying, 
-                recipient, 
-                outAmount
-            );
+            _transferToRecipient(dTokenUnderlying, recipient, outAmount);
         }
     }
 
@@ -441,7 +436,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
 
     /// @notice Helper function for efficiently transferring tokens
     ///         to desired user.
-    /// @param token The token to transfer to `recipient`, 
+    /// @param token The token to transfer to `recipient`,
     ///              this can be the network gas token.
     /// @param recipient The user receiving `token`.
     /// @param amount The amount of `token` to be transferred to `recipient`.
@@ -453,7 +448,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
         if (CommonLib.isETH(token)) {
             return SafeTransferLib.forceSafeTransferETH(recipient, amount);
         }
-            
+
         SafeTransferLib.safeTransfer(token, recipient, amount);
     }
 
