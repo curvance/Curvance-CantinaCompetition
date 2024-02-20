@@ -211,8 +211,11 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployChainlinkAdaptors() internal {
+        // TODO: These numbers should be pulled into const variables
+        // setup chainlink usdcUdc with 8 deciamsl, starting price = 1e8, maxAnswer = 1e11, minAnswer = 1
         chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
-        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        // setup chainlink daiUSD with 8 decimals, starting price = 1e8, maxAnswer = 1e50, minAnswer = 1e6
+        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e50, 1e6);
         chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkDaiEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
@@ -529,12 +532,12 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             true
         );
 
-        dualChainlinkAdaptor.addAsset(
-            address(cUSDC),
-            address(mockUsdcFeed),
-            0,
-            true
-        );
+        // dualChainlinkAdaptor.addAsset(
+        //     address(cUSDC),
+        //     address(mockUsdcFeed),
+        //     0,
+        //     true
+        // );
         mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
         chainlinkAdaptor.addAsset(
             address(cDAI),
@@ -548,12 +551,12 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             0,
             true
         );
-        dualChainlinkAdaptor.addAsset(
-            address(cDAI),
-            address(mockDaiFeed),
-            0,
-            true
-        );
+        // dualChainlinkAdaptor.addAsset(
+        //     address(cDAI),
+        //     address(mockDaiFeed),
+        //     0,
+        //     true
+        // );
         _setPriceToDefault();
         emit LogUint256("set price to default", 1e8);
         chainlinkUsdcUsd.updateRoundData(
@@ -611,8 +614,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     function _setPriceToDefault() private {
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1500e8);
-        mockDaiFeed.setMockAnswer(1500e8);
+        mockUsdcFeed.setMockAnswer(1e8);
+        mockDaiFeed.setMockAnswer(1e8);
     }
 
     function _isSupportedDToken(address dtoken) internal view {

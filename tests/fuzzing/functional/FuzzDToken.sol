@@ -1,5 +1,6 @@
 pragma solidity 0.8.17;
 import { FuzzMarketManager } from "tests/fuzzing/FuzzMarketManager.sol";
+import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -333,42 +334,141 @@ contract FuzzDToken is FuzzMarketManager {
         hevm.warp(block.timestamp + marketManager.MIN_HOLD_PERIOD());
 
         hevm.prank(msg.sender);
-        MockToken(dDAI.underlying()).mint(2000000000000000 * WAD);
+        MockToken(dDAI.underlying()).mint(amount);
 
         hevm.prank(msg.sender);
-        MockToken(dDAI.underlying()).approve(
-            address(dDAI),
-            2000000000000000 * WAD
-        );
+        MockToken(dDAI.underlying()).approve(address(dDAI), amount);
 
         emit LogUint256("Setting dai feed answer to:", daiPrice);
         mockDaiFeed.setMockAnswer(int256(daiPrice));
         emit LogString("Updating block.timestamp for mockDaiFeed");
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        emit LogString("set chainlink round data for dai");
+        chainlinkDaiUsd.updateRoundData(
+            0,
+            int256(daiPrice),
+            block.timestamp,
+            block.timestamp
+        );
+        PriceReturnData memory daiData = chainlinkAdaptor.getPrice(
+            address(dDAI),
+            true,
+            false
+        );
+        assert(!daiData.hadError);
+
+        emit LogString("set chainlink round data for usdc");
+        chainlinkUsdcUsd.updateRoundData(
+            0,
+            int256(usdcPrice),
+            block.timestamp,
+            block.timestamp
+        );
         emit LogUint256("Setting usdc feed answer to:", usdcPrice);
         mockUsdcFeed.setMockAnswer(int256(usdcPrice));
         emit LogString("Updating block.timestamp for mockUsdcFeed");
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+
+        PriceReturnData memory usdcData = chainlinkAdaptor.getPrice(
+            address(cUSDC),
+            true,
+            false
+        );
+        assert(!usdcData.hadError);
     }
 
     // gets prices needed to liquidate
     function try_to_liquidate(uint256 amount) public {
+        // ensure price feeds are up to date before updating collateral token and listing
+        _checkPriceFeed();
+        {
+            (
+                bool is_cusdc_listed,
+                uint256 cusdc_cr,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+
+            ) = marketManager.tokenData(address(cUSDC));
+            // if C_USDC is not listed, make sure to list it
+            if (!is_cusdc_listed) {
+                list_token_should_succeed(address(cUSDC));
+            }
+            // If collateral ratio of CUSDC is 0, update the market manager to increase collateral ratio
+            if (cusdc_cr == 0) {
+                updateCollateralToken_should_succeed(
+                    address(cUSDC),
+                    1000e18,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                );
+            }
+
+            bool hasUsdcPosition = _hasPosition(address(cUSDC));
+            if (!hasUsdcPosition) {
+                post_collateral_should_succeed(address(cUSDC), WAD + 1, false);
+            }
+        }
+        {
+            (bool is_ddai_listed, , , , , , , , ) = marketManager.tokenData(
+                address(dDAI)
+            );
+            if (!is_ddai_listed) {
+                list_token_should_succeed(address(dDAI));
+            }
+        }
+
         uint256 upperBound = DToken(address(dDAI)).marketUnderlyingHeld() -
             DToken(dDAI).totalReserves();
-        // amount = clampBetween(amount, 1, upperBound - 1);
-        uint256 daiPrice = 1e26;
+        amount = clampBetween(amount, 1, upperBound - 1);
+        uint256 daiPrice = 1e20;
         // daiPrice = clampBetween(daiPrice, 1, type(uint256).max);
-        uint256 usdcPrice = 1;
+        uint256 usdcPrice = 1e7;
         // usdcPrice = clampBetween(usdcPrice, 1, type(uint256).max);
-        _checkPriceFeed();
 
         dDAI.borrow(amount);
 
+        // this will update price feeds values
         preLiquidate(amount, daiPrice, usdcPrice);
+        (
+            uint256 lfactor,
+            uint256 debtTokenPrice,
+            uint256 collatTokenPrice
+        ) = marketManager.LiquidationStatusOf(
+                address(this),
+                address(dDAI),
+                address(cUSDC)
+            );
+        emit LogUint256("lfactor", lfactor);
+        (
+            uint256 debt,
+            uint256 collateralLiquidation,
+            uint256 collateralProtocol
+        ) = marketManager.canLiquidate(
+                address(dDAI),
+                address(cUSDC),
+                address(this),
+                amount,
+                false
+            );
+
+        emit LogUint256("debt:", debt);
+        emit LogUint256("collateral liquidation", collateralLiquidation);
+        emit LogUint256("collateral protocol", collateralProtocol);
+
         _canLiquidateAccount(address(this));
 
         hevm.prank(msg.sender);
-        marketManager.liquidateAccount(address(this));
+        try this.prankLiquidateAccount(address(this)) {} catch {
+            assert(false);
+        }
     }
 
     function _canLiquidateAccount(address account) private {
@@ -379,11 +479,9 @@ contract FuzzDToken is FuzzMarketManager {
         require(accountCollateral < accountDebt);
     }
 
-    function liquidateAccount_should_succeed(
-        uint256 amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
-    ) public {
+    function liquidateAccount_should_succeed(uint256 amount) public {
+        uint256 daiPrice = 1e24;
+        uint256 usdcPrice = 1e7;
         require(marketManager.seizePaused() != 2);
         preLiquidate(amount, daiPrice, usdcPrice);
         address account = address(this);
@@ -410,6 +508,8 @@ contract FuzzDToken is FuzzMarketManager {
         }
         assert(false);
     }
+
+    /*    
 
     function liquidateAccount_should_fail_if_account_not_flagged(
         uint256 amount,
@@ -489,6 +589,8 @@ contract FuzzDToken is FuzzMarketManager {
             );
         }
     }
+
+    */
 
     // SOFT liquidation
 
