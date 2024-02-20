@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">9</td>
             <td class="headerCovTableEntry">11</td>
-            <td class="headerCovTableEntryMed">81.8 %</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-01 22:51:55</td>
+            <td class="headerValue">2024-02-16 18:08:13</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">2</td>
@@ -63,7 +63,7 @@
 <a name="1"><span class="lineNum">       1 </span>            : // SPDX-License-Identifier: MIT</a>
 <a name="2"><span class="lineNum">       2 </span>            : pragma solidity ^0.8.17;</a>
 <a name="3"><span class="lineNum">       3 </span>            : </a>
-<a name="4"><span class="lineNum">       4 </span>            : import { BaseVolatileLPAdaptor } from &quot;contracts/oracles/adaptors/utils/BaseVolatileLPAdaptor.sol&quot;;</a>
+<a name="4"><span class="lineNum">       4 </span>            : import { BaseVolatileLPAdaptor } from &quot;contracts/oracles/adaptors/uniV2Base/BaseVolatileLPAdaptor.sol&quot;;</a>
 <a name="5"><span class="lineNum">       5 </span>            : </a>
 <a name="6"><span class="lineNum">       6 </span>            : import { PriceReturnData } from &quot;contracts/interfaces/IOracleAdaptor.sol&quot;;</a>
 <a name="7"><span class="lineNum">       7 </span>            : import { ICentralRegistry } from &quot;contracts/interfaces/ICentralRegistry.sol&quot;;</a>
@@ -98,20 +98,20 @@
 <a name="36"><span class="lineNum">      36 </span>            :     function addAsset(</a>
 <a name="37"><span class="lineNum">      37 </span>            :         address asset</a>
 <a name="38"><span class="lineNum">      38 </span>            :     ) external override {</a>
-<a name="39"><span class="lineNum">      39 </span><span class="lineCov">         11 :         _checkElevatedPermissions();</span></a>
+<a name="39"><span class="lineNum">      39 </span><span class="lineCov">         25 :         _checkElevatedPermissions();</span></a>
 <a name="40"><span class="lineNum">      40 </span>            : </a>
-<a name="41"><span class="lineNum">      41 </span><span class="lineCov">         11 :         if (ICamelotPair(asset).stableSwap()) {</span></a>
-<a name="42"><span class="lineNum">      42 </span><span class="lineNoCov">          0 :             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();</span></a>
+<a name="41"><span class="lineNum">      41 </span><span class="lineCov">         25 :         if (ICamelotPair(asset).stableSwap()) {</span></a>
+<a name="42"><span class="lineNum">      42 </span><span class="lineCov">          2 :             revert CamelotVolatileLPAdaptor__AssetIsNotVolatileLP();</span></a>
 <a name="43"><span class="lineNum">      43 </span>            :         }</a>
 <a name="44"><span class="lineNum">      44 </span>            : </a>
 <a name="45"><span class="lineNum">      45 </span>            :         // Check whether this is new or updated support for `asset`.</a>
-<a name="46"><span class="lineNum">      46 </span><span class="lineCov">         11 :         bool isUpdate;</span></a>
-<a name="47"><span class="lineNum">      47 </span><span class="lineCov">         11 :         if (isSupportedAsset[asset]) {</span></a>
-<a name="48"><span class="lineNum">      48 </span><span class="lineNoCov">          0 :             isUpdate = true;</span></a>
+<a name="46"><span class="lineNum">      46 </span><span class="lineCov">         23 :         bool isUpdate;</span></a>
+<a name="47"><span class="lineNum">      47 </span><span class="lineCov">         23 :         if (isSupportedAsset[asset]) {</span></a>
+<a name="48"><span class="lineNum">      48 </span><span class="lineCov">          4 :             isUpdate = true;</span></a>
 <a name="49"><span class="lineNum">      49 </span>            :         }</a>
 <a name="50"><span class="lineNum">      50 </span>            : </a>
-<a name="51"><span class="lineNum">      51 </span><span class="lineCov">         11 :         AdaptorData memory data = _addAsset(asset);</span></a>
-<a name="52"><span class="lineNum">      52 </span><span class="lineCov">         11 :         emit CamelotVolatileLPAssetAdded(asset, data, isUpdate);</span></a>
+<a name="51"><span class="lineNum">      51 </span><span class="lineCov">         23 :         AdaptorData memory data = _addAsset(asset);</span></a>
+<a name="52"><span class="lineNum">      52 </span><span class="lineCov">         23 :         emit CamelotVolatileLPAssetAdded(asset, data, isUpdate);</span></a>
 <a name="53"><span class="lineNum">      53 </span>            :     }</a>
 <a name="54"><span class="lineNum">      54 </span>            : </a>
 <a name="55"><span class="lineNum">      55 </span>            :     /// @notice Removes a supported asset from the adaptor.</a>
@@ -120,9 +120,9 @@
 <a name="58"><span class="lineNum">      58 </span>            :     /// @param asset The address of the supported asset to remove from</a>
 <a name="59"><span class="lineNum">      59 </span>            :     ///              the adaptor.</a>
 <a name="60"><span class="lineNum">      60 </span>            :     function removeAsset(address asset) external virtual override {</a>
-<a name="61"><span class="lineNum">      61 </span><span class="lineCov">          3 :         _checkElevatedPermissions();</span></a>
+<a name="61"><span class="lineNum">      61 </span><span class="lineCov">          5 :         _checkElevatedPermissions();</span></a>
 <a name="62"><span class="lineNum">      62 </span>            : </a>
-<a name="63"><span class="lineNum">      63 </span><span class="lineCov">          3 :         _removeAsset(asset);</span></a>
+<a name="63"><span class="lineNum">      63 </span><span class="lineCov">          5 :         _removeAsset(asset);</span></a>
 <a name="64"><span class="lineNum">      64 </span><span class="lineCov">          3 :         emit CamelotVolatileLPAssetRemoved(asset);</span></a>
 <a name="65"><span class="lineNum">      65 </span>            :     }</a>
 <a name="66"><span class="lineNum">      66 </span>            : }</a>

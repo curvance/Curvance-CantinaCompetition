@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { CurvanceAuxiliaryData } from "contracts/misc/CurvanceAuxiliaryData.sol";
+import { CurvanceAuxiliaryData } from "contracts/indexing/CurvanceAuxiliaryData.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 

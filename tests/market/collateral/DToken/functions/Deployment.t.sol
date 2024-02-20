@@ -5,6 +5,7 @@ import "forge-std/StdStorage.sol";
 import { TestBaseDToken } from "../TestBaseDToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { Delegable } from "contracts/libraries/Delegable.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 contract DTokenDeploymentTest is TestBaseDToken {
@@ -15,7 +16,7 @@ contract DTokenDeploymentTest is TestBaseDToken {
     );
 
     function test_dTokenDeployment_fail_whenCentralRegistryIsInvalid() public {
-        vm.expectRevert(DToken.DToken__InvalidCentralRegistry.selector);
+        vm.expectRevert(Delegable.Delegable__InvalidCentralRegistry.selector);
         new DToken(
             ICentralRegistry(address(0)),
             _USDC_ADDRESS,

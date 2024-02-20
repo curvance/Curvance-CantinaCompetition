@@ -16,8 +16,10 @@ abstract contract CurveBaseAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice The number of underlying tokens inside a pool => Maximum
-    ///         gas allowed in Reentry check.
+    /// @notice Configuration data for verifying whether a pool is inside
+    ///         a reentry context or not.
+    /// @dev The number of underlying tokens inside a pool => Maximum
+    ///      gas allowed in Reentry check.
     mapping(uint256 => uint256) public reentrancyConfig;
 
     /// EVENTS ///

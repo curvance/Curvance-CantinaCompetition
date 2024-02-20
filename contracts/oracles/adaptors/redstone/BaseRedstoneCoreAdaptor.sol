@@ -12,26 +12,28 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Redstone price sources.
+    /// @param isConfigured Whether the asset is configured or not.
+    ///                     false = unconfigured; true = configured.
+    /// @param symbolHash The bytes32 encoded hash of the price feed.
+    /// @param max The max valid price of the asset.
+    /// @param decimals Returns the number of decimals the Redstone price feed
+    ///                 responds with. We save this as a uint256 so we do not
+    ///                 need to convert from uint8 -> uint256 at runtime.
     struct AdaptorData {
-        /// @notice Whether the asset is configured or not.
-        /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice The bytes32 encoded hash of the price feed.
         bytes32 symbolHash;
-        /// @notice The max valid price of the asset.
         uint256 max;
-        /// @notice The number of decimals in the redstone price feed.
-        /// @dev We save this as a uint256 so we do not need to convert from
-        ///      uint8 -> uint256 at runtime.
         uint256 decimals;
     }
 
     /// STORAGE ///
 
-    /// @notice Redstone Adaptor Data for pricing in ETH.
+    /// @notice Adaptor configuration data for pricing an asset in gas token.
+    /// @dev Redstone Adaptor Data for pricing in gas token.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Redstone Adaptor Data for pricing in USD.
+    /// @notice Adaptor configuration data for pricing an asset in USD.
+    /// @dev Redstone Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
@@ -130,7 +132,7 @@ abstract contract BaseRedstoneCoreAdaptor is BaseOracleAdaptor {
         // reports pricing in 8 decimal format, requiring multiplication by
         // 10e10 to standardize to 18 decimal format, which could overflow 
         // when trying to save the final value into an uint240.
-        data.max = (type(uint192).max * 9) / 10;
+        data.max = uint192(uint256(type(uint192).max) * 9 / 10);
         data.symbolHash = symbolHash;
         data.isConfigured = true;
 

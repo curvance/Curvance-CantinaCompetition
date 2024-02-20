@@ -17,14 +17,16 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// TYPES ///
 
-    /// @notice Adaptor storage.
-    /// @param twapDuration the twap duration to use when pricing.
-    /// @param quoteAsset the asset the twap quote is provided in.
-    /// @param pt the address of the Pendle PT associated with LP.
+    /// @notice Stores configuration data for Pendle LP price sources.
+    /// @param pt The address of the Pendle PT associated with LP.
+    /// @param twapDuration The twap duration to use when pricing.
+    /// @param quoteAsset The asset the twap quote is provided in.
+    /// @param quoteAssetDecimals The decimals `quoteAsset` twap quote
+    ///                           is provided in.
     struct AdaptorData {
+        address pt;
         uint32 twapDuration;
         address quoteAsset;
-        address pt;
         uint8 quoteAssetDecimals;
     }
 
@@ -38,7 +40,8 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Pendle lp token address => AdaptorData.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Pendle lp token address => AdaptorData.
     mapping(address => AdaptorData) public adaptorData;
 
     /// EVENTS ///

@@ -141,7 +141,7 @@ contract FuzzDToken is FuzzMarketManager {
             )
         );
         require(borrowPossible);
-        (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
+        (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate > block.timestamp);
 
@@ -207,7 +207,7 @@ contract FuzzDToken is FuzzMarketManager {
             )
         );
         require(borrowPossible);
-        (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
+        (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate <= block.timestamp);
 

@@ -13,7 +13,7 @@ import { FeeAccumulatorDeployer } from "./deployers/FeeAccumulatorDeployer.s.sol
 import { VeCveDeployer } from "./deployers/VeCveDeployer.s.sol";
 import { GaugePoolDeployer } from "./deployers/GaugePoolDeployer.s.sol";
 import { MarketManagerDeployer } from "./deployers/MarketManagerDeployer.s.sol";
-import { ZapperDeployer } from "./deployers/ZapperDeployer.s.sol";
+import { ComplexZapperDeployer } from "./deployers/ComplexZapperDeployer.s.sol";
 import { PositionFoldingDeployer } from "./deployers/PositionFoldingDeployer.s.sol";
 import { OracleRouterDeployer } from "./deployers/OracleRouterDeployer.s.sol";
 import { AuxiliaryDataDeployer } from "./deployers/AuxiliaryDataDeployer.s.sol";
@@ -29,7 +29,7 @@ contract DeployCurvance is
     VeCveDeployer,
     GaugePoolDeployer,
     MarketManagerDeployer,
-    ZapperDeployer,
+    ComplexZapperDeployer,
     PositionFoldingDeployer,
     OracleRouterDeployer,
     AuxiliaryDataDeployer
@@ -69,12 +69,10 @@ contract DeployCurvance is
         _setWormholeRelayer(
             _readConfigAddress(".centralRegistry.wormholeRelayer")
         );
-        _setCircleRelayer(
-            _readConfigAddress(".centralRegistry.circleRelayer")
+        _setCircleTokenMessenger(
+            _readConfigAddress(".centralRegistry.circleTokenMessenger")
         );
-        _setTokenBridgeRelayer(
-            _readConfigAddress(".centralRegistry.tokenBridgeRelayer")
-        );
+        _setTokenBridge(_readConfigAddress(".centralRegistry.tokenBridge"));
         _addHarvester(_readConfigAddress(".centralRegistry.harvester"));
 
         // Deploy CVE
@@ -134,14 +132,14 @@ contract DeployCurvance is
             _readConfigUint256(".marketManager.marketInterestFactor")
         );
 
-        // Deploy Zapper
+        // Deploy ComplexZapper
 
-        _deployZapper(
+        _deployComplexZapper(
             centralRegistry,
             marketManager,
             _readConfigAddress(".zapper.weth")
         );
-        _addZapper(zapper);
+        _addZapper(complexZapper);
 
         // Deploy PositionFolding
 

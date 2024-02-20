@@ -14,19 +14,19 @@ contract Api3Adaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for API3 price sources.
+    /// @param proxyFeed The current proxy's feed address.
+    /// @param dapiNameHash The bytes32 encoded name hash of the price feed.
+    /// @param isConfigured Whether the asset is configured or not.
+    ///                     false = unconfigured; true = configured.
+    /// @param heartbeat The max amount of time between price updates.
+    ///                  0 defaults to using DEFAULT_HEART_BEAT.
+    /// @param max The max valid price of the asset.
+    ///            0 defaults to use proxy max price reduced by ~10%.
     struct AdaptorData {
-        /// @notice The current proxy's feed address.
         IProxy proxyFeed;
-        /// @notice The bytes32 encoded name hash of the price feed.
         bytes32 dapiNameHash;
-        /// @notice Whether the asset is configured or not.
-        /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice heartbeat the max amount of time between price updates.
-        /// @dev    0 defaults to using DEFAULT_HEART_BEAT.
         uint256 heartbeat;
-        /// @notice max the max valid price of the asset.
-        /// @dev    0 defaults to use proxy max price reduced by ~10%.
         uint256 max;
     }
 
@@ -38,10 +38,12 @@ contract Api3Adaptor is BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Api3 Adaptor Data for pricing in ETH.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Api3 Adaptor Data for pricing in gas token.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Api3 Adaptor Data for pricing in USD.
+    /// @notice Adaptor configuration data for pricing an asset.
+    /// @dev Api3 Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///
@@ -118,7 +120,7 @@ contract Api3Adaptor is BaseOracleAdaptor {
             }
         }
 
-        bytes32 dapiName = Bytes32Helper._stringToBytes32(ticker);
+        bytes32 dapiName = Bytes32Helper.stringToBytes32(ticker);
         bytes32 dapiNameHash = keccak256(abi.encodePacked(dapiName));
 
         // Validate that the dAPI name and corresponding hash generated off

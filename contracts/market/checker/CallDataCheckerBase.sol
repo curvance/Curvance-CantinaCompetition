@@ -5,6 +5,14 @@ import { IExternalCallDataChecker } from "contracts/interfaces/IExternalCallData
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
 abstract contract CallDataCheckerBase is IExternalCallDataChecker {
+    /// ERRORS ///
+    error CallDataChecker__TargetError();
+    error CallDataChecker__RecipientError();
+    error CallDataChecker__InputTokenError();
+    error CallDataChecker__InputAmountError();
+    error CallDataChecker__OutputTokenError();
+    error CallDataChecker__InvalidFuncSig();
+
     /// STORAGE ///
     address public target;
 

@@ -58,8 +58,8 @@ contract ConvexLPCollateral is TestBaseMarket {
 
         Curve2PoolLPAdaptor.AdaptorData memory data;
         data.pool = address(CONVEX_STETH_ETH_POOL);
-        data.underlyingOrConstituent0 = _ETH_ADDRESS;
-        data.underlyingOrConstituent1 = _STETH_ADDRESS;
+        data.underlying0 = _ETH_ADDRESS;
+        data.underlying1 = _STETH_ADDRESS;
         data.divideRate0 = true;
         data.divideRate1 = true;
         data.isCorrelated = true;

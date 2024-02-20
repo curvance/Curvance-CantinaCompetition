@@ -13,23 +13,23 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
     /// TYPES ///
 
     /// @notice Stores configuration data for Chainlink price sources.
+    /// @param aggregator The current phase's aggregator address.
+    /// @param isConfigured Whether the asset is configured or not.
+    ///                     false = unconfigured; true = configured.
+    /// @param decimals Returns the number of decimals the aggregator
+    ///                 responds with.
+    /// @param heartbeat The max amount of time between price updates.
+    ///                  0 defaults to using DEFAULT_HEART_BEAT.
+    /// @param max The maximum valid price of the asset.
+    ///            0 defaults to use proxy max price reduced by ~10%.
+    /// @param min The minimum valid price of the asset.
+    ///            0 defaults to use proxy min price increased by ~10%.
     struct AdaptorData {
-        /// @notice The current phase's aggregator address.
         IChainlink aggregator;
-        /// @notice Whether the asset is configured or not.
-        /// @dev    false = unconfigured; true = configured.
         bool isConfigured;
-        /// @notice Returns the number of decimals the aggregator responds
-        ///         with.
-        uint8 decimals;
-        /// @notice heartbeat the max amount of time between price updates.
-        /// @dev    0 defaults to using DEFAULT_HEART_BEAT.
+        uint256 decimals;
         uint256 heartbeat;
-        /// @notice max the max valid price of the asset.
-        /// @dev    0 defaults to use aggregators max price reduced by ~10%.
         uint256 max;
-        /// @notice min the min valid price of the asset.
-        /// @dev    0 defaults to use aggregators min price increased by ~10%.
         uint256 min;
     }
 
@@ -37,15 +37,17 @@ contract ChainlinkAdaptor is BaseOracleAdaptor {
 
     /// @notice If zero is specified for a Chainlink asset heartbeat,
     ///         this value is used instead.
-    ///         1 days = 24 hours = 1,440 minutes = 86,400 seconds.
+    /// @dev    1 days = 24 hours = 1,440 minutes = 86,400 seconds.
     uint256 public constant DEFAULT_HEART_BEAT = 1 days;
 
     /// STORAGE ///
 
-    /// @notice Chainlink Adaptor Data for pricing in ETH.
+    /// @notice Adaptor configuration data for pricing an asset in gas token.
+    /// @dev Chainlink Adaptor Data for pricing in gas token.
     mapping(address => AdaptorData) public adaptorDataNonUSD;
 
-    /// @notice Chainlink Adaptor Data for pricing in USD.
+    /// @notice Adaptor configuration data for pricing an asset in USD.
+    /// @dev Chainlink Adaptor Data for pricing in USD.
     mapping(address => AdaptorData) public adaptorDataUSD;
 
     /// EVENTS ///

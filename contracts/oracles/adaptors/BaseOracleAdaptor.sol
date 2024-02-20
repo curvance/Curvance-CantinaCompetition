@@ -14,7 +14,8 @@ abstract contract BaseOracleAdaptor {
 
     /// STORAGE ///
 
-    /// @notice Asset => Supported by adaptor.
+    /// @notice Whether an asset is supported by the Oracle Adaptor or not.
+    /// @dev Asset => Supported by adaptor.
     mapping(address => bool) public isSupportedAsset;
 
     /// ERRORS ///
@@ -55,13 +56,11 @@ abstract contract BaseOracleAdaptor {
 
     /// INTERNAL FUNCTIONS ///
 
-    /// @notice Helper function to check whether `price` would overflow 
+    /// @notice Helper function to check whether `price` would overflow
     ///         based on a uint240 maximum.
     /// @param price The price to check against overflow.
     /// @return Whether `price` will overflow on conversion to uint240.
-    function _checkOracleOverflow(
-        uint256 price
-    ) internal pure returns (bool) {
+    function _checkOracleOverflow(uint256 price) internal pure returns (bool) {
         return price > type(uint240).max;
     }
 
@@ -75,13 +74,6 @@ abstract contract BaseOracleAdaptor {
     /// @notice Checks whether the caller has sufficient permissioning.
     function _checkElevatedPermissions() internal view {
         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {
-            revert BaseOracleAdaptor__Unauthorized();
-        }
-    }
-
-    /// @notice Checks whether the caller is the Oracle Router.
-    function _checkIsOracleRouter() internal view {
-        if (msg.sender != centralRegistry.oracleRouter()) {
             revert BaseOracleAdaptor__Unauthorized();
         }
     }

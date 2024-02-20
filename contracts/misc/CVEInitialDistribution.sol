@@ -70,7 +70,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
         // are not horribly misconfigured. A single claim taking the entire
         // initial distribution community would not make any sense,
         // in practice the values should be significantly smaller.
-        if (maximumClaimAmount_ * lockedClaimMultiplier > 1575000259e16) {
+        if (maximumClaimAmount_ * lockedClaimMultiplier > 15750002.59 ether) {
             revert CVEInitialDistribution__InvalidlockedClaimMultiplier();
         }
 
@@ -80,6 +80,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
     }
 
     /// @notice Claim allocated CVE.
+    /// @dev Emits a {DistributionClaimed} event.
     /// @param amount Requested amount to claim.
     /// @param locked Whether the claim should be claimed in boosted lock
     ///               form or not.
@@ -209,6 +210,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
     /// @notice Withdraws unclaimed tokens to the DAO after the claim
     ///         period has ended.
+    /// @dev Emits a {RemainingTokensWithdrawn} event.
     function withdrawRemainingTokens() external {
         _checkDaoPermissions();
 
@@ -245,12 +247,12 @@ contract CVEInitialDistribution is ReentrancyGuard {
     }
 
     /// @notice Set isPaused state.
-    /// @param state New pause state.
-    function setPauseState(bool state) external {
+    /// @param paused New pause state.
+    function setPauseState(bool paused) external {
         _checkDaoPermissions();
 
         uint256 currentState = isPaused;
-        isPaused = state ? 2 : 1;
+        isPaused = paused ? 1 : 2;
 
         // If it was paused prior,
         // you need to provide users 6 weeks to claim their distribution.

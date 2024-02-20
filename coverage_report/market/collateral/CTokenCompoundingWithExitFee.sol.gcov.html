@@ -31,18 +31,18 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">0</td>
             <td class="headerCovTableEntry">12</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-01 22:51:55</td>
+            <td class="headerValue">2024-02-16 18:08:13</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">0</td>
             <td class="headerCovTableEntry">5</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
           </tr>
           <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -112,8 +112,8 @@
 <a name="50"><span class="lineNum">      50 </span>            :     /// @param newExitFee The new exit fee to set for redemption of assets,</a>
 <a name="51"><span class="lineNum">      51 </span>            :     ///                   in basis points.</a>
 <a name="52"><span class="lineNum">      52 </span>            :     function setExitFee(uint256 newExitFee) external {</a>
-<a name="53"><span class="lineNum">      53 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
-<a name="54"><span class="lineNum">      54 </span><span class="lineNoCov">          0 :         _setExitFee(newExitFee);</span></a>
+<a name="53"><span class="lineNum">      53 </span><span class="lineCov">          3 :         _checkElevatedPermissions();</span></a>
+<a name="54"><span class="lineNum">      54 </span><span class="lineCov">          2 :         _setExitFee(newExitFee);</span></a>
 <a name="55"><span class="lineNum">      55 </span>            :     }</a>
 <a name="56"><span class="lineNum">      56 </span>            : </a>
 <a name="57"><span class="lineNum">      57 </span>            :     /// INTERNAL FUNCTIONS ///</a>
@@ -125,7 +125,7 @@
 <a name="63"><span class="lineNum">      63 </span>            :     function _removeExitFeeFromAssets(uint256 assets) internal view returns (uint256) {</a>
 <a name="64"><span class="lineNum">      64 </span>            :         // Rounds up with an enforced minimum of assets = 1,</a>
 <a name="65"><span class="lineNum">      65 </span>            :         // so this can never underflow.</a>
-<a name="66"><span class="lineNum">      66 </span><span class="lineNoCov">          0 :         return assets - FixedPointMathLib.mulDivUp(exitFee, assets, 1e18);</span></a>
+<a name="66"><span class="lineNum">      66 </span><span class="lineCov">          2 :         return assets - FixedPointMathLib.mulDivUp(exitFee, assets, 1e18);</span></a>
 <a name="67"><span class="lineNum">      67 </span>            :     }</a>
 <a name="68"><span class="lineNum">      68 </span>            : </a>
 <a name="69"><span class="lineNum">      69 </span>            :     /// @notice Processes a withdrawal of `shares` from the market by burning</a>
@@ -152,8 +152,8 @@
 <a name="90"><span class="lineNum">      90 </span>            :     ) internal override {</a>
 <a name="91"><span class="lineNum">      91 </span>            :         // We remove the fees directly from the assets a user,</a>
 <a name="92"><span class="lineNum">      92 </span>            :         // will receive distributing fee paid to all users.</a>
-<a name="93"><span class="lineNum">      93 </span><span class="lineNoCov">          0 :         assets = _removeExitFeeFromAssets(assets);</span></a>
-<a name="94"><span class="lineNum">      94 </span><span class="lineNoCov">          0 :         super._processWithdraw(by, to, owner, assets, shares, ta, pending);</span></a>
+<a name="93"><span class="lineNum">      93 </span><span class="lineCov">          2 :         assets = _removeExitFeeFromAssets(assets);</span></a>
+<a name="94"><span class="lineNum">      94 </span><span class="lineCov">          2 :         super._processWithdraw(by, to, owner, assets, shares, ta, pending);</span></a>
 <a name="95"><span class="lineNum">      95 </span>            :     }</a>
 <a name="96"><span class="lineNum">      96 </span>            : </a>
 <a name="97"><span class="lineNum">      97 </span>            :     /// @notice Helper function for setting the exit fee on redemption</a>
@@ -164,26 +164,26 @@
 <a name="102"><span class="lineNum">     102 </span>            :     ///                   in basis points.</a>
 <a name="103"><span class="lineNum">     103 </span>            :     function _setExitFee(uint256 newExitFee) internal {</a>
 <a name="104"><span class="lineNum">     104 </span>            :         // Convert `newExitFee` parameter from `basis points` to `WAD`.</a>
-<a name="105"><span class="lineNum">     105 </span><span class="lineNoCov">          0 :         newExitFee = _bpToWad(newExitFee);</span></a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineCov">          2 :         newExitFee = _bpToWad(newExitFee);</span></a>
 <a name="106"><span class="lineNum">     106 </span>            : </a>
 <a name="107"><span class="lineNum">     107 </span>            :         // Check if the proposed exit fee is above the allowed maximum.</a>
-<a name="108"><span class="lineNum">     108 </span><span class="lineNoCov">          0 :         if (newExitFee &gt; MAXIMUM_EXIT_FEE) {</span></a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineNoCov">          0 :             revert CTokenCompoundingWithExitFee__InvalidExitFee();</span></a>
+<a name="108"><span class="lineNum">     108 </span><span class="lineCov">          2 :         if (newExitFee &gt; MAXIMUM_EXIT_FEE) {</span></a>
+<a name="109"><span class="lineNum">     109 </span><span class="lineCov">          1 :             revert CTokenCompoundingWithExitFee__InvalidExitFee();</span></a>
 <a name="110"><span class="lineNum">     110 </span>            :         }</a>
 <a name="111"><span class="lineNum">     111 </span>            : </a>
 <a name="112"><span class="lineNum">     112 </span>            :         // Cache the old exit fee for event emission.</a>
-<a name="113"><span class="lineNum">     113 </span><span class="lineNoCov">          0 :         uint256 oldExitFee = exitFee;</span></a>
+<a name="113"><span class="lineNum">     113 </span><span class="lineCov">          1 :         uint256 oldExitFee = exitFee;</span></a>
 <a name="114"><span class="lineNum">     114 </span>            : </a>
 <a name="115"><span class="lineNum">     115 </span>            :         // Set new exit fee.</a>
-<a name="116"><span class="lineNum">     116 </span><span class="lineNoCov">          0 :         exitFee = newExitFee;</span></a>
-<a name="117"><span class="lineNum">     117 </span><span class="lineNoCov">          0 :         emit ExitFeeSet(oldExitFee, newExitFee);</span></a>
+<a name="116"><span class="lineNum">     116 </span><span class="lineCov">          1 :         exitFee = newExitFee;</span></a>
+<a name="117"><span class="lineNum">     117 </span><span class="lineCov">          1 :         emit ExitFeeSet(oldExitFee, newExitFee);</span></a>
 <a name="118"><span class="lineNum">     118 </span>            :     }</a>
 <a name="119"><span class="lineNum">     119 </span>            : </a>
 <a name="120"><span class="lineNum">     120 </span>            :     /// @notice Multiplies `value` by 1e14 to convert it from `basis points`</a>
 <a name="121"><span class="lineNum">     121 </span>            :     ///         to WAD.</a>
 <a name="122"><span class="lineNum">     122 </span>            :     /// @dev Internal helper function for easily converting between scalars.</a>
 <a name="123"><span class="lineNum">     123 </span>            :     function _bpToWad(uint256 value) internal pure returns (uint256) {</a>
-<a name="124"><span class="lineNum">     124 </span><span class="lineNoCov">          0 :         return value * 1e14;</span></a>
+<a name="124"><span class="lineNum">     124 </span><span class="lineCov">          2 :         return value * 1e14;</span></a>
 <a name="125"><span class="lineNum">     125 </span>            :     }</a>
 <a name="126"><span class="lineNum">     126 </span>            : </a>
 <a name="127"><span class="lineNum">     127 </span>            : }</a>

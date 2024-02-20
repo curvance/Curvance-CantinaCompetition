@@ -10,6 +10,13 @@ import { IERC20 } from "contracts/interfaces/IERC20.sol";
 
 library SwapperLib {
     /// TYPES ///
+
+    /// @notice Used to execute a swap, which is selling one token for another.
+    /// @param inputToken Address of input token to swap from.
+    /// @param inputAmount The amount of `inputToken` to swap.
+    /// @param outputToken Address of token to swap into.
+    /// @param target Address of the swapper, usually an aggregator.
+    /// @param call Swap instruction calldata.
     struct Swap {
         address inputToken;
         uint256 inputAmount;
@@ -18,6 +25,11 @@ library SwapperLib {
         bytes call;
     }
 
+    /// @notice Used to execute a Zap, which is a single external action.
+    /// @param inputToken Address of input token to Zap from.
+    /// @param inputAmount The amount of `inputToken` to Zap.
+    /// @param target Address of the Zapper, usually an aggregator.
+    /// @param call Zap instruction calldata.
     struct ZapperCall {
         address inputToken;
         uint256 inputAmount;
@@ -32,9 +44,9 @@ library SwapperLib {
 
     /// FUNCTIONS ///
 
-    /// @notice Swap input token into a desired token.
-    /// @param swapData The swap data.
-    /// @return Swapped amount of token.
+    /// @notice Swaps `swapData.inputToken` into a `swapData.outputToken`.
+    /// @param swapData The swap instruction data to execute.
+    /// @return The output amount received from swapping.
     function swap(
         ICentralRegistry centralRegistry,
         Swap memory swapData
@@ -43,16 +55,18 @@ library SwapperLib {
             swapData.target
         );
 
-        // Make sure we know how to validate this calldata.
+        // Validate we know how to verify this calldata.
         if (callDataChecker == address(0)) {
             revert SwapperLib__UnknownCalldata();
         }
 
+        // Verify calldata integrity.
         IExternalCallDataChecker(callDataChecker).checkCallData(
             swapData,
             address(this)
         );
 
+        // Approve `swapData.inputToken` to target contract, if necessary.
         _approveTokenIfNeeded(
             swapData.inputToken,
             swapData.target,
@@ -67,22 +81,25 @@ library SwapperLib {
             ? swapData.inputAmount
             : 0;
 
+        // Execute the swap.
         (bool success, bytes memory auxData) = swapData.target.call{
             value: value
         }(swapData.call);
 
         propagateError(success, auxData, "SwapperLib: swap");
 
+        // Revert if the swap failed.
         if (!success) {
             revert SwapperLib__SwapError();
         }
 
+        // Remove any excess approval.
         _removeApprovalIfNeeded(swapData.inputToken, swapData.target);
 
         return CommonLib.getTokenBalance(outputToken) - balance;
     }
 
-    /// @notice Zaps an input token into an output token.
+    /// @notice Zaps an input token into something.
     /// @dev Calls the `zap` function in a specified contract (the zapper).
     ///      1. Approves the zapper to transfer the required amount
     ///         of the input token.
@@ -92,25 +109,34 @@ library SwapperLib {
     ///                   address, the calldata for the `zap` function,
     ///                   the input token address and the input amount.
     function zap(ZapperCall memory zapperCall) internal {
-        SwapperLib._approveTokenIfNeeded(
+        // Approve `zapperCall.inputToken` to target contract, if necessary.
+        _approveTokenIfNeeded(
             zapperCall.inputToken,
             zapperCall.target,
             zapperCall.inputAmount
         );
+
+        // Check whether we need to attach gas token or not.
         uint256 value = 0;
         if (CommonLib.isETH(zapperCall.inputToken)) {
             value = zapperCall.inputAmount;
         }
+
+        // Execute the zap.
         (bool success, bytes memory auxData) = zapperCall.target.call{
             value: value
         }(zapperCall.call);
+
+        // Remove any excess approval.
+        _removeApprovalIfNeeded(zapperCall.inputToken, zapperCall.target);
+
         SwapperLib.propagateError(success, auxData, "SwapperLib: zapper");
     }
 
-    /// @notice Approve `token` spending allowance if needed.
-    /// @param token The token address.
+    /// @notice Approves `token` spending allowance, if needed.
+    /// @param token The token address to approve.
     /// @param spender The spender address.
-    /// @param amount The approve amount.
+    /// @param amount The approval amount.
     function _approveTokenIfNeeded(
         address token,
         address spender,
@@ -121,20 +147,22 @@ library SwapperLib {
         }
     }
 
-    /// @notice Remove `token` spending allowance if needed.
-    /// @param token The token address.
+    /// @notice Removes `token` spending allowance, if needed.
+    /// @param token The token address to remove approval.
     /// @param spender The spender address.
-    function _removeApprovalIfNeeded(address token, address spender) internal {
-        if (
-            !CommonLib.isETH(token) &&
-            IERC20(token).allowance(address(this), spender) > 0
-        ) {
-            SafeTransferLib.safeApprove(token, spender, 0);
+    function _removeApprovalIfNeeded(
+        address token, 
+        address spender
+    ) internal {
+        if (!CommonLib.isETH(token)) {
+            if (IERC20(token).allowance(address(this), spender) > 0) {
+                SafeTransferLib.safeApprove(token, spender, 0);
+            }
         }
     }
 
-    /// @dev Propagate error message.
-    /// @param success If transaction is successful.
+    /// @dev Propagates an error message.
+    /// @param success If transaction was successful.
     /// @param data The transaction result data.
     /// @param errorMessage The custom error message.
     function propagateError(

@@ -3,14 +3,10 @@ pragma solidity ^0.8.17;
 
 import { TestBaseVeCVE } from "../TestBaseVeCVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 
 contract BridgeVeCVELockTest is TestBaseVeCVE {
-    ITokenBridgeRelayer public tokenBridgeRelayer =
-        ITokenBridgeRelayer(_TOKEN_BRIDGE_RELAYER);
-
-    uint256[] public chainIDs;
-    uint16[] public wormholeChainIDs;
+    ITokenBridge public tokenBridge = ITokenBridge(_TOKEN_BRIDGE);
 
     function setUp() public override {
         super.setUp();
@@ -24,27 +20,6 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
             1,
             23
         );
-
-        chainIDs.push(1);
-        wormholeChainIDs.push(2);
-        chainIDs.push(42161);
-        wormholeChainIDs.push(23);
-
-        centralRegistry.registerWormholeChainIDs(chainIDs, wormholeChainIDs);
-
-        ITokenBridgeRelayer.SwapRateUpdate[]
-            memory swapRateUpdate = new ITokenBridgeRelayer.SwapRateUpdate[](
-                1
-            );
-        swapRateUpdate[0] = ITokenBridgeRelayer.SwapRateUpdate({
-            token: address(cve),
-            value: 10e8
-        });
-
-        vm.startPrank(tokenBridgeRelayer.owner());
-        tokenBridgeRelayer.registerToken(2, address(cve));
-        tokenBridgeRelayer.updateSwapRate(2, swapRateUpdate);
-        vm.stopPrank();
 
         deal(address(cve), address(this), 100e18);
         cve.approve(address(veCVE), 100e18);
@@ -66,7 +41,10 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         vm.expectRevert();
         veCVE.bridgeVeCVELock{ value: messageFee - 1 }(
@@ -84,7 +62,10 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
 
         centralRegistry.setEarlyUnlockPenaltyMultiplier(3000);
 

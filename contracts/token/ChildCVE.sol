@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+import { ICVE } from "contracts/interfaces/ICVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
@@ -109,15 +110,6 @@ contract CVE is ERC20 {
                 recipient,
                 amount
             );
-    }
-
-    /// @notice Returns required amount of token for relayer fee.
-    /// @param dstChainId Chain ID of the target blockchain.
-    /// @return Required fee.
-    function relayerFee(uint256 dstChainId) external view returns (uint256) {
-        return
-            IProtocolMessagingHub(centralRegistry.protocolMessagingHub())
-                .cveRelayerFee(dstChainId);
     }
 
     /// @notice Returns required amount of native asset for message fee.

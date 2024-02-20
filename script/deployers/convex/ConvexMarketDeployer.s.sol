@@ -8,7 +8,6 @@ import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/Chainlink
 import { Curve2PoolLPAdaptor } from "contracts/oracles/adaptors/curve/Curve2PoolLPAdaptor.sol";
 import { Convex2PoolCToken } from "contracts/market/collateral/Convex2PoolCToken.sol";
 import { Convex3PoolCToken } from "contracts/market/collateral/Convex3PoolCToken.sol";
-import { Convex4PoolCToken } from "contracts/market/collateral/Convex4PoolCToken.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -139,8 +138,8 @@ contract ConvexMarketDeployer is DeployConfiguration {
         if (!Curve2PoolLPAdaptor(curveAdaptor).isSupportedAsset(param.asset)) {
             Curve2PoolLPAdaptor.AdaptorData memory data;
             data.pool = param.pool;
-            data.underlyingOrConstituent0 = param.underlyings[0].asset;
-            data.underlyingOrConstituent1 = param.underlyings[1].asset;
+            data.underlying0 = param.underlyings[0].asset;
+            data.underlying1 = param.underlyings[1].asset;
             data.divideRate0 = param.priceBound.divideRate0;
             data.divideRate1 = param.priceBound.divideRate1;
             data.isCorrelated = param.priceBound.isCorrelated;

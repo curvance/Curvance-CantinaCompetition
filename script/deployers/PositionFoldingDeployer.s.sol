@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
 
-import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
+import { PositionFolding } from "contracts/market/utils/PositionFolding.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 

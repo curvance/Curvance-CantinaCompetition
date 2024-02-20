@@ -3,27 +3,26 @@ pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 import { GaugeErrors } from "contracts/gauge/GaugeErrors.sol";
-import { CTokenCompounding } from "contracts/market/collateral/CTokenCompounding.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
 
-contract CTokenCompounding_TransferTest is TestBaseCTokenCompounding {
+contract CTokenCompoundingTransferTest is TestBaseCTokenCompounding {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
-    function test_CTokenCompounding_Transfer_fail_whenSenderAndReceiverAreSame()
+    function test_cTokenCompoundingTransfer_fail_whenSenderAndReceiverAreSame()
         public
     {
         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
         cBALRETH.transfer(address(this), 100);
     }
 
-    function test_CTokenCompounding_Transfer_fail_whenTransferZeroAmount()
+    function test_cTokenCompoundingTransfer_fail_whenTransferZeroAmount()
         public
     {
         vm.expectRevert(GaugeErrors.InvalidAmount.selector);
         cBALRETH.transfer(user1, 0);
     }
 
-    function test_CTokenCompounding_Transfer_fail_whenTransferIsNotAllowed()
+    function test_cTokenCompoundingTransfer_fail_whenTransferIsNotAllowed()
         public
     {
         marketManager.setTransferPaused(true);
@@ -32,7 +31,7 @@ contract CTokenCompounding_TransferTest is TestBaseCTokenCompounding {
         cBALRETH.transfer(user1, 0);
     }
 
-    function test_CTokenCompounding_Transfer_success() public {
+    function test_cTokenCompoundingTransfer_success() public {
         cBALRETH.mint(100, address(this));
 
         uint256 balance = cBALRETH.balanceOf(address(this));

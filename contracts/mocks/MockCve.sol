@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import { ERC20 } from "contracts/libraries/external/ERC20.sol";
+import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 // mock CVE for testing
 contract MockCve is ERC20 {
@@ -25,4 +26,5 @@ contract MockCve is ERC20 {
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
+
 }
