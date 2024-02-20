@@ -326,7 +326,7 @@ contract FuzzDToken is FuzzMarketManager {
         }
     }
 
-    function preLiquidate(
+    function _setupLiquidatableStates(
         uint amount,
         uint256 daiPrice,
         uint256 usdcPrice
@@ -374,8 +374,8 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     // gets prices needed to liquidate
-    function try_to_liquidate(uint256 amount) public {
-        // ensure price feeds are up to date before updating collateral token and listing
+    function _preLiquidate(uint256 amount) public {
+        // ensure price feeds are up to date and in sync before updating collateral token and listing
         _checkPriceFeed();
         {
             (
@@ -407,42 +407,39 @@ contract FuzzDToken is FuzzMarketManager {
                 );
             }
 
+            // user to be liquidated must already have a position in cUSDC
             bool hasUsdcPosition = _hasPosition(address(cUSDC));
+            // if they do not, post it as collateral
             if (!hasUsdcPosition) {
                 post_collateral_should_succeed(address(cUSDC), WAD + 1, false);
             }
         }
         {
+            // ddai must be listed in the market manager to continue
             (bool is_ddai_listed, , , , , , , , ) = marketManager.tokenData(
                 address(dDAI)
             );
+            // if ddai is not listed, list the ddai token to the manager
             if (!is_ddai_listed) {
                 list_token_should_succeed(address(dDAI));
             }
         }
 
+        // the maximum amount of ddai that can be borrowed is the market underlying held - totalReserves
         uint256 upperBound = DToken(address(dDAI)).marketUnderlyingHeld() -
             DToken(dDAI).totalReserves();
+        // clamp the amount of ddai to borrow between 1 wei and upperBound-1
         amount = clampBetween(amount, 1, upperBound - 1);
+        // set daiPrice to 1e20, TODO can pull the maxAnswer of the oracle out to a variable so fuzzers can dynamically generate price between range of prices
         uint256 daiPrice = 1e20;
-        // daiPrice = clampBetween(daiPrice, 1, type(uint256).max);
+        // set usdcPrice to 1e7
         uint256 usdcPrice = 1e7;
-        // usdcPrice = clampBetween(usdcPrice, 1, type(uint256).max);
 
         dDAI.borrow(amount);
 
-        // this will update price feeds values
-        preLiquidate(amount, daiPrice, usdcPrice);
-        (
-            uint256 lfactor,
-            uint256 debtTokenPrice,
-            uint256 collatTokenPrice
-        ) = marketManager.LiquidationStatusOf(
-                address(this),
-                address(dDAI),
-                address(cUSDC)
-            );
-        emit LogUint256("lfactor", lfactor);
+        // mint tokens and set the oracle prices of the system
+        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
+        // ensure that the account can be liquidated
         (
             uint256 debt,
             uint256 collateralLiquidation,
@@ -455,23 +452,9 @@ contract FuzzDToken is FuzzMarketManager {
                 false
             );
 
-        emit LogUint256("debt:", debt);
-        emit LogUint256("collateral liquidation", collateralLiquidation);
-        emit LogUint256("collateral protocol", collateralProtocol);
-
-        _canLiquidateAccount(address(this));
-
-        hevm.prank(msg.sender);
-        try this.prankLiquidateAccount(address(this)) {} catch {
-            assert(false);
-        }
-    }
-
-    function _canLiquidateAccount(address account) private {
         (uint256 accountCollateral, , uint256 accountDebt) = marketManager
-            .statusOf(account);
-        emit LogUint256("accountCollateral", accountCollateral);
-        emit LogUint256("accountDebt", accountDebt);
+            .statusOf(address(this));
+        // ensure that the collateral < accountDebt to be liquidated
         require(accountCollateral < accountDebt);
     }
 
@@ -479,30 +462,30 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 daiPrice = 1e24;
         uint256 usdcPrice = 1e7;
         require(marketManager.seizePaused() != 2);
-        preLiquidate(amount, daiPrice, usdcPrice);
         address account = address(this);
-        _canLiquidateAccount(account);
+        _preLiquidate(amount);
 
         IMToken[] memory assets = marketManager.assetsOf(account);
 
         hevm.prank(msg.sender);
-        marketManager.liquidateAccount(account);
-
-        emit LogAddress("msg.sender", msg.sender);
-        for (uint256 i = 0; i < assets.length; i++) {
-            (bool hasPosition, uint256 balanceOf, ) = marketManager
-                .tokenDataOf(address(this), address(assets[i]));
-            assertWithMsg(
-                !hasPosition,
-                "marketManager - liquidations should remove user's position for their assets"
-            );
-            assertEq(
-                balanceOf,
-                0,
-                "marketManager - liquidateAccount should zero out balanceOf"
-            );
+        try this.prankLiquidateAccount(account) {
+            emit LogAddress("msg.sender", msg.sender);
+            for (uint256 i = 0; i < assets.length; i++) {
+                (bool hasPosition, uint256 balanceOf, ) = marketManager
+                    .tokenDataOf(address(this), address(assets[i]));
+                assertWithMsg(
+                    !hasPosition,
+                    "marketManager - liquidations should remove user's position for their assets"
+                );
+                assertEq(
+                    balanceOf,
+                    0,
+                    "marketManager - liquidateAccount should zero out balanceOf"
+                );
+            }
+        } catch {
+            assert(false);
         }
-        assert(false);
     }
 
     /*    
@@ -513,7 +496,7 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice
     ) public {
         require(marketManager.seizePaused() != 2);
-        preLiquidate(amount, daiPrice, usdcPrice);
+        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
         address account = address(this);
 
         _canLiquidateAccount(account);
@@ -540,7 +523,7 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice
     ) public {
         require(marketManager.seizePaused() != 2);
-        preLiquidate(amount, daiPrice, usdcPrice);
+        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
         address account = address(msg.sender);
         _canLiquidateAccount(account);
 
@@ -566,7 +549,7 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice
     ) public {
         require(marketManager.seizePaused() == 2);
-        preLiquidate(amount, daiPrice, usdcPrice);
+        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
         address account = address(msg.sender);
         _canLiquidateAccount(account);
 
