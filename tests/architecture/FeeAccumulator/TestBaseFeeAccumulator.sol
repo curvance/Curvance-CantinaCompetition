@@ -12,12 +12,6 @@ contract TestBaseFeeAccumulator is TestBaseMarket {
         dai = IERC20(_DAI_ADDRESS);
         balRETH = IERC20(_BALANCER_WETH_RETH);
 
-        _deployCentralRegistry();
-        _deployCVE();
-        _deployCVELocker();
-        _deployVeCVE();
-        _deployProtocolMessagingHub();
-        _deployOneBalanceFeeManager();
-        _deployFeeAccumulator();
+        _deployBaseContracts();
     }
 }
