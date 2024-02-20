@@ -517,6 +517,8 @@ contract CVELocker is Delegable, ReentrancyGuard {
     ) internal returns (uint256) {
         uint256 lockAmount = IERC20(cve).balanceOf(address(this));
 
+        IERC20(cve).approve(address(veCVE), lockAmount);
+
         // Because this call is nested within call to claim all rewards
         // there will never be any rewards to process,
         // and thus no potential secondary lock so we can just pass
