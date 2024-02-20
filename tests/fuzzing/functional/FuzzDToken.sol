@@ -166,6 +166,7 @@ contract FuzzDToken is FuzzMarketManager {
                 preUnderlyingBalance + amount,
                 "DTOKEN - borrow postUnderlyingBalance failed = underlyingBalance + amount"
             );
+            postedCollateralAt[dtoken] = block.timestamp;
             // TODO: Add check for _debtOf[account].principal
             // TODO: Add check for _debtOf[account].accountExchangeRate
             postedCollateralAt[dtoken] = block.timestamp;
@@ -318,6 +319,7 @@ contract FuzzDToken is FuzzMarketManager {
                     "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
                 );
             }
+            postedCollateralAt[dtoken] = block.timestamp;
         } catch {
             assertWithMsg(
                 false,
@@ -458,9 +460,12 @@ contract FuzzDToken is FuzzMarketManager {
         require(accountCollateral < accountDebt);
     }
 
+    uint256 constant DAI_PRICE = 1e24;
+    uint256 constant USDC_PRICE = 1e7;
+
     function liquidateAccount_should_succeed(uint256 amount) public {
-        uint256 daiPrice = 1e24;
-        uint256 usdcPrice = 1e7;
+        uint256 daiPrice = DAI_PRICE;
+        uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = address(this);
         _preLiquidate(amount);
@@ -471,24 +476,24 @@ contract FuzzDToken is FuzzMarketManager {
         try this.prankLiquidateAccount(account) {
             emit LogAddress("msg.sender", msg.sender);
             for (uint256 i = 0; i < assets.length; i++) {
-                (bool hasPosition, uint256 balanceOf, ) = marketManager
-                    .tokenDataOf(address(this), address(assets[i]));
-                assertWithMsg(
-                    !hasPosition,
-                    "marketManager - liquidations should remove user's position for their assets"
-                );
-                assertEq(
-                    balanceOf,
-                    0,
-                    "marketManager - liquidateAccount should zero out balanceOf"
-                );
+                if (assets[i].isCToken()) {
+                    assertEq(
+                        _collateralPostedFor(address(assets[i])),
+                        0,
+                        "MARKET MANAGER - liquidateAccount should zero out collateral"
+                    );
+                } else {
+                    assertEq(
+                        IMToken(assets[i]).debtBalanceCached(address(this)),
+                        0,
+                        "MARKET MANAGER - liquidateAccount should zero out debt balance"
+                    );
+                }
             }
         } catch {
             assert(false);
         }
     }
-
-    /*    
 
     function liquidateAccount_should_fail_if_account_not_flagged(
         uint256 amount,
@@ -522,11 +527,13 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 daiPrice,
         uint256 usdcPrice
     ) public {
+        uint256 daiPrice = DAI_PRICE;
+        uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
-        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
-        address account = address(msg.sender);
-        _canLiquidateAccount(account);
+        address account = msg.sender;
+        _preLiquidate(amount);
 
+        hevm.prank(msg.sender);
         try this.prankLiquidateAccount(account) {
             assertWithMsg(
                 false,
@@ -549,9 +556,12 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice
     ) public {
         require(marketManager.seizePaused() == 2);
-        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
-        address account = address(msg.sender);
-        _canLiquidateAccount(account);
+        uint256 daiPrice = DAI_PRICE;
+        uint256 usdcPrice = USDC_PRICE;
+        address account = msg.sender;
+        _preLiquidate(amount);
+
+        hevm.prank(msg.sender);
 
         try this.prankLiquidateAccount(account) {
             assertWithMsg(
@@ -568,8 +578,6 @@ contract FuzzDToken is FuzzMarketManager {
             );
         }
     }
-
-    */
 
     // SOFT liquidation
 
