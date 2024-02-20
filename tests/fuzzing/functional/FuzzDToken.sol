@@ -332,18 +332,16 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice
     ) private {
         hevm.warp(block.timestamp + marketManager.MIN_HOLD_PERIOD());
+        address liquidator = msg.sender;
 
-        hevm.prank(msg.sender);
-        MockToken(dDAI.underlying()).mint(amount);
+        hevm.prank(liquidator);
+        dai.mint(amount * WAD);
 
-        hevm.prank(msg.sender);
-        MockToken(dDAI.underlying()).approve(address(dDAI), amount);
+        hevm.prank(liquidator);
+        dai.approve(address(dDAI), amount * WAD);
 
-        emit LogUint256("Setting dai feed answer to:", daiPrice);
         mockDaiFeed.setMockAnswer(int256(daiPrice));
-        emit LogString("Updating block.timestamp for mockDaiFeed");
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        emit LogString("set chainlink round data for dai");
         chainlinkDaiUsd.updateRoundData(
             0,
             int256(daiPrice),
@@ -355,7 +353,7 @@ contract FuzzDToken is FuzzMarketManager {
             true,
             false
         );
-        assert(!daiData.hadError);
+        require(!daiData.hadError);
 
         emit LogString("set chainlink round data for usdc");
         chainlinkUsdcUsd.updateRoundData(
@@ -364,9 +362,7 @@ contract FuzzDToken is FuzzMarketManager {
             block.timestamp,
             block.timestamp
         );
-        emit LogUint256("Setting usdc feed answer to:", usdcPrice);
         mockUsdcFeed.setMockAnswer(int256(usdcPrice));
-        emit LogString("Updating block.timestamp for mockUsdcFeed");
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
 
         PriceReturnData memory usdcData = chainlinkAdaptor.getPrice(
@@ -374,7 +370,7 @@ contract FuzzDToken is FuzzMarketManager {
             true,
             false
         );
-        assert(!usdcData.hadError);
+        require(!usdcData.hadError);
     }
 
     // gets prices needed to liquidate
