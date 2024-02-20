@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 import { TestBaseFeeAccumulator } from "../TestBaseFeeAccumulator.sol";
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
-import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 
 contract ExecuteEpochFeeRouterTest is TestBaseFeeAccumulator {
     EpochRolloverData data =
@@ -26,10 +25,8 @@ contract ExecuteEpochFeeRouterTest is TestBaseFeeAccumulator {
             23
         );
 
-        uint256 currentEpoch = ICVELocker(centralRegistry.cveLocker())
-            .currentEpoch(block.timestamp);
-        uint256 nextEpoch = ICVELocker(centralRegistry.cveLocker())
-            .nextEpochToDeliver();
+        uint256 currentEpoch = cveLocker.currentEpoch(block.timestamp);
+        uint256 nextEpoch = cveLocker.nextEpochToDeliver();
 
         vm.prank(address(protocolMessagingHub));
 
@@ -75,8 +72,7 @@ contract ExecuteEpochFeeRouterTest is TestBaseFeeAccumulator {
             23
         );
 
-        uint256 nextEpoch = ICVELocker(centralRegistry.cveLocker())
-            .nextEpochToDeliver();
+        uint256 nextEpoch = cveLocker.nextEpochToDeliver();
 
         vm.prank(address(protocolMessagingHub));
         feeAccumulator.receiveCrossChainLockData(data);
