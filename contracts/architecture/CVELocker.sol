@@ -51,10 +51,6 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @dev User => Reward Next Claim Index.
     mapping(address => uint256) public userNextClaimIndex;
 
-    /// @notice The number of tokens locked across all chains during an epoch.
-    /// @dev Epoch # => Total Tokens Locked across all chains.
-    mapping(uint256 => uint256) public tokensLockedByEpoch;
-
     /// @notice The rewards alloted to 1 vote escrowed CVE for an epoch,
     ///         in `WAD`.
     /// @dev Epoch # => Rewards per veCVE.
@@ -68,20 +64,19 @@ contract CVELocker is Delegable, ReentrancyGuard {
 
     error CVELocker__InvalidCentralRegistry();
     error CVELocker__RewardTokenIsZeroAddress();
-    error CVELocker__RewardTokenIsAlreadyAuthorized();
-    error CVELocker__RewardTokenIsNotAuthorized();
     error CVELocker__SwapDataIsInvalid();
     error CVELocker__Unauthorized();
     error CVELocker__NoEpochRewards();
-    error CVELocker__WrongEpochRewardSubmission();
-    error CVELocker__TransferError();
     error CVELocker__LockerIsAlreadyStarted();
 
     receive() external payable {}
 
     /// CONSTRUCTOR ///
 
-    constructor(ICentralRegistry centralRegistry_, address rewardToken_) Delegable(centralRegistry_) {
+    constructor(
+        ICentralRegistry centralRegistry_,
+        address rewardToken_
+    ) Delegable(centralRegistry_) {
         if (
             !ERC165Checker.supportsInterface(
                 address(centralRegistry_),
@@ -244,7 +239,14 @@ contract CVELocker is Delegable, ReentrancyGuard {
             }
         }
 
-        _claimRewards(msg.sender, msg.sender, epochs, rewardsData, params, aux);
+        _claimRewards(
+            msg.sender,
+            msg.sender,
+            epochs,
+            rewardsData,
+            params,
+            aux
+        );
     }
 
     /// @notice Claims rewards for multiple epochs.
@@ -373,11 +375,7 @@ contract CVELocker is Delegable, ReentrancyGuard {
             // execution.
             SafeTransferLib.safeTransfer(rewardToken, msg.sender, rewards);
 
-            emit RewardPaid(
-                user,
-                rewardToken,
-                rewards
-            );
+            emit RewardPaid(user, rewardToken, rewards);
         }
     }
 
@@ -390,7 +388,10 @@ contract CVELocker is Delegable, ReentrancyGuard {
     /// @return The calculated reward amount.
     ///         This is calculated based on the user's token points
     ///         for the given epoch.
-    function _calculateRewards(address user, uint256 epochs) internal returns (uint256) {
+    function _calculateRewards(
+        address user,
+        uint256 epochs
+    ) internal returns (uint256) {
         uint256 startEpoch = userNextClaimIndex[user];
         uint256 rewards;
 
@@ -456,7 +457,6 @@ contract CVELocker is Delegable, ReentrancyGuard {
 
         // Check if `recipient` wants to route their rewards into another token.
         if (rewardsData.asCVE) {
-            
             SwapperLib.Swap memory swapData = abi.decode(
                 params,
                 (SwapperLib.Swap)
@@ -474,7 +474,10 @@ contract CVELocker is Delegable, ReentrancyGuard {
             }
 
             // Swap to CVE and update reward amount based on CVE received.
-            uint256 adjustedRewards = SwapperLib.swap(centralRegistry, swapData);
+            uint256 adjustedRewards = SwapperLib.swap(
+                centralRegistry,
+                swapData
+            );
 
             // Check if the claimer wants to lock as veCVE.
             if (rewardsData.shouldLock) {
