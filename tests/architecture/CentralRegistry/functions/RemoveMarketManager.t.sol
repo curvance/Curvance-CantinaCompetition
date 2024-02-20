@@ -23,14 +23,17 @@ contract RemoveMarketManagerTest is TestBaseMarket {
 
     function setUp() public virtual override {
         super.setUp();
+
         newMarket = address(new Market());
     }
 
     function test_removeMarketManager_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
+        vm.prank(address(0));
+
+        vm.expectRevert(
+            CentralRegistry.CentralRegistry__Unauthorized.selector
+        );
         centralRegistry.removeMarketManager(user1);
-        vm.stopPrank();
     }
 
     function test_removeMarketManager_fail_whenParametersMisconfigured()
