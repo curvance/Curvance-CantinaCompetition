@@ -66,7 +66,8 @@ contract BlastCentralRegistry is CentralRegistry {
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Withdraws all native yield fees from non-MToken addresses.
-    /// @param nonMTokens Array of non-MTokens addresses to withdraw native from.
+    /// @param nonMTokens Array of non-MTokens addresses to withdraw native
+    ///                   from.
     function withdrawNativeYield(address[] calldata nonMTokens) external {
         // Match permissioning check to normal withdrawReserves().
         _checkDaoPermissions();
@@ -77,7 +78,9 @@ contract BlastCentralRegistry is CentralRegistry {
         }
 
         // Cache Yield Manager storage value.
-        IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(nativeYieldManager);
+        IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(
+            nativeYieldManager
+        );
         address nonMToken;
 
         for (uint256 i; i < nonMTokensLength; ) {

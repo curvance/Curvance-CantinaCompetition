@@ -38,7 +38,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     address[] public rewardTokens;
     /// @notice mToken => epoch => rewardToken => rewardPerSec.
     mapping(address => mapping(uint256 => mapping(address => uint256)))
-        private _epochRewardPerSec;
+        internal _epochRewardPerSec;
     /// @notice mToken => rewardToken => accRewardPerShare.
     mapping(address => mapping(address => uint256))
         public poolAccRewardPerShare;
@@ -193,7 +193,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         if (rewardToken == cve) {
             return _epochInfo[epoch].poolWeights[token];
         }
-        
+
         return
             (EPOCH_WINDOW *
                 _epochRewardPerSec[token][epoch][rewardToken] *

@@ -148,7 +148,7 @@ contract TestPartnerGaugePool is TestBaseMarket {
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
-            gaugePool.setRewardPerSec(address(dDAI), 0, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(tokens[0], 0, partnerRewardTokens[i], 300);
         }
     }
 
@@ -166,8 +166,8 @@ contract TestPartnerGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            gaugePool.setRewardPerSec(address(dDAI), 1, partnerRewardTokens[i], 300);
-            gaugePool.setRewardPerSec(address(dDAI), 1, partnerRewardTokens[i], 200);
+            gaugePool.setRewardPerSec(tokens[0], 1, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(tokens[0], 1, partnerRewardTokens[i], 200);
         }
     }
 
