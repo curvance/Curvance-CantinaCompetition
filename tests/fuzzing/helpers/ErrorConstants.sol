@@ -37,6 +37,13 @@ contract ErrorConstants {
     uint256 marketManager_pausedSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__Paused()"))));
 
+    uint256 marketManager_noLiquidationAvailableSelectorHash =
+        uint256(
+            uint32(
+                bytes4(keccak256("MarketManager__NoLiquidationAvailable()"))
+            )
+        );
+
     uint256 marketManager_minHoldSelectorHash =
         uint256(
             uint32(bytes4(keccak256("MarketManager__MinimumHoldPeriod()")))

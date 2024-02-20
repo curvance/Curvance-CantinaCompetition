@@ -44,19 +44,19 @@ contract FuzzMarketManager is StatefulBaseMarket {
 
     function setup() public {
         setUpFeeds();
-        c_token_deposit(address(cUSDC), 1 ether, true);
-        updateCollateralToken_should_succeed(
-            address(cUSDC),
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
+        marketManager.updateCollateralToken(
+            IMToken(address(cUSDC)),
+            7000,
+            4000,
+            3000,
+            200,
+            400,
+            10,
+            1000
         );
-        setCToken_should_succeed(address(cUSDC), 10000 ether);
-        post_collateral_should_succeed(address(cUSDC), WAD * 2, false);
+        setCToken_should_succeed(address(cUSDC), 100_000e18);
+        c_token_deposit(address(cUSDC), 2 * WAD, true);
+        post_collateral_should_succeed(address(cUSDC), WAD * 2 - 1, false);
     }
 
     /// @custom:property market-1 Once a new token is listed, marketManager.isListed(mtoken) should return true.
@@ -73,9 +73,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
                 mtoken == address(dDAI) ||
                 mtoken == address(dDAI)
         );
-        require(
-            _mintAndApprove(IMToken(mtoken).underlying(), mtoken, amount)
-        );
+        require(_mintAndApprove(IMToken(mtoken).underlying(), mtoken, amount));
 
         try marketManager.listToken(mtoken) {
             assertWithMsg(
@@ -471,35 +469,36 @@ contract FuzzMarketManager is StatefulBaseMarket {
                     false,
                     "marketManager - expected postCollateral to pass with @precondition"
                 );
-            }
-            // ensure account collateral has increased by # of tokens
-            uint256 newCollateralForUser = _collateralPostedFor(mtoken);
+            } else {
+                // ensure account collateral has increased by # of tokens
+                uint256 newCollateralForUser = _collateralPostedFor(mtoken);
 
-            uint256 mtokenExchange = MockCToken(mtoken).exchangeRateSafe();
-            // market-9
-            assertEq(
-                (newCollateralForUser) * mtokenExchange,
-                (oldCollateralForUser + tokens) * mtokenExchange,
-                "marketManager - new collateral must collateral+tokens"
-            );
-            // market-10
-            assertWithMsg(
-                _hasPosition(mtoken),
-                "marketManager - addr(this) must have position after posting"
-            );
-            // ensure collateralPosted increases by tokens
-            uint256 newCollateralForToken = marketManager.collateralPosted(
-                mtoken
-            );
-            // market-11
-            assertEq(
-                newCollateralForToken,
-                oldCollateralForToken + tokens,
-                "marketManager - global collateral posted should increase"
-            );
+                uint256 mtokenExchange = MockCToken(mtoken).exchangeRateSafe();
+                // market-9
+                assertEq(
+                    (newCollateralForUser) * mtokenExchange,
+                    (oldCollateralForUser + tokens) * mtokenExchange,
+                    "marketManager - new collateral must collateral+tokens"
+                );
+                // market-10
+                assertWithMsg(
+                    _hasPosition(mtoken),
+                    "marketManager - addr(this) must have position after posting"
+                );
+                // ensure collateralPosted increases by tokens
+                uint256 newCollateralForToken = marketManager.collateralPosted(
+                    mtoken
+                );
+                // market-11
+                assertEq(
+                    newCollateralForToken,
+                    oldCollateralForToken + tokens,
+                    "marketManager - global collateral posted should increase"
+                );
+                postedCollateral[mtoken] = true;
+                postedCollateralAt[mtoken] = block.timestamp;
+            }
         }
-        postedCollateral[mtoken] = true;
-        postedCollateralAt[mtoken] = block.timestamp;
     }
 
     /// @custom:property market-13 – Trying to post too much collateral should revert.
@@ -850,42 +849,6 @@ contract FuzzMarketManager is StatefulBaseMarket {
         } else {
             _checkClosePositionPostConditions(mtoken, preAssetsOf.length);
         }
-    }
-
-    function liquidateAccount_should_succeed() public {
-        address account = address(this);
-        IMToken[] memory assets = marketManager.assetsOf(account);
-        require(assets.length > 0);
-        DToken(dDAI).borrow(2 * WAD);
-
-        (uint256 accountCollateral, , uint256 accountDebt) = marketManager
-            .statusOf(account);
-        require(accountCollateral < accountDebt);
-        emit LogUint256("number of assets", assets.length);
-
-        try this.prankLiquidateAccount(account) {
-            assert(false);
-            for (uint256 i = 0; i < assets.length; i++) {
-                (bool hasPosition, uint256 balanceOf, ) = marketManager
-                    .tokenDataOf(address(this), address(assets[i]));
-                assertWithMsg(
-                    !hasPosition,
-                    "marketManager - liquidations should remove user's position for their assets"
-                );
-                assertEq(
-                    balanceOf,
-                    0,
-                    "marketManager - liquidateAccount should zero out balanceOf"
-                );
-            }
-        } catch {
-            assert(false);
-        }
-    }
-
-    function prankLiquidateAccount(address account) external {
-        hevm.prank(msg.sender);
-        marketManager.liquidateAccount(account);
     }
 
     // Helper Functions

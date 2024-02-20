@@ -141,10 +141,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         // _deployZapper();
         emit LogString("DEPLOYED: PositionFolding");
         _deployPositionFolding();
-        emit LogString("DEPLOYED: Adding dUSDC to router");
-        oracleRouter.addMTokenSupport(address(dUSDC));
-        // emit LogString("DEPLOYED: Adding cBalReth to router");
-        // oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -558,11 +554,8 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             0,
             true
         );
-
-        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
-        mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e8);
+        _setPriceToDefault();
+        emit LogUint256("set price to default", 1e8);
         chainlinkUsdcUsd.updateRoundData(
             0,
             1e8,
@@ -575,7 +568,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             block.timestamp,
             block.timestamp
         );
+        emit LogString("DEPLOYED: Adding cDAI to router");
         oracleRouter.addMTokenSupport(address(cDAI));
+        emit LogString("DEPLOYED: Adding cUSDC to router");
         oracleRouter.addMTokenSupport(address(cUSDC));
         oracleRouter.addMTokenSupport(address(dDAI));
         oracleRouter.addMTokenSupport(address(dUSDC));
@@ -589,7 +584,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
         }
-        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
+        if (
+            block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours ||
+            block.timestamp - chainlinkDaiUsd.latestTimestamp() > 24 hours
+        ) {
             // TODO: Change this to a loop to loop over marketManager.assetsOf()
             // Save a mapping of assets -> chainlink oracle
             // call updateRoundData on each oracle
@@ -606,11 +604,15 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
                 block.timestamp
             );
         }
+        _setPriceToDefault();
+        lastRoundUpdate = block.timestamp;
+    }
+
+    function _setPriceToDefault() private {
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e8);
-        lastRoundUpdate = block.timestamp;
+        mockUsdcFeed.setMockAnswer(1500e8);
+        mockDaiFeed.setMockAnswer(1500e8);
     }
 
     function _isSupportedDToken(address dtoken) internal view {

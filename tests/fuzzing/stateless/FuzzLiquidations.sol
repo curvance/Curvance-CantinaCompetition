@@ -221,7 +221,7 @@ contract FuzzLiquidations is FuzzDToken {
                 "LIQUIDATIONS - maxAmount = data.debtBalanceCached when calculated.cFactor = WAD"
             );
         } else {
-            assertGt(maxAmount, 0, "LIQUIDATIONS - maxAmount must be >=0");
+            assertGt(maxAmount, 0, "LIQUIDATIONS - maxAmount must be >0");
             assertLt(
                 maxAmount,
                 data.debtBalanceCached,

@@ -1,10 +1,11 @@
 {
   "fuzzing": {
-    "workers": 20,
+    "workers": 30,
     "workerResetLimit": 50,
     "timeout": 172800,
     "testLimit": 0,
     "callSequenceLength": 100,
+    "shrinkLimit":200,
     "corpusDirectory": "output/medusa-corpus",
     "coverageEnabled": true,
     "deploymentOrder": ["FuzzingSuite"],

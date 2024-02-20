@@ -1,5 +1,6 @@
 pragma solidity 0.8.17;
 import { FuzzMarketManager } from "tests/fuzzing/FuzzMarketManager.sol";
+import { MockToken } from "contracts/mocks/MockToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
@@ -139,7 +140,6 @@ contract FuzzDToken is FuzzMarketManager {
             )
         );
         require(borrowPossible);
-        assert(false);
         (uint32 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         require(lastTimestampUpdated + compoundRate > block.timestamp);
@@ -187,7 +187,7 @@ contract FuzzDToken is FuzzMarketManager {
     function borrow_should_succeed_accruing_interest(
         address dtoken,
         uint256 amount
-    ) private {
+    ) public {
         _isSupportedDToken(dtoken);
         _checkPriceFeed();
         address underlying = DToken(dtoken).underlying();
@@ -247,7 +247,7 @@ contract FuzzDToken is FuzzMarketManager {
     function repay_should_fail_with_amount_too_large(
         address dtoken,
         uint256 amount
-    ) private {
+    ) public {
         _isSupportedDToken(dtoken);
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         address underlying = DToken(dtoken).underlying();
@@ -280,7 +280,7 @@ contract FuzzDToken is FuzzMarketManager {
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
-    ) private {
+    ) public {
         _isSupportedDToken(dtoken);
         address underlying = DToken(dtoken).underlying();
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
@@ -325,6 +325,173 @@ contract FuzzDToken is FuzzMarketManager {
         }
     }
 
+    function preLiquidate(
+        uint amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) private {
+        hevm.warp(block.timestamp + marketManager.MIN_HOLD_PERIOD());
+
+        hevm.prank(msg.sender);
+        MockToken(dDAI.underlying()).mint(2000000000000000 * WAD);
+
+        hevm.prank(msg.sender);
+        MockToken(dDAI.underlying()).approve(
+            address(dDAI),
+            2000000000000000 * WAD
+        );
+
+        emit LogUint256("Setting dai feed answer to:", daiPrice);
+        mockDaiFeed.setMockAnswer(int256(daiPrice));
+        emit LogString("Updating block.timestamp for mockDaiFeed");
+        mockDaiFeed.setMockUpdatedAt(block.timestamp);
+        emit LogUint256("Setting usdc feed answer to:", usdcPrice);
+        mockUsdcFeed.setMockAnswer(int256(usdcPrice));
+        emit LogString("Updating block.timestamp for mockUsdcFeed");
+        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
+    }
+
+    // gets prices needed to liquidate
+    function try_to_liquidate(uint256 amount) public {
+        uint256 upperBound = DToken(address(dDAI)).marketUnderlyingHeld() -
+            DToken(dDAI).totalReserves();
+        // amount = clampBetween(amount, 1, upperBound - 1);
+        uint256 daiPrice = 1e26;
+        // daiPrice = clampBetween(daiPrice, 1, type(uint256).max);
+        uint256 usdcPrice = 1;
+        // usdcPrice = clampBetween(usdcPrice, 1, type(uint256).max);
+        _checkPriceFeed();
+
+        dDAI.borrow(amount);
+
+        preLiquidate(amount, daiPrice, usdcPrice);
+        _canLiquidateAccount(address(this));
+
+        hevm.prank(msg.sender);
+        marketManager.liquidateAccount(address(this));
+    }
+
+    function _canLiquidateAccount(address account) private {
+        (uint256 accountCollateral, , uint256 accountDebt) = marketManager
+            .statusOf(account);
+        emit LogUint256("accountCollateral", accountCollateral);
+        emit LogUint256("accountDebt", accountDebt);
+        require(accountCollateral < accountDebt);
+    }
+
+    function liquidateAccount_should_succeed(
+        uint256 amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) public {
+        require(marketManager.seizePaused() != 2);
+        preLiquidate(amount, daiPrice, usdcPrice);
+        address account = address(this);
+        _canLiquidateAccount(account);
+
+        IMToken[] memory assets = marketManager.assetsOf(account);
+
+        hevm.prank(msg.sender);
+        marketManager.liquidateAccount(account);
+
+        emit LogAddress("msg.sender", msg.sender);
+        for (uint256 i = 0; i < assets.length; i++) {
+            (bool hasPosition, uint256 balanceOf, ) = marketManager
+                .tokenDataOf(address(this), address(assets[i]));
+            assertWithMsg(
+                !hasPosition,
+                "marketManager - liquidations should remove user's position for their assets"
+            );
+            assertEq(
+                balanceOf,
+                0,
+                "marketManager - liquidateAccount should zero out balanceOf"
+            );
+        }
+        assert(false);
+    }
+
+    function liquidateAccount_should_fail_if_account_not_flagged(
+        uint256 amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) public {
+        require(marketManager.seizePaused() != 2);
+        preLiquidate(amount, daiPrice, usdcPrice);
+        address account = address(this);
+
+        _canLiquidateAccount(account);
+
+        try this.prankLiquidateAccount(account) {
+            assertWithMsg(
+                false,
+                "marketManager - liquidateAccount should fail if account is not flagged for liquidations"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertEq(
+                errorSelector,
+                marketManager_noLiquidationAvailableSelectorHash,
+                "marketManager - liquidateAccount should fail with NoLiquidationAvailable if not flagged"
+            );
+        }
+    }
+
+    function liquidateAccount_should_fail_if_self_account(
+        uint256 amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) public {
+        require(marketManager.seizePaused() != 2);
+        preLiquidate(amount, daiPrice, usdcPrice);
+        address account = address(msg.sender);
+        _canLiquidateAccount(account);
+
+        try this.prankLiquidateAccount(account) {
+            assertWithMsg(
+                false,
+                "marketManager - liquidateAccount should fail if user attempts to liquidate themselves"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertEq(
+                errorSelector,
+                marketManager_unauthorizedSelectorHash,
+                "marketManager - liquidateAccount should fail with Unauthorized"
+            );
+        }
+    }
+
+    function liquidateAccount_should_fail_if_seize_paused(
+        uint256 amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) public {
+        require(marketManager.seizePaused() == 2);
+        preLiquidate(amount, daiPrice, usdcPrice);
+        address account = address(msg.sender);
+        _canLiquidateAccount(account);
+
+        try this.prankLiquidateAccount(account) {
+            assertWithMsg(
+                false,
+                "marketManager - liquidateAccount should fail if user attempts to liquidate themselves"
+            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            assertEq(
+                errorSelector,
+                marketManager_pausedSelectorHash,
+                "marketManager - liquidateAccount should fail with PAUSED when seize is paused"
+            );
+        }
+    }
+
+    // SOFT liquidation
+
     // by default, this should just liquidate the maximum amount, assuming nonexist liquidation
     /// @custom:precondition liquidating an account's maximum
     /// @custom:precondition dToken is supported
@@ -337,11 +504,11 @@ contract FuzzDToken is FuzzMarketManager {
         address account = address(this);
         address dtoken = address(dDAI);
         address collateralToken = address(cUSDC);
-        setup();
+
         hevm.warp(block.timestamp + 5 weeks);
-        borrow_should_succeed_not_accruing_interest(address(dDAI), WAD * 2);
+        borrow_should_succeed_not_accruing_interest(address(dDAI), 1000e6);
         // TODO: make this a dynamic number, that requires that the account would be marked "flagged for liquidation"
-        mockDaiFeed.setMockAnswer(10000e8);
+        mockDaiFeed.setMockAnswer(1000e8);
 
         _checkLiquidatePreconditions(account, dtoken, collateralToken);
         // Structured for non exact liquidations, debt amount to liquidate = max
@@ -387,6 +554,11 @@ contract FuzzDToken is FuzzMarketManager {
                 );
             }
         }
+    }
+
+    function prankLiquidateAccount(address account) public {
+        hevm.prank(msg.sender);
+        marketManager.liquidateAccount(account);
     }
 
     /*
