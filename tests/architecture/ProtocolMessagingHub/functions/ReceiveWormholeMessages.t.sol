@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
-import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 
 contract ProtocolMessagingHubReceiveWormholeMessagesTest is
     TestBaseProtocolMessagingHub
