@@ -27,8 +27,8 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// STORAGE ///
 
-    /// @notice 0 or 1 = activate; 2 = paused.
-    uint256 public isPaused;
+    /// @notice 1 = activate; 2 = paused.
+    uint256 public isPaused = 1;
     /// @notice Status of message hash whether it's delivered or not.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
 
@@ -413,17 +413,19 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     ///         Messaging Hub.
     function flipMessagingHubStatus() external {
         // If the messaging hub is currently paused,
-        // then we are turning pause state off
+        // then we are turning pause state off.
         bool state = isPaused == 2 ? false : true;
         _checkAuthorizedPermissions(state);
 
         // Possible outcomes:
-        // If pause state is being turned off aka false, then we are turning
-        // the messaging hub back on which means isPaused will be = 1
+        // If pause state is being turned off (state = false), then the
+        // Messaging Hub is being turned back on which means isPaused will be
+        // set to 1.
         //
-        // If pause state is being turned on aka true, then we are turning
-        // the messaging hub off which means isPaused will be = 2
-        isPaused = state ? 1 : 2;
+        // If pause state is being turned on (state = true), then the
+        // Messaging Hub is being turned off which means isPaused will be
+        // set to 2.
+        isPaused = state ? 2 : 1;
     }
 
     /// @notice Permissioned function for returning fees reimbursed from

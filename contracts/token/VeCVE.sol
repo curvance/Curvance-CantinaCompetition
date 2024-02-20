@@ -17,25 +17,28 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
 
+    /// @notice Stores data for a voting escrow CVE position.
+    /// @param amount The amount of underlying CVE associated with the lock.
+    /// @param unlockTime The unix timestamp when the associated lock will
+    ///                   unlock.
     struct Lock {
-        /// @notice The amount of underlying CVE associated with the lock.
         uint216 amount;
-        /// @notice The unix timestamp when the associated lock will unlock.
         uint40 unlockTime;
     }
 
     /// CONSTANTS ///
 
-    /// @notice Timestamp `unlockTime` will be set to when a lock
-    //          is on continuous lock (CL) mode.
+    /// @notice The unix timestamp `unlockTime` will be set to when a lock
+    //          is set on continuous lock (CL) mode.
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
-    /// @notice Protocol epoch length.
+    /// @notice The length of one voting escrow epoch, in weeks.
     uint256 public constant EPOCH_DURATION = 2 weeks;
-    /// @notice in # of epochs.
+    /// @notice The length of a fresh voting escrow CVE position, in epochs.
     uint256 public constant LOCK_DURATION_EPOCHS = 26;
-    /// @notice in # of seconds.
+    /// @notice The length of a fresh voting escrow CVE position, in seconds.
     uint256 public constant LOCK_DURATION = 52 weeks;
-    /// @notice Point multiplier for a continuous lock. 2 = 200%.
+    /// @notice Point multiplier for a continuous lock.
+    /// @dev 2 = 200%.
     uint256 public constant CL_POINT_MULTIPLIER = 2;
 
     /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
@@ -53,27 +56,45 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public immutable genesisEpoch;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice token name metadata.
+
+    /// @notice Token name metadata.
     bytes32 private immutable _name;
-    /// @notice token symbol metadata.
+    /// @notice Token symbol metadata.
     bytes32 private immutable _symbol;
 
     /// STORAGE ///
 
-    /// @notice Token Points on this chain.
-    uint256 public chainPoints;
-    ///  @notice 1 = active; 2 = shutdown.
+    /// @notice Whether the veCVE system is shutdown or not.
+    /// @dev 1 = active; 2 = shutdown.
     uint256 public isShutdown = 1;
+    /// @notice The amount of "points" on this chain, used for determining
+    ///         CVELocker rewards. 1:1 with voting escrow positions by
+    ///         default. But, are elevated (multiplied by CL_POINT_MULTIPLIER)
+    ///         when locks are put on CL mode.
+    uint256 public chainPoints;
 
-    /// @notice User => Array of VeCVE locks.
-    mapping(address => Lock[]) public userLocks;
-    /// @notice User => Token Points.
-    mapping(address => uint256) public userPoints;
-    /// @notice User => Epoch # => Tokens unlocked.
-    mapping(address => mapping(uint256 => uint256)) public userUnlocksByEpoch;
-    /// @notice Epoch # => Token unlocks on this chain.
+    /// @notice Whether the chain has token points unlocking during an epoch.
+    ///         Every non-continuous voting escrow position will have a
+    ///         corresponding unlock documented.
+    /// @dev Epoch # => Token unlocks on this chain.
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
 
+    /// @notice Array mapping containing all voting escrow lock positions
+    ///         of a user.
+    /// @dev User => Array of VeCVE locks.
+    mapping(address => Lock[]) public userLocks;
+    /// @notice The amount of "points" of a user, used for determining
+    ///         CVELocker rewards. 1:1 with voting escrow positions by
+    ///         default. But, are elevated (multiplied by CL_POINT_MULTIPLIER)
+    ///         when locks are put on CL mode.
+    /// @dev User => Token Points.
+    mapping(address => uint256) public userPoints;
+    /// @notice Whether a user has token points unlocking during an epoch.
+    ///         Every non-continuous voting escrow position will have a
+    ///         corresponding unlock documented.
+    /// @dev User => Epoch # => Tokens unlocked.
+    mapping(address => mapping(uint256 => uint256)) public userUnlocksByEpoch;
+    
     /// EVENTS ///
 
     event Locked(address indexed user, uint256 amount);
