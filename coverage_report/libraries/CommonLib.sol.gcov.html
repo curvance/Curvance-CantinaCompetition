@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">2</td>
@@ -72,20 +72,20 @@
 <a name="10"><span class="lineNum">      10 </span>            :     /// @param token The address to inspect.</a>
 <a name="11"><span class="lineNum">      11 </span>            :     /// @return Whether `token` is referring to network gas token or not.</a>
 <a name="12"><span class="lineNum">      12 </span>            :     function isETH(address token) internal pure returns (bool) {</a>
-<a name="13"><span class="lineNum">      13 </span><span class="lineCov">        260 :         return</span></a>
-<a name="14"><span class="lineNum">      14 </span><span class="lineCov">        260 :             token == address(0) ||</span></a>
-<a name="15"><span class="lineNum">      15 </span><span class="lineCov">        256 :             token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;</span></a>
+<a name="13"><span class="lineNum">      13 </span><span class="lineCov">       5945 :         return</span></a>
+<a name="14"><span class="lineNum">      14 </span><span class="lineCov">       5945 :             token == address(0) ||</span></a>
+<a name="15"><span class="lineNum">      15 </span><span class="lineCov">       5941 :             token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;</span></a>
 <a name="16"><span class="lineNum">      16 </span>            :     }</a>
 <a name="17"><span class="lineNum">      17 </span>            : </a>
 <a name="18"><span class="lineNum">      18 </span>            :     /// @notice Returns balance of `token` for this contract.</a>
 <a name="19"><span class="lineNum">      19 </span>            :     /// @param token The token address to query balance of.</a>
 <a name="20"><span class="lineNum">      20 </span>            :     /// @return The balance of `token` inside address(this).</a>
 <a name="21"><span class="lineNum">      21 </span>            :     function getTokenBalance(address token) internal view returns (uint256) {</a>
-<a name="22"><span class="lineNum">      22 </span><span class="lineCov">         61 :         if (isETH(token)) {</span></a>
+<a name="22"><span class="lineNum">      22 </span><span class="lineCov">       2120 :         if (isETH(token)) {</span></a>
 <a name="23"><span class="lineNum">      23 </span><span class="lineCov">          7 :             return address(this).balance;</span></a>
 <a name="24"><span class="lineNum">      24 </span>            :         }</a>
 <a name="25"><span class="lineNum">      25 </span>            : </a>
-<a name="26"><span class="lineNum">      26 </span><span class="lineCov">         54 :         return IERC20(token).balanceOf(address(this));</span></a>
+<a name="26"><span class="lineNum">      26 </span><span class="lineCov">       2113 :         return IERC20(token).balanceOf(address(this));</span></a>
 <a name="27"><span class="lineNum">      27 </span>            :     }</a>
 <a name="28"><span class="lineNum">      28 </span>            : }</a>
 </pre>

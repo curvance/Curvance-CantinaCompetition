@@ -1,5 +1,6 @@
 #!/bin/bash
 rm -rf coverage_report
+rm lcov.info
 forge coverage --report lcov
 lcov --remove lcov.info  -o lcov.info 'tests/*' 'script/*' '**/libraries/external/*' '**/testnet/*' '**/mocks/*' '**/indexing/*'
 genhtml lcov.info -o coverage_report
