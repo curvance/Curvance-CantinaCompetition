@@ -7,11 +7,10 @@ interface IProtocolMessagingHub {
     /// @param dstChainId Destination chain ID.
     /// @param transferToken Whether deliver token or not.
     /// @return Total gas cost.
-    /// @return Deliverying fee.
     function quoteWormholeFee(
         uint256 dstChainId,
         bool transferToken
-    ) external view returns (uint256, uint256);
+    ) external view returns (uint256);
 
     /// @notice Sends veCVE locked token data to destination chain.
     /// @param dstChainId Destination chain ID where the message data should be

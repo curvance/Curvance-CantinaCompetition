@@ -27,8 +27,8 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// STORAGE ///
 
-    /// @notice 0 or 1 = activate; 2 = paused.
-    uint256 public isPaused;
+    /// @notice 1 = activate; 2 = paused.
+    uint256 public isPaused = 1;
     /// @notice Status of message hash whether it's delivered or not.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
 
@@ -400,11 +400,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @param dstChainId Chain ID of the target blockchain.
     /// @return Required fee.
     function cveBridgeFee(uint256 dstChainId) external view returns (uint256) {
-        return
-            _quoteWormholeFee(
-                centralRegistry.wormholeChainId(dstChainId),
-                true
-            );
+        return _quoteWormholeFee(dstChainId, true);
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///
@@ -423,7 +419,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         //
         // If pause state is being turned on aka true, then we are turning
         // the messaging hub off which means isPaused will be = 2
-        isPaused = state ? 1 : 2;
+        isPaused = state ? 2 : 1;
     }
 
     /// @notice Permissioned function for returning fees reimbursed from

@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-01 22:51:55</td>
+            <td class="headerValue">2024-02-16 18:08:13</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">10</td>
@@ -156,15 +156,15 @@
 <a name="94"><span class="lineNum">      94 </span>            :     ///</a>
 <a name="95"><span class="lineNum">      95 </span>            :     /// - MUST NOT revert.</a>
 <a name="96"><span class="lineNum">      96 </span>            :     function _useVirtualShares() internal view virtual returns (bool) {</a>
-<a name="97"><span class="lineNum">      97 </span><span class="lineCov">      50892 :         return true;</span></a>
+<a name="97"><span class="lineNum">      97 </span><span class="lineCov">      42714 :         return true;</span></a>
 <a name="98"><span class="lineNum">      98 </span>            :     }</a>
 <a name="99"><span class="lineNum">      99 </span>            : </a>
 <a name="100"><span class="lineNum">     100 </span>            :     /// @dev Returns the decimals places of the token.</a>
 <a name="101"><span class="lineNum">     101 </span>            :     ///</a>
 <a name="102"><span class="lineNum">     102 </span>            :     /// - MUST NOT revert.</a>
 <a name="103"><span class="lineNum">     103 </span>            :     function decimals() public view virtual override(ERC20) returns (uint8) {</a>
-<a name="104"><span class="lineNum">     104 </span><span class="lineCov">      50892 :         if (!_useVirtualShares()) return _underlyingDecimals();</span></a>
-<a name="105"><span class="lineNum">     105 </span><span class="lineCov">      50892 :         return _underlyingDecimals() + _decimalsOffset();</span></a>
+<a name="104"><span class="lineNum">     104 </span><span class="lineCov">      42714 :         if (!_useVirtualShares()) return _underlyingDecimals();</span></a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineCov">      42714 :         return _underlyingDecimals() + _decimalsOffset();</span></a>
 <a name="106"><span class="lineNum">     106 </span>            :     }</a>
 <a name="107"><span class="lineNum">     107 </span>            : </a>
 <a name="108"><span class="lineNum">     108 </span>            :     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/</a>
@@ -417,7 +417,7 @@
 <a name="355"><span class="lineNum">     355 </span>            :     /// - MUST return `balanceOf(owner)` otherwise.</a>
 <a name="356"><span class="lineNum">     356 </span>            :     /// - MUST NOT revert.</a>
 <a name="357"><span class="lineNum">     357 </span>            :     function maxRedeem(address owner) public view virtual returns (uint256 maxShares) {</a>
-<a name="358"><span class="lineNum">     358 </span><span class="lineCov">       1806 :         maxShares = balanceOf(owner);</span></a>
+<a name="358"><span class="lineNum">     358 </span><span class="lineCov">       1810 :         maxShares = balanceOf(owner);</span></a>
 <a name="359"><span class="lineNum">     359 </span>            :     }</a>
 <a name="360"><span class="lineNum">     360 </span>            : </a>
 <a name="361"><span class="lineNum">     361 </span>            :     /*´:°•.°+.*•´.*:˚.°*.˚•´.°:°•.°•.*•´.*:˚.°*.˚•´.°:°•.°+.*•´.*:*/</a>
@@ -560,7 +560,7 @@
 <a name="498"><span class="lineNum">     498 </span>            :         virtual</a>
 <a name="499"><span class="lineNum">     499 </span>            :         returns (uint256 shares)</a>
 <a name="500"><span class="lineNum">     500 </span>            :     {</a>
-<a name="501"><span class="lineNum">     501 </span><span class="lineCov">       3033 :         shares = assets;</span></a>
+<a name="501"><span class="lineNum">     501 </span><span class="lineCov">       3130 :         shares = assets;</span></a>
 <a name="502"><span class="lineNum">     502 </span>            :     }</a>
 <a name="503"><span class="lineNum">     503 </span>            : </a>
 <a name="504"><span class="lineNum">     504 </span>            :     /// @dev Internal conversion function (from shares to assets) to apply when the Vault is empty.</a>
