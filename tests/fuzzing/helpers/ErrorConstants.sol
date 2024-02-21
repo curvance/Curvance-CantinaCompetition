@@ -34,6 +34,11 @@ contract ErrorConstants {
     uint256 marketManager_invariantErrorSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__InvariantError()"))));
 
+    uint256 marketManager_invalidParameterSelectorHash =
+        uint256(
+            uint32(bytes4(keccak256("MarketManager__InvalidParameter()")))
+        );
+
     uint256 marketManager_pausedSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__Paused()"))));
 

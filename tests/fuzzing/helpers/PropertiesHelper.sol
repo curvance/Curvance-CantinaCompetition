@@ -22,6 +22,18 @@ abstract contract PropertiesAsserts {
         }
     }
 
+    function assertWithMsg(
+        bool b,
+        string memory id,
+        string memory reason
+    ) internal {
+        if (!b) {
+            string memory failure = PropertiesLibString.append(id, reason);
+            emit AssertFail(failure);
+            assert(false);
+        }
+    }
+
     function assertWithAddr(bool b, address reason) internal {
         if (!b) {
             emit AssertFail(reason);
@@ -572,5 +584,12 @@ library PropertiesLibString {
     function char(bytes1 b) internal pure returns (bytes1 c) {
         if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
         else return bytes1(uint8(b) + 0x57);
+    }
+
+    function append(
+        string memory a,
+        string memory b
+    ) internal pure returns (string memory) {
+        return string(abi.encodePacked(a, b));
     }
 }

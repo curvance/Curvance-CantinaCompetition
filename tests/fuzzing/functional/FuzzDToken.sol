@@ -1,6 +1,5 @@
 pragma solidity 0.8.17;
 import { FuzzMarketManager } from "tests/fuzzing/FuzzMarketManager.sol";
-import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
 import { MockToken } from "contracts/mocks/MockToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -48,25 +47,25 @@ contract FuzzDToken is FuzzMarketManager {
                 DToken(dtoken).exchangeRateCached();
             uint256 postUnderlyingBalance = IERC20(underlyingTokenAddress)
                 .balanceOf(address(this));
-            // DTOK-2
+
             assertEq(
                 preUnderlyingBalance - amount,
                 postUnderlyingBalance,
-                "DTOKEN - mint should reduce underlying token balance"
+                "DTOK-2 mint should reduce underlying token balance"
             );
-            // DTOK-3
+
             assertEq(
                 preDTokenBalance,
                 postDTokenBalance - adjustedNumberOfTokens,
-                "DTOKEN - mint should increase balanceOf[msg.sender] by (amount*WAD)/exchangeRate"
+                "DTOK-3 mint should increase balanceOf[msg.sender] by (amount*WAD)/exchangeRate"
             );
 
             uint256 postDTokenTotalSupply = DToken(dtoken).totalSupply();
-            // DTOK-4
+
             assertEq(
                 preDTokenTotalSupply,
                 postDTokenTotalSupply - adjustedNumberOfTokens,
-                "DTOKEN - mint should increase totalSupply"
+                "DTOK-4 mint should increase totalSupply"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
@@ -99,13 +98,13 @@ contract FuzzDToken is FuzzMarketManager {
                 assertEq(
                     errorSelector,
                     0,
-                    "DTOKEN - mint should revert if overflow"
+                    "DTOK-X mint should revert if overflow"
                 );
             } else {
                 // DTOK-1
                 assertWithMsg(
                     false,
-                    "DTOKEN - mint should succeed with correct preconditions"
+                    "DTOK-1 mint should succeed with correct preconditions"
                 );
             }
         }
@@ -119,6 +118,7 @@ contract FuzzDToken is FuzzMarketManager {
     /// @custom:precondition borrow is not paused
     /// @custom:precondition dtoken must be listed
     /// @custom:precondition user must not have a shortfall for respective token
+    /// @custom:limitation TODO missing check for increase in _debtOf[account].principal and  _debtOf[account].accountExchangeRate
     function borrow_should_succeed_not_accruing_interest(
         address dtoken,
         uint256 amount
@@ -155,7 +155,7 @@ contract FuzzDToken is FuzzMarketManager {
             assertEq(
                 DToken(dtoken).totalBorrows(),
                 preTotalBorrows + amount,
-                "DTOKEN - borrow postTotalBorrows failed = preTotalBorrows + amount"
+                "DTOK-6 borrow postTotalBorrows failed = preTotalBorrows + amount"
             );
             uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
                 address(this)
@@ -164,23 +164,21 @@ contract FuzzDToken is FuzzMarketManager {
             assertEq(
                 postUnderlyingBalance,
                 preUnderlyingBalance + amount,
-                "DTOKEN - borrow postUnderlyingBalance failed = underlyingBalance + amount"
+                "DTOK-7 borrow postUnderlyingBalance failed = underlyingBalance + amount"
             );
-            postedCollateralAt[dtoken] = block.timestamp;
-            // TODO: Add check for _debtOf[account].principal
-            // TODO: Add check for _debtOf[account].accountExchangeRate
+
             postedCollateralAt[dtoken] = block.timestamp;
         } catch {
             assertWithMsg(
                 false,
-                "DTOKEN - borrow should succeed with correct preconditions"
+                "DTOK-5 borrow should succeed with correct preconditions"
             );
         }
     }
 
-    /// @custom:property dtok- borrow should succeed with correct preconditions
-    /// @custom:property dtok- totalBorrows if interest has accrued should increase by amount after borrow is called
-    /// @custom:property dtok- underlying balance if interest not accrued should increase by amount for msg.sender
+    /// @custom:property dtok-8 borrow should succeed with correct preconditions
+    /// @custom:property dtok-9 totalBorrows if interest has accrued should increase by amount after borrow is called
+    /// @custom:property dtok-10 underlying balance if interest not accrued should increase by amount for msg.sender
     /// @custom:precondition token to borrow is either dUSDC or dDAI
     /// @custom:precondition amount is bound between [1, marketUnderlyingHeld() - totalReserves]
     /// @custom:precondition borrow is not paused
@@ -223,7 +221,7 @@ contract FuzzDToken is FuzzMarketManager {
             assertGte(
                 DToken(dtoken).totalBorrows(),
                 preTotalBorrows + amount,
-                "DTOKEN - borrow postTotalBorrows failed = preTotalBorrows + amount"
+                "DTOK-9 borrow postTotalBorrows failed = preTotalBorrows + amount"
             );
             uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
                 address(this)
@@ -232,7 +230,7 @@ contract FuzzDToken is FuzzMarketManager {
             assertGte(
                 postUnderlyingBalance,
                 preUnderlyingBalance + amount,
-                "DTOKEN - borrow postUnderlyingBalance failed = underlyingBalance + amount"
+                "DTOK-10 borrow postUnderlyingBalance failed = underlyingBalance + amount"
             );
             // TODO: Add check for _debtOf[account].principal
             // TODO: Add check for _debtOf[account].accountExchangeRate
@@ -240,12 +238,12 @@ contract FuzzDToken is FuzzMarketManager {
         } catch {
             assertWithMsg(
                 false,
-                "DTOKEN - borrow should succeed with correct preconditions"
+                "DTOK-8 borrow should succeed with correct preconditions"
             );
         }
     }
 
-    /// @custom:precondition the repay function should fail with amount too large under correct preconditions
+    /// @custom:precondition dtok-11 the repay function should fail with amount too large under correct preconditions
     function repay_should_fail_with_amount_too_large(
         address dtoken,
         uint256 amount
@@ -267,18 +265,21 @@ contract FuzzDToken is FuzzMarketManager {
         try DToken(dtoken).repay(amount) {
             assertWithMsg(
                 false,
-                "DTOKEN - repay more than accountDebt balance should fail"
+                "DTOK-11 repay more than accountDebt balance should fail"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
                 false,
-                "DTOKEN - repay more than accountDebt should have INSERT_SPECIFIC_ERROR"
+                "DTOK-11 repay more than accountDebt should have INSERT_SPECIFIC_ERROR"
             );
-            // assertEq(errorSelector,0,"");
         }
     }
 
+    /// @custom:property dtok-12 repaying within account debt should succeed
+    /// @custom:property dtok-13 repaying any amount should reduce totalborrows for dtoken
+    /// @custom:property dtok-14 repay with amount=0 should reduce underlying balance by accountDebt
+    /// @custom:property dtok-15 repay with amount!=0 should reduce underlying balance by provided amount
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
@@ -301,7 +302,7 @@ contract FuzzDToken is FuzzMarketManager {
             assertEq(
                 DToken(dtoken).totalBorrows(),
                 preTotalBorrows - amount,
-                "DTOKEN - repay postTotalBorrows failed = preTotalBorrows - amount"
+                "DTOK-13 repay postTotalBorrows failed = preTotalBorrows - amount"
             );
             uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
                 address(this)
@@ -310,263 +311,20 @@ contract FuzzDToken is FuzzMarketManager {
                 assertEq(
                     postUnderlyingBalance,
                     preUnderlyingBalance - accountDebt,
-                    "DTOKEN - repay with amount=0 should reduce underlying balance by accountDebt"
+                    "DTOK-14 repay with amount=0 should reduce underlying balance by accountDebt"
                 );
             } else {
                 assertEq(
                     postUnderlyingBalance,
                     preUnderlyingBalance - amount,
-                    "DTOKEN - repay with amount>0 should reduce underlying balance by amount"
+                    "DTOK-15 repay with amount>0 should reduce underlying balance by amount"
                 );
             }
             postedCollateralAt[dtoken] = block.timestamp;
         } catch {
             assertWithMsg(
                 false,
-                "DTOKEN - repay should succeed with correct preconditions"
-            );
-        }
-    }
-
-    function _setupLiquidatableStates(
-        uint amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
-    ) private {
-        hevm.warp(block.timestamp + marketManager.MIN_HOLD_PERIOD());
-        address liquidator = msg.sender;
-
-        hevm.prank(liquidator);
-        dai.mint(amount * WAD);
-
-        hevm.prank(liquidator);
-        dai.approve(address(dDAI), amount * WAD);
-
-        mockDaiFeed.setMockAnswer(int256(daiPrice));
-        mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        chainlinkDaiUsd.updateRoundData(
-            0,
-            int256(daiPrice),
-            block.timestamp,
-            block.timestamp
-        );
-        PriceReturnData memory daiData = chainlinkAdaptor.getPrice(
-            address(dDAI),
-            true,
-            false
-        );
-        require(!daiData.hadError);
-
-        emit LogString("set chainlink round data for usdc");
-        chainlinkUsdcUsd.updateRoundData(
-            0,
-            int256(usdcPrice),
-            block.timestamp,
-            block.timestamp
-        );
-        mockUsdcFeed.setMockAnswer(int256(usdcPrice));
-        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
-
-        PriceReturnData memory usdcData = chainlinkAdaptor.getPrice(
-            address(cUSDC),
-            true,
-            false
-        );
-        require(!usdcData.hadError);
-    }
-
-    // gets prices needed to liquidate
-    function _preLiquidate(
-        uint256 amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
-    ) private {
-        // ensure price feeds are up to date and in sync before updating collateral token and listing
-        _checkPriceFeed();
-        {
-            (
-                bool is_cusdc_listed,
-                uint256 cusdc_cr,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-
-            ) = marketManager.tokenData(address(cUSDC));
-            // if C_USDC is not listed, make sure to list it
-            if (!is_cusdc_listed) {
-                list_token_should_succeed(address(cUSDC));
-            }
-            // If collateral ratio of CUSDC is 0, update the market manager to increase collateral ratio
-            if (cusdc_cr == 0) {
-                updateCollateralToken_should_succeed(
-                    address(cUSDC),
-                    1000e18,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0
-                );
-            }
-
-            // user to be liquidated must already have a position in cUSDC
-            bool hasUsdcPosition = _hasPosition(address(cUSDC));
-            // if they do not, post it as collateral
-            if (!hasUsdcPosition) {
-                post_collateral_should_succeed(address(cUSDC), WAD + 1, false);
-            }
-        }
-        {
-            // ddai must be listed in the market manager to continue
-            (bool is_ddai_listed, , , , , , , , ) = marketManager.tokenData(
-                address(dDAI)
-            );
-            // if ddai is not listed, list the ddai token to the manager
-            if (!is_ddai_listed) {
-                list_token_should_succeed(address(dDAI));
-            }
-        }
-
-        // the maximum amount of ddai that can be borrowed is the market underlying held - totalReserves
-        uint256 upperBound = DToken(address(dDAI)).marketUnderlyingHeld() -
-            DToken(dDAI).totalReserves();
-        // clamp the amount of ddai to borrow between 1 wei and upperBound-1
-        amount = clampBetween(amount, 1, upperBound - 1);
-
-        dDAI.borrow(amount);
-
-        // mint tokens and set the oracle prices of the system
-        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
-        // ensure that the account can be liquidated
-        (
-            uint256 debt,
-            uint256 collateralLiquidation,
-            uint256 collateralProtocol
-        ) = marketManager.canLiquidate(
-                address(dDAI),
-                address(cUSDC),
-                address(this),
-                amount,
-                false
-            );
-
-        (uint256 accountCollateral, , uint256 accountDebt) = marketManager
-            .statusOf(address(this));
-        // ensure that the collateral < accountDebt to be liquidated
-        require(accountCollateral < accountDebt);
-    }
-
-    uint256 constant DAI_PRICE = 1e24;
-    uint256 constant USDC_PRICE = 1e7;
-
-    function liquidateAccount_should_succeed(uint256 amount) public {
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
-        require(marketManager.seizePaused() != 2);
-        address account = address(this);
-        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
-
-        IMToken[] memory assets = marketManager.assetsOf(account);
-
-        hevm.prank(msg.sender);
-        try this.prankLiquidateAccount(account) {
-            emit LogAddress("msg.sender", msg.sender);
-            for (uint256 i = 0; i < assets.length; i++) {
-                if (assets[i].isCToken()) {
-                    assertEq(
-                        _collateralPostedFor(address(assets[i])),
-                        0,
-                        "MARKET MANAGER - liquidateAccount should zero out collateral"
-                    );
-                } else {
-                    assertEq(
-                        IMToken(assets[i]).debtBalanceCached(address(this)),
-                        0,
-                        "MARKET MANAGER - liquidateAccount should zero out debt balance"
-                    );
-                }
-            }
-        } catch {
-            assert(false);
-        }
-    }
-
-    function liquidateAccount_should_fail_if_account_not_flagged(
-        uint256 amount
-    ) public {
-        require(marketManager.seizePaused() != 2);
-        require(!marketManager.flaggedForLiquidation(address(this)));
-        address account = address(this);
-
-        hevm.prank(msg.sender);
-        try this.prankLiquidateAccount(account) {
-            assertWithMsg(
-                false,
-                "marketManager - liquidateAccount should fail if account is not flagged for liquidations"
-            );
-        } catch (bytes memory revertData) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertEq(
-                errorSelector,
-                marketManager_noLiquidationAvailableSelectorHash,
-                "marketManager - liquidateAccount should fail with NoLiquidationAvailable if not flagged"
-            );
-        }
-    }
-
-    function liquidateAccount_should_fail_if_self_account(
-        uint256 amount
-    ) public {
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
-        require(marketManager.seizePaused() != 2);
-        address account = msg.sender;
-        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
-
-        hevm.prank(msg.sender);
-        try this.prankLiquidateAccount(account) {
-            assertWithMsg(
-                false,
-                "marketManager - liquidateAccount should fail if user attempts to liquidate themselves"
-            );
-        } catch (bytes memory revertData) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertEq(
-                errorSelector,
-                marketManager_unauthorizedSelectorHash,
-                "marketManager - liquidateAccount should fail with Unauthorized"
-            );
-        }
-    }
-
-    function liquidateAccount_should_fail_if_seize_paused(
-        uint256 amount
-    ) public {
-        require(marketManager.seizePaused() == 2);
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
-        address account = address(this);
-        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
-
-        hevm.prank(msg.sender);
-        try this.prankLiquidateAccount(account) {
-            assertWithMsg(
-                false,
-                "marketManager - liquidateAccount should fail if user attempts to liquidate themselves"
-            );
-        } catch (bytes memory revertData) {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
-            assertEq(
-                errorSelector,
-                marketManager_pausedSelectorHash,
-                "marketManager - liquidateAccount should fail with PAUSED when seize is paused"
+                "DTOK-12 repay should succeed with correct preconditions"
             );
         }
     }
@@ -624,22 +382,17 @@ contract FuzzDToken is FuzzMarketManager {
                 assertEq(
                     IERC20(underlyingDToken).balanceOf(msg.sender),
                     senderBalanceUnderlying + debtToLiquidate,
-                    "DTOKEN - liquidate: underlying msg.sender balance after liquidate = previous underlying + debt to liquidate"
+                    "DTOK- liquidate: underlying msg.sender balance after liquidate = previous underlying + debt to liquidate"
                 );
                 assertEq(
                     IERC20(collateralToken).balanceOf(account) +
                         seizedForLiquidation +
                         seizedForProtocol,
                     preAccountCollateral,
-                    "DTOKEN - liquidate: post account collateral token balance + tokens seized for liquidation + tokens seized by protocol = pre account collateral"
+                    "DTOK- liquidate: post account collateral token balance + tokens seized for liquidation + tokens seized by protocol = pre account collateral"
                 );
             }
         }
-    }
-
-    function prankLiquidateAccount(address account) public {
-        hevm.prank(msg.sender);
-        marketManager.liquidateAccount(account);
     }
 
     /*
@@ -746,69 +499,17 @@ contract FuzzDToken is FuzzMarketManager {
                 assertEq(
                     IERC20(underlyingDToken).balanceOf(msg.sender),
                     senderBalanceUnderlying + debtToLiquidate,
-                    "DTOKEN - liquidate: underlying msg.sender balance after liquidate = previous underlying + debt to liquidate"
+                    "DTOK- liquidate: underlying msg.sender balance after liquidate = previous underlying + debt to liquidate"
                 );
                 assertEq(
                     IERC20(collateralToken).balanceOf(account) +
                         seizedForLiquidation +
                         seizedForProtocol,
                     preAccountCollateral,
-                    "DTOKEN - liquidate: post account collateral token balance + tokens seized for liquidation + tokens seized by protocol = pre account collateral"
+                    "DTOK- liquidate: post account collateral token balance + tokens seized for liquidation + tokens seized by protocol = pre account collateral"
                 );
             }
         }
     }
     */
-
-    // Helper functions
-
-    function _checkLiquidatePreconditions(
-        address account,
-        address dtoken,
-        address collateralToken
-    ) private {
-        _isSupportedDToken(dtoken);
-        require(account != msg.sender);
-        require(marketManager.isListed(dtoken));
-        require(
-            DToken(dtoken).marketManager() ==
-                DToken(collateralToken).marketManager()
-        );
-        require(IMToken(collateralToken).isCToken());
-        require(marketManager.collateralPosted(collateralToken) > 0);
-        require(marketManager.seizePaused() != 2);
-        (
-            uint256 lfactor,
-            uint256 debtTokenPrice,
-            uint256 collatTokenPrice
-        ) = marketManager.LiquidationStatusOf(
-                account,
-                dtoken,
-                collateralToken
-            );
-        require(lfactor > 0);
-    }
-
-    function _boundLiquidateValues(
-        uint256 amount,
-        address collateralToken
-    ) private returns (uint256 clampedAmount) {
-        (
-            ,
-            uint256 collRatio,
-            uint256 collReqSoft,
-            uint256 collReqHard,
-            uint256 liqBaseIncentive,
-            uint256 liqCurve,
-            uint256 liqFee,
-            uint256 baseCFactor,
-            uint256 cFactorCurve
-        ) = marketManager.tokenData(address(collateralToken));
-        require(collRatio > 0);
-        uint256 maxValue = amount * collReqSoft;
-        uint256 minValue = amount * collReqHard;
-        emit LogUint256("min", minValue);
-        emit LogUint256("max", maxValue);
-        clampedAmount = clampBetween(amount, minValue, maxValue);
-    }
 }

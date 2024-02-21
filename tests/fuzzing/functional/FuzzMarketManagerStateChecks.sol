@@ -18,7 +18,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canMint(mtoken) {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canMint() should have not reverted"
+                "SC-MARKET-1 canMint() should have not reverted"
             );
         }
     }
@@ -38,7 +38,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canMint(mtoken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canMint() should have reverted when token is not listed but did not"
+                "SC-MARKET-2 canMint() should have reverted when token is not listed but did not"
             );
         } catch {}
     }
@@ -56,7 +56,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canMint(mtoken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canMint() should have reverted when mint is paused but did not"
+                "SC-MARKET-3 canMint() should have reverted when mint is paused but did not"
             );
         } catch {}
     }
@@ -89,7 +89,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRedeem(mtoken, account, amount) {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeem expected to succeed under @precondition"
+                "SC-MARKET-4 canRedeem expected to succeed under @precondition"
             );
         }
     }
@@ -117,14 +117,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRedeem(mtoken, account, amount) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeem expected to revert when redeem is paused"
+                "SC-MARKET-5 canRedeem expected to revert when redeem is paused"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canRedeem() expected to revert with pausedSelectorHash"
+                "SC-MARKET-5 canRedeem() expected to revert with pausedSelectorHash"
             );
         }
     }
@@ -152,14 +152,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRedeem(mtoken, account, amount) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeem expected to revert token is not listed"
+                "SC-MARKET-6 canRedeem expected to revert token is not listed"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == marketManager_tokenNotListedSelectorHash,
-                "LENDTROLLER - canRedeem() expected to revert with token not listed"
+                "SC-MARKET-6 canRedeem() expected to revert with token not listed"
             );
         }
     }
@@ -187,7 +187,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRedeem(mtoken, account, amount) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeem expected to revert token is not listed"
+                "SC-MARKET-7 canRedeem expected to revert token is not listed"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
@@ -195,7 +195,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             assertWithMsg(
                 errorSelector ==
                     marketManager_insufficientCollateralSelectorHash,
-                "LENDTROLLER - canRedeem() expected to revert with insufficient collateral"
+                "SC-MARKET-7 canRedeem() expected to revert with insufficient collateral"
             );
         }
     }
@@ -223,7 +223,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRedeem(mtoken, account, amount) {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeem() expected to return with no error when no position exists"
+                "SC-MARKET-8 canRedeem() expected to return with no error when no position exists"
             );
         }
     }
@@ -249,7 +249,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRedeemWithCollateralRemoval should only be callable by mtoken"
+                "SC-MARKET-9 canRedeemWithCollateralRemoval should only be callable by mtoken"
             );
         } catch {}
     }
@@ -285,7 +285,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
+                "SC-MARKET-10 canTransfer() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -309,7 +309,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
+                "SC-MARKET-11 canTransfer() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -333,7 +333,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
                 errorSelector == marketManager_tokenNotListedSelectorHash,
-                "LENDTROLLER - canTransfer() expected NOTLISTED selector hash on failure"
+                "SC-MARKET-12 canTransfer() expected NOTLISTED selector hash on failure"
             );
         }
     }
@@ -357,7 +357,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             // canTransfer should have reverted with PAUSED
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canTransfer() expected PAUSED selector hash on failure"
+                "SC-MARKET-13 canTransfer() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -377,7 +377,9 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             amount
         );
         require(liquidityDeficit == 0);
-        try marketManager.canBorrow(mtoken, address(this), amount) {} catch {}
+        try marketManager.canBorrow(mtoken, address(this), amount) {} catch {
+            assertWithMsg(false, "SC-MARKET-14 canBorrow() should succeed");
+        }
     }
 
     /// @custom:property sc-market-15 canBorrow should fail with PAUSED when borrow is paused
@@ -404,7 +406,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canBorrow() expected PAUSED selector hash on failure"
+                "SC-MARKET-15 canBorrow() expected PAUSED selector hash on failure"
             );
         }
     }
@@ -426,7 +428,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
 
             assertWithMsg(
                 errorSelector == marketManager_tokenNotListedSelectorHash,
-                "LENDTROLLER - canBorrow() expected TOKEN NOT LISTED selector hash on failure"
+                "SC-MARKET-16 canBorrow() expected TOKEN NOT LISTED selector hash on failure"
             );
         }
     }
@@ -458,7 +460,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             assertWithMsg(
                 errorSelector ==
                     marketManager_insufficientCollateralSelectorHash,
-                "LENDTROLLER - canBorrow() expected INSUFFICIENT COLLATERAL selector hash on failure"
+                "SC-MARKET-17 canBorrow() expected INSUFFICIENT COLLATERAL selector hash on failure"
             );
         }
     }
@@ -476,13 +478,13 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canBorrowWithNotify(mtoken, account, amount) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canBorrowWithNotify() should not succeed when not called by mtoken"
+                "SC-MARKET-18 canBorrowWithNotify() should not succeed when not called by mtoken"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
                 errorSelector == marketManager_unauthorizedSelectorHash,
-                "LENDTROLLER - canBorrowWithNotify should have thrown unauthorized error but did not"
+                "SC-MARKET-18 canBorrowWithNotify should have thrown unauthorized error but did not"
             );
         }
     }
@@ -499,7 +501,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canRepay(mtoken, account) {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canRepay should have succeeded with correct @precondition"
+                "SC-MARKET-19 canRepay should have succeeded with correct @precondition"
             );
         }
     }
@@ -522,7 +524,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
                 errorSelector == marketManager_tokenNotListedSelectorHash,
-                "LENDTROLLER - canRepay should have reverted with token not listed errro"
+                "SC-MARKET-20 canRepay should have reverted with token not listed errro"
             );
         }
     }
@@ -545,7 +547,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
                 errorSelector == marketManager_minHoldSelectorHash,
-                "LENDTROLLER - canRepay should have reverted with minimum hold period error"
+                "SC-MARKET-21 canRepay should have reverted with minimum hold period error"
             );
         }
     }
@@ -570,7 +572,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canSeize(collateralToken, debtToken) {} catch {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canSeize() should be successful with correct @precondition"
+                "SC-MARKET-22 canSeize() should be successful with correct @precondition"
             );
         }
     }
@@ -595,14 +597,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canSeize(collateralToken, debtToken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - canSeize() should have reverted with seizePaused = 2"
+                "SC-MARKET-23 canSeize() should have reverted with seizePaused = 2"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == marketManager_pausedSelectorHash,
-                "LENDTROLLER - canSeize() should revert with paused selector"
+                "SC-MARKET-23 canSeize() should revert with paused selector"
             );
         }
     }
@@ -629,14 +631,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canSeize(collateralToken, debtToken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - seizePaused() should have reverted when token is unlisted"
+                "SC-MARKET-24 seizePaused() should have reverted when token is unlisted"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == marketManager_tokenNotListedSelectorHash,
-                "LENDTROLLER - canSeize() should revert with token not listed selector"
+                "SC-MARKET-24 canSeize() should revert with token not listed selector"
             );
         }
     }
@@ -661,51 +663,17 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         try marketManager.canSeize(collateralToken, debtToken) {
             assertWithMsg(
                 false,
-                "LENDTROLLER - seizePaused() should have reverted when marketManager is not equal"
+                "SC-MARKET-25 seizePaused() should have reverted when marketManager is not equal"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             assertWithMsg(
                 errorSelector == marketManager_mismatchSelectorHash,
-                "LENDTROLLER - canSeize() should revert with marketManager mismatch selector hash"
+                "SC-MARKET-25 canSeize() should revert with marketManager mismatch selector hash"
             );
         }
     }
 
-    function canLiquidate_should_succeed(
-        address dToken,
-        address cToken,
-        address account,
-        uint256 amount,
-        bool liquidateExact
-    ) public view {
-        try
-            marketManager.canLiquidate(
-                dToken,
-                cToken,
-                account,
-                amount,
-                liquidateExact
-            )
-        {} catch {}
-    }
-
-    function canLiquidateWithExecution_should_succeed(
-        address dToken,
-        address cToken,
-        address account,
-        uint256 amount,
-        bool liquidateExact
-    ) public {
-        try
-            marketManager.canLiquidateWithExecution(
-                dToken,
-                cToken,
-                account,
-                amount,
-                liquidateExact
-            )
-        {} catch {}
-    }
+    /// @custom:limitation TODO missing coverage on canLiquidate and canLiquidateWithExecution
 }
