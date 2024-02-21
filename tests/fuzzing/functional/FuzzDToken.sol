@@ -376,7 +376,11 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     // gets prices needed to liquidate
-    function _preLiquidate(uint256 amount) public {
+    function _preLiquidate(
+        uint256 amount,
+        uint256 daiPrice,
+        uint256 usdcPrice
+    ) private {
         // ensure price feeds are up to date and in sync before updating collateral token and listing
         _checkPriceFeed();
         {
@@ -432,10 +436,6 @@ contract FuzzDToken is FuzzMarketManager {
             DToken(dDAI).totalReserves();
         // clamp the amount of ddai to borrow between 1 wei and upperBound-1
         amount = clampBetween(amount, 1, upperBound - 1);
-        // set daiPrice to 1e20, TODO can pull the maxAnswer of the oracle out to a variable so fuzzers can dynamically generate price between range of prices
-        uint256 daiPrice = 1e20;
-        // set usdcPrice to 1e7
-        uint256 usdcPrice = 1e7;
 
         dDAI.borrow(amount);
 
@@ -468,7 +468,7 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = address(this);
-        _preLiquidate(amount);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
 
         IMToken[] memory assets = marketManager.assetsOf(account);
 
@@ -496,16 +496,13 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     function liquidateAccount_should_fail_if_account_not_flagged(
-        uint256 amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
+        uint256 amount
     ) public {
         require(marketManager.seizePaused() != 2);
-        _setupLiquidatableStates(amount, daiPrice, usdcPrice);
+        require(!marketManager.flaggedForLiquidation(address(this)));
         address account = address(this);
 
-        _canLiquidateAccount(account);
-
+        hevm.prank(msg.sender);
         try this.prankLiquidateAccount(account) {
             assertWithMsg(
                 false,
@@ -523,15 +520,13 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     function liquidateAccount_should_fail_if_self_account(
-        uint256 amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
+        uint256 amount
     ) public {
         uint256 daiPrice = DAI_PRICE;
         uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = msg.sender;
-        _preLiquidate(amount);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
 
         hevm.prank(msg.sender);
         try this.prankLiquidateAccount(account) {
@@ -551,18 +546,15 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     function liquidateAccount_should_fail_if_seize_paused(
-        uint256 amount,
-        uint256 daiPrice,
-        uint256 usdcPrice
+        uint256 amount
     ) public {
         require(marketManager.seizePaused() == 2);
         uint256 daiPrice = DAI_PRICE;
         uint256 usdcPrice = USDC_PRICE;
-        address account = msg.sender;
-        _preLiquidate(amount);
+        address account = address(this);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
 
         hevm.prank(msg.sender);
-
         try this.prankLiquidateAccount(account) {
             assertWithMsg(
                 false,
