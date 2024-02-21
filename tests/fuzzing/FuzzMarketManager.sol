@@ -801,7 +801,7 @@ contract FuzzMarketManager is FuzzLiquidations {
         require(collateralPostedForUser > 0);
         require(
             block.timestamp >
-                postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
+                _getCooldownTimestampFor() + marketManager.MIN_HOLD_PERIOD()
         );
         IMToken[] memory preAssetsOf = marketManager.assetsOf(address(this));
         (, uint256 shortfall) = marketManager.hypotheticalLiquidityOf(

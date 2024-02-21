@@ -637,4 +637,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         );
         return collateralPosted;
     }
+
+    function _getCooldownTimestampFor() internal view returns (uint256) {
+        uint256 downtime = marketManager.accountAssets(address(this));
+        return downtime;
+    }
 }
