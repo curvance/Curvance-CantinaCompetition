@@ -633,7 +633,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 ) {
                 // Update their points to reflect the removed lock.
                 _updateDataFromEarlyUnlock(msg.sender, amount, unlockTime);
-            }    
+            }
         }
 
         if (relock) {

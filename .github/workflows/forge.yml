@@ -29,3 +29,6 @@ jobs:
 
       - name: Run forge tests
         run: forge test
+
+      - name: Run forge coverage report
+        run: forge coverage

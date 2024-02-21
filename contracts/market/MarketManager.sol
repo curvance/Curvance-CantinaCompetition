@@ -426,7 +426,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
         // We do not need to update any values if the account is not 
         // "in" the market.
-        if (accountData.activePosition < 2) {
+        if (accountData.activePosition != 2) {
             _revert(_INVALID_PARAMETER_SELECTOR);
         }
 
@@ -1193,7 +1193,7 @@ contract MarketManager is LiquidityManager, ERC165 {
             _revert(_TOKEN_NOT_LISTED_SELECTOR);
         }
 
-        if (tokenData[dToken].accountData[account].activePosition < 2) {
+        if (tokenData[dToken].accountData[account].activePosition != 2) {
             // Only mTokens may call borrowAllowed if account not in market.
             _checkIsToken(dToken);
             
@@ -1376,7 +1376,7 @@ contract MarketManager is LiquidityManager, ERC165 {
 
         // If the account does not have an active position in the token,
         // then we can bypass the liquidity check.
-        if (tokenData[mToken].accountData[account].activePosition < 2) {
+        if (tokenData[mToken].accountData[account].activePosition != 2) {
             return;
         }
 
