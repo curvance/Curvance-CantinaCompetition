@@ -37,21 +37,21 @@ contract TestBalancerStablePoolAdaptor is TestBaseOracleRouter {
     }
 
     function testRevertWhenUnderlyingAssetPriceNotSet() public {
-        BalancerStablePoolAdaptor.AdaptorData memory adapterData;
-        adapterData.poolId = WETH_RETH_POOLID;
-        adapterData.poolDecimals = 18;
-        adapterData.rateProviderDecimals[0] = 18;
-        adapterData.rateProviders[
+        BalancerStablePoolAdaptor.AdaptorData memory adaptorData;
+        adaptorData.poolId = WETH_RETH_POOLID;
+        adaptorData.poolDecimals = 18;
+        adaptorData.rateProviderDecimals[0] = 18;
+        adaptorData.rateProviders[
             0
         ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
-        adapterData.underlyingOrConstituent[0] = RETH;
-        adapterData.underlyingOrConstituent[1] = WETH;
+        adaptorData.underlyingOrConstituent[0] = RETH;
+        adaptorData.underlyingOrConstituent[1] = WETH;
         vm.expectRevert(
             BalancerStablePoolAdaptor
                 .BalancerStablePoolAdaptor__ConfigurationError
                 .selector
         );
-        adaptor.addAsset(WETH_RETH, adapterData);
+        adaptor.addAsset(WETH_RETH, adaptorData);
     }
 
     function testReturnsCorrectPrice() public {
@@ -74,16 +74,16 @@ contract TestBalancerStablePoolAdaptor is TestBaseOracleRouter {
         oracleRouter.addAssetPriceFeed(WETH, address(chainlinkAdaptor));
         oracleRouter.addAssetPriceFeed(RETH, address(chainlinkAdaptor));
 
-        BalancerStablePoolAdaptor.AdaptorData memory adapterData;
-        adapterData.poolId = WETH_RETH_POOLID;
-        adapterData.poolDecimals = 18;
-        adapterData.rateProviderDecimals[0] = 18;
-        adapterData.rateProviders[
+        BalancerStablePoolAdaptor.AdaptorData memory adaptorData;
+        adaptorData.poolId = WETH_RETH_POOLID;
+        adaptorData.poolDecimals = 18;
+        adaptorData.rateProviderDecimals[0] = 18;
+        adaptorData.rateProviders[
             0
         ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
-        adapterData.underlyingOrConstituent[0] = RETH;
-        adapterData.underlyingOrConstituent[1] = WETH;
-        adaptor.addAsset(WETH_RETH, adapterData);
+        adaptorData.underlyingOrConstituent[0] = RETH;
+        adaptorData.underlyingOrConstituent[1] = WETH;
+        adaptor.addAsset(WETH_RETH, adaptorData);
 
         oracleRouter.addApprovedAdaptor(address(adaptor));
         oracleRouter.addAssetPriceFeed(WETH_RETH, address(adaptor));
