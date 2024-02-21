@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">19</td>
@@ -251,11 +251,11 @@
 <a name="189"><span class="lineNum">     189 </span>            :     function startMarket(</a>
 <a name="190"><span class="lineNum">     190 </span>            :         address by</a>
 <a name="191"><span class="lineNum">     191 </span>            :     ) external override nonReentrant returns (bool) {</a>
-<a name="192"><span class="lineNum">     192 </span><span class="lineCov">        175 :         _startMarket(by);</span></a>
-<a name="193"><span class="lineNum">     193 </span><span class="lineCov">        171 :         _afterDeposit(42069, 42069);</span></a>
-<a name="194"><span class="lineNum">     194 </span><span class="lineCov">        171 :         _setlastVestClaim(uint64(block.timestamp));</span></a>
-<a name="195"><span class="lineNum">     195 </span><span class="lineCov">        171 :         compoundingPaused = 1;</span></a>
-<a name="196"><span class="lineNum">     196 </span><span class="lineCov">        171 :         return true;</span></a>
+<a name="192"><span class="lineNum">     192 </span><span class="lineCov">        177 :         _startMarket(by);</span></a>
+<a name="193"><span class="lineNum">     193 </span><span class="lineCov">        173 :         _afterDeposit(42069, 42069);</span></a>
+<a name="194"><span class="lineNum">     194 </span><span class="lineCov">        173 :         _setlastVestClaim(uint64(block.timestamp));</span></a>
+<a name="195"><span class="lineNum">     195 </span><span class="lineCov">        173 :         compoundingPaused = 1;</span></a>
+<a name="196"><span class="lineNum">     196 </span><span class="lineCov">        173 :         return true;</span></a>
 <a name="197"><span class="lineNum">     197 </span>            :     }</a>
 <a name="198"><span class="lineNum">     198 </span>            : </a>
 <a name="199"><span class="lineNum">     199 </span>            :     /// @notice Permissioned function to set a new compounding vesting period.</a>
@@ -335,7 +335,7 @@
 <a name="273"><span class="lineNum">     273 </span>            :     ///         including pending rewards that are vested.</a>
 <a name="274"><span class="lineNum">     274 </span>            :     /// @return The total number of underlying assets.</a>
 <a name="275"><span class="lineNum">     275 </span>            :     function totalAssets() public view override returns (uint256) {</a>
-<a name="276"><span class="lineNum">     276 </span><span class="lineCov">        260 :         return _totalAssets + _calculatePendingRewards();</span></a>
+<a name="276"><span class="lineNum">     276 </span><span class="lineCov">        266 :         return _totalAssets + _calculatePendingRewards();</span></a>
 <a name="277"><span class="lineNum">     277 </span>            :     }</a>
 <a name="278"><span class="lineNum">     278 </span>            : </a>
 <a name="279"><span class="lineNum">     279 </span>            :     /// INTERNAL FUNCTIONS ///</a>
@@ -348,27 +348,27 @@
 <a name="286"><span class="lineNum">     286 </span>            :         uint256 assets,</a>
 <a name="287"><span class="lineNum">     287 </span>            :         address receiver</a>
 <a name="288"><span class="lineNum">     288 </span>            :     ) internal override returns (uint256 shares) {</a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineCov">         86 :         if (assets == 0) {</span></a>
+<a name="289"><span class="lineNum">     289 </span><span class="lineCov">         88 :         if (assets == 0) {</span></a>
 <a name="290"><span class="lineNum">     290 </span><span class="lineNoCov">          0 :             revert CTokenCompounding__ZeroAssets();</span></a>
 <a name="291"><span class="lineNum">     291 </span>            :         }</a>
 <a name="292"><span class="lineNum">     292 </span>            : </a>
 <a name="293"><span class="lineNum">     293 </span>            :         // Fails if deposit not allowed, this stands in for a maxDeposit</a>
 <a name="294"><span class="lineNum">     294 </span>            :         // check reviewing isListed and mintPaused != 2.</a>
-<a name="295"><span class="lineNum">     295 </span><span class="lineCov">         86 :         marketManager.canMint(address(this));</span></a>
+<a name="295"><span class="lineNum">     295 </span><span class="lineCov">         88 :         marketManager.canMint(address(this));</span></a>
 <a name="296"><span class="lineNum">     296 </span>            : </a>
 <a name="297"><span class="lineNum">     297 </span>            :         // Cache _totalAssets and pendingRewards.</a>
-<a name="298"><span class="lineNum">     298 </span><span class="lineCov">         86 :         uint256 pending = _calculatePendingRewards();</span></a>
-<a name="299"><span class="lineNum">     299 </span><span class="lineCov">         86 :         uint256 ta = _totalAssets + pending;</span></a>
+<a name="298"><span class="lineNum">     298 </span><span class="lineCov">         88 :         uint256 pending = _calculatePendingRewards();</span></a>
+<a name="299"><span class="lineNum">     299 </span><span class="lineCov">         88 :         uint256 ta = _totalAssets + pending;</span></a>
 <a name="300"><span class="lineNum">     300 </span>            : </a>
 <a name="301"><span class="lineNum">     301 </span>            :         // Check for rounding error, since we round down in previewDeposit.</a>
-<a name="302"><span class="lineNum">     302 </span><span class="lineCov">         86 :         if ((shares = _previewDeposit(assets, ta)) == 0) {</span></a>
+<a name="302"><span class="lineNum">     302 </span><span class="lineCov">         88 :         if ((shares = _previewDeposit(assets, ta)) == 0) {</span></a>
 <a name="303"><span class="lineNum">     303 </span><span class="lineNoCov">          0 :             revert CTokenCompounding__ZeroShares();</span></a>
 <a name="304"><span class="lineNum">     304 </span>            :         }</a>
 <a name="305"><span class="lineNum">     305 </span>            : </a>
 <a name="306"><span class="lineNum">     306 </span>            :         // Execute deposit.</a>
-<a name="307"><span class="lineNum">     307 </span><span class="lineCov">         86 :         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);</span></a>
+<a name="307"><span class="lineNum">     307 </span><span class="lineCov">         88 :         _processDeposit(msg.sender, receiver, assets, shares, ta, pending);</span></a>
 <a name="308"><span class="lineNum">     308 </span>            :         // Update gauge pool values for `receiver`.</a>
-<a name="309"><span class="lineNum">     309 </span><span class="lineCov">         86 :         _gaugePool().deposit(address(this), receiver, shares);</span></a>
+<a name="309"><span class="lineNum">     309 </span><span class="lineCov">         88 :         _gaugePool().deposit(address(this), receiver, shares);</span></a>
 <a name="310"><span class="lineNum">     310 </span>            :     }</a>
 <a name="311"><span class="lineNum">     311 </span>            : </a>
 <a name="312"><span class="lineNum">     312 </span>            :     /// @notice Deposits assets and mints `shares` to `receiver`.</a>
@@ -419,19 +419,19 @@
 <a name="357"><span class="lineNum">     357 </span>            :         bool forceRedeemCollateral</a>
 <a name="358"><span class="lineNum">     358 </span>            :     ) internal override returns (uint256 shares) {</a>
 <a name="359"><span class="lineNum">     359 </span>            :         // Cache _totalAssets and pendingRewards.</a>
-<a name="360"><span class="lineNum">     360 </span><span class="lineCov">          6 :         uint256 pending = _calculatePendingRewards();</span></a>
-<a name="361"><span class="lineNum">     361 </span><span class="lineCov">          6 :         uint256 ta = _totalAssets + pending;</span></a>
+<a name="360"><span class="lineNum">     360 </span><span class="lineCov">          8 :         uint256 pending = _calculatePendingRewards();</span></a>
+<a name="361"><span class="lineNum">     361 </span><span class="lineCov">          8 :         uint256 ta = _totalAssets + pending;</span></a>
 <a name="362"><span class="lineNum">     362 </span>            : </a>
 <a name="363"><span class="lineNum">     363 </span>            :         // We use a modified version of maxWithdraw with newly vested assets.</a>
-<a name="364"><span class="lineNum">     364 </span><span class="lineCov">          6 :         if (assets &gt; _convertToAssets(balanceOf(owner), ta)) {</span></a>
+<a name="364"><span class="lineNum">     364 </span><span class="lineCov">          8 :         if (assets &gt; _convertToAssets(balanceOf(owner), ta)) {</span></a>
 <a name="365"><span class="lineNum">     365 </span>            :             // revert with &quot;CTokenCompounding__WithdrawMoreThanMax&quot;.</a>
 <a name="366"><span class="lineNum">     366 </span><span class="lineNoCov">          0 :             _revert(0x05203273);</span></a>
 <a name="367"><span class="lineNum">     367 </span>            :         }</a>
 <a name="368"><span class="lineNum">     368 </span>            : </a>
 <a name="369"><span class="lineNum">     369 </span>            :         // No need to check for rounding error, previewWithdraw rounds up.</a>
-<a name="370"><span class="lineNum">     370 </span><span class="lineCov">          6 :         shares = _previewWithdraw(assets, ta);</span></a>
+<a name="370"><span class="lineNum">     370 </span><span class="lineCov">          8 :         shares = _previewWithdraw(assets, ta);</span></a>
 <a name="371"><span class="lineNum">     371 </span>            :         // Validate that `owner` can redeem `shares`.</a>
-<a name="372"><span class="lineNum">     372 </span><span class="lineCov">          6 :         marketManager.canRedeemWithCollateralRemoval(</span></a>
+<a name="372"><span class="lineNum">     372 </span><span class="lineCov">          8 :         marketManager.canRedeemWithCollateralRemoval(</span></a>
 <a name="373"><span class="lineNum">     373 </span>            :             address(this),</a>
 <a name="374"><span class="lineNum">     374 </span>            :             owner,</a>
 <a name="375"><span class="lineNum">     375 </span>            :             balanceOf(owner),</a>
@@ -440,9 +440,9 @@
 <a name="378"><span class="lineNum">     378 </span>            :         );</a>
 <a name="379"><span class="lineNum">     379 </span>            : </a>
 <a name="380"><span class="lineNum">     380 </span>            :         // Update gauge pool values for `owner`.</a>
-<a name="381"><span class="lineNum">     381 </span><span class="lineCov">          6 :         _gaugePool().withdraw(address(this), owner, shares);</span></a>
+<a name="381"><span class="lineNum">     381 </span><span class="lineCov">          8 :         _gaugePool().withdraw(address(this), owner, shares);</span></a>
 <a name="382"><span class="lineNum">     382 </span>            :         // Execute withdrawal.</a>
-<a name="383"><span class="lineNum">     383 </span><span class="lineCov">          6 :         _processWithdraw(</span></a>
+<a name="383"><span class="lineNum">     383 </span><span class="lineCov">          8 :         _processWithdraw(</span></a>
 <a name="384"><span class="lineNum">     384 </span>            :             msg.sender,</a>
 <a name="385"><span class="lineNum">     385 </span>            :             receiver,</a>
 <a name="386"><span class="lineNum">     386 </span>            :             owner,</a>
@@ -527,24 +527,24 @@
 <a name="465"><span class="lineNum">     465 </span>            :         uint256 pending</a>
 <a name="466"><span class="lineNum">     466 </span>            :     ) internal {</a>
 <a name="467"><span class="lineNum">     467 </span>            :         // Need to transfer before minting or ERC777s could reenter.</a>
-<a name="468"><span class="lineNum">     468 </span><span class="lineCov">        141 :         SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);</span></a>
+<a name="468"><span class="lineNum">     468 </span><span class="lineCov">        143 :         SafeTransferLib.safeTransferFrom(asset(), by, address(this), assets);</span></a>
 <a name="469"><span class="lineNum">     469 </span>            : </a>
 <a name="470"><span class="lineNum">     470 </span>            :         // Document addition of `assets` to `ta` due to deposit.</a>
 <a name="471"><span class="lineNum">     471 </span>            :         unchecked {</a>
 <a name="472"><span class="lineNum">     472 </span>            :             // We know that this will not overflow as rewards are partly vested,</a>
 <a name="473"><span class="lineNum">     473 </span>            :             // and assets added and have not overflown from those operations.</a>
-<a name="474"><span class="lineNum">     474 </span><span class="lineCov">        141 :             ta = ta + assets;</span></a>
+<a name="474"><span class="lineNum">     474 </span><span class="lineCov">        143 :             ta = ta + assets;</span></a>
 <a name="475"><span class="lineNum">     475 </span>            :         }</a>
 <a name="476"><span class="lineNum">     476 </span>            : </a>
 <a name="477"><span class="lineNum">     477 </span>            :         // Vest rewards, if there are any, then update `_totalAssets` invariant.</a>
-<a name="478"><span class="lineNum">     478 </span><span class="lineCov">        141 :         if (pending &gt; 0) {</span></a>
+<a name="478"><span class="lineNum">     478 </span><span class="lineCov">        143 :         if (pending &gt; 0) {</span></a>
 <a name="479"><span class="lineNum">     479 </span><span class="lineNoCov">          0 :             _vestRewards(ta);</span></a>
 <a name="480"><span class="lineNum">     480 </span>            :         } else {</a>
-<a name="481"><span class="lineNum">     481 </span><span class="lineCov">        141 :             _totalAssets = ta;</span></a>
+<a name="481"><span class="lineNum">     481 </span><span class="lineCov">        143 :             _totalAssets = ta;</span></a>
 <a name="482"><span class="lineNum">     482 </span>            :         }</a>
 <a name="483"><span class="lineNum">     483 </span>            : </a>
 <a name="484"><span class="lineNum">     484 </span>            :         // Mint `shares` to `to`.</a>
-<a name="485"><span class="lineNum">     485 </span><span class="lineCov">        141 :         _mint(to, shares);</span></a>
+<a name="485"><span class="lineNum">     485 </span><span class="lineCov">        143 :         _mint(to, shares);</span></a>
 <a name="486"><span class="lineNum">     486 </span>            : </a>
 <a name="487"><span class="lineNum">     487 </span>            :         /// @solidity memory-safe-assembly</a>
 <a name="488"><span class="lineNum">     488 </span>            :         assembly {</a>
@@ -556,7 +556,7 @@
 <a name="494"><span class="lineNum">     494 </span>            :         }</a>
 <a name="495"><span class="lineNum">     495 </span>            : </a>
 <a name="496"><span class="lineNum">     496 </span>            :         // Execute any deposit strategy.</a>
-<a name="497"><span class="lineNum">     497 </span><span class="lineCov">        141 :         _afterDeposit(assets, shares);</span></a>
+<a name="497"><span class="lineNum">     497 </span><span class="lineCov">        143 :         _afterDeposit(assets, shares);</span></a>
 <a name="498"><span class="lineNum">     498 </span>            :     }</a>
 <a name="499"><span class="lineNum">     499 </span>            : </a>
 <a name="500"><span class="lineNum">     500 </span>            :     /// @notice Processes a withdrawal of `shares` from the market by burning</a>
@@ -585,7 +585,7 @@
 <a name="523"><span class="lineNum">     523 </span>            :     ) internal virtual {</a>
 <a name="524"><span class="lineNum">     524 </span>            :         // Validate caller is allowed to withdraw `shares` on behalf of</a>
 <a name="525"><span class="lineNum">     525 </span>            :         // `owner`.</a>
-<a name="526"><span class="lineNum">     526 </span><span class="lineCov">         16 :         if (msg.sender != owner) {</span></a>
+<a name="526"><span class="lineNum">     526 </span><span class="lineCov">         18 :         if (msg.sender != owner) {</span></a>
 <a name="527"><span class="lineNum">     527 </span><span class="lineCov">          1 :             uint256 allowed = allowance(owner, by);</span></a>
 <a name="528"><span class="lineNum">     528 </span>            : </a>
 <a name="529"><span class="lineNum">     529 </span><span class="lineCov">          1 :             if (allowed != type(uint256).max) {</span></a>
@@ -594,22 +594,22 @@
 <a name="532"><span class="lineNum">     532 </span>            :         }</a>
 <a name="533"><span class="lineNum">     533 </span>            : </a>
 <a name="534"><span class="lineNum">     534 </span>            :         // Burn `owner` `shares`.</a>
-<a name="535"><span class="lineNum">     535 </span><span class="lineCov">         16 :         _burn(owner, shares);</span></a>
+<a name="535"><span class="lineNum">     535 </span><span class="lineCov">         18 :         _burn(owner, shares);</span></a>
 <a name="536"><span class="lineNum">     536 </span>            :         // Document removal of `assets` from `ta` due to withdrawal.</a>
-<a name="537"><span class="lineNum">     537 </span><span class="lineCov">         16 :         ta = ta - assets;</span></a>
+<a name="537"><span class="lineNum">     537 </span><span class="lineCov">         18 :         ta = ta - assets;</span></a>
 <a name="538"><span class="lineNum">     538 </span>            : </a>
 <a name="539"><span class="lineNum">     539 </span>            :         // Vest rewards, if there are any, then update `_totalAssets`</a>
 <a name="540"><span class="lineNum">     540 </span>            :         // invariant.</a>
-<a name="541"><span class="lineNum">     541 </span><span class="lineCov">         16 :         if (pending &gt; 0) {</span></a>
-<a name="542"><span class="lineNum">     542 </span><span class="lineCov">          6 :             _vestRewards(ta);</span></a>
+<a name="541"><span class="lineNum">     541 </span><span class="lineCov">         18 :         if (pending &gt; 0) {</span></a>
+<a name="542"><span class="lineNum">     542 </span><span class="lineCov">          8 :             _vestRewards(ta);</span></a>
 <a name="543"><span class="lineNum">     543 </span>            :         } else {</a>
 <a name="544"><span class="lineNum">     544 </span><span class="lineCov">         10 :             _totalAssets = ta;</span></a>
 <a name="545"><span class="lineNum">     545 </span>            :         }</a>
 <a name="546"><span class="lineNum">     546 </span>            : </a>
 <a name="547"><span class="lineNum">     547 </span>            :         // Prepare underlying assets.</a>
-<a name="548"><span class="lineNum">     548 </span><span class="lineCov">         16 :         _beforeWithdraw(assets, shares);</span></a>
+<a name="548"><span class="lineNum">     548 </span><span class="lineCov">         18 :         _beforeWithdraw(assets, shares);</span></a>
 <a name="549"><span class="lineNum">     549 </span>            :         // Transfer the underlying assets to `to`.</a>
-<a name="550"><span class="lineNum">     550 </span><span class="lineCov">         16 :         SafeTransferLib.safeTransfer(asset(), to, assets);</span></a>
+<a name="550"><span class="lineNum">     550 </span><span class="lineCov">         18 :         SafeTransferLib.safeTransfer(asset(), to, assets);</span></a>
 <a name="551"><span class="lineNum">     551 </span>            : </a>
 <a name="552"><span class="lineNum">     552 </span>            :         /// @solidity memory-safe-assembly</a>
 <a name="553"><span class="lineNum">     553 </span>            :         assembly {</a>
@@ -640,7 +640,7 @@
 <a name="578"><span class="lineNum">     578 </span>            :     ) internal {</a>
 <a name="579"><span class="lineNum">     579 </span>            :         // Set rewardRate equal to prorated `yieldToVest` over `periodToVest`,</a>
 <a name="580"><span class="lineNum">     580 </span>            :         // in `WAD` (1e18).</a>
-<a name="581"><span class="lineNum">     581 </span><span class="lineCov">         11 :         _vaultData = _packVaultData(</span></a>
+<a name="581"><span class="lineNum">     581 </span><span class="lineCov">         15 :         _vaultData = _packVaultData(</span></a>
 <a name="582"><span class="lineNum">     582 </span>            :             FixedPointMathLib.mulDiv(yieldToVest, 1e18, periodToVest),</a>
 <a name="583"><span class="lineNum">     583 </span>            :             block.timestamp + periodToVest</a>
 <a name="584"><span class="lineNum">     584 </span>            :             );</a>
@@ -659,10 +659,10 @@
 <a name="597"><span class="lineNum">     597 </span>            :         assembly {</a>
 <a name="598"><span class="lineNum">     598 </span>            :             // Mask `newRewardRate` to the lower 128 bits, </a>
 <a name="599"><span class="lineNum">     599 </span>            :             // in case the upper bits somehow aren't clean.</a>
-<a name="600"><span class="lineNum">     600 </span><span class="lineCov">         11 :             newRewardRate := and(newRewardRate, _BITMASK_REWARD_RATE)</span></a>
+<a name="600"><span class="lineNum">     600 </span><span class="lineCov">         15 :             newRewardRate := and(newRewardRate, _BITMASK_REWARD_RATE)</span></a>
 <a name="601"><span class="lineNum">     601 </span>            :             // Equal to `newRewardRate | (newVestPeriod &lt;&lt; _BITPOS_VEST_END) |</a>
 <a name="602"><span class="lineNum">     602 </span>            :             //          block.timestamp`.</a>
-<a name="603"><span class="lineNum">     603 </span><span class="lineCov">         11 :             result := or(</span></a>
+<a name="603"><span class="lineNum">     603 </span><span class="lineCov">         15 :             result := or(</span></a>
 <a name="604"><span class="lineNum">     604 </span>            :                 newRewardRate,</a>
 <a name="605"><span class="lineNum">     605 </span>            :                 or(</a>
 <a name="606"><span class="lineNum">     606 </span>            :                     shl(_BITPOS_VEST_END, newVestPeriod),</a>
@@ -680,9 +680,9 @@
 <a name="618"><span class="lineNum">     618 </span>            :     function _unpackedVaultData(</a>
 <a name="619"><span class="lineNum">     619 </span>            :         uint256 packedVaultData</a>
 <a name="620"><span class="lineNum">     620 </span>            :     ) internal pure returns (VaultData memory vault) {</a>
-<a name="621"><span class="lineNum">     621 </span><span class="lineCov">        431 :         vault.rewardRate = uint128(packedVaultData);</span></a>
-<a name="622"><span class="lineNum">     622 </span><span class="lineCov">        431 :         vault.vestingPeriodEnd = uint64(packedVaultData &gt;&gt; _BITPOS_VEST_END);</span></a>
-<a name="623"><span class="lineNum">     623 </span><span class="lineCov">        431 :         vault.lastVestClaim = uint64(packedVaultData &gt;&gt; _BITPOS_LAST_VEST);</span></a>
+<a name="621"><span class="lineNum">     621 </span><span class="lineCov">        445 :         vault.rewardRate = uint128(packedVaultData);</span></a>
+<a name="622"><span class="lineNum">     622 </span><span class="lineCov">        445 :         vault.vestingPeriodEnd = uint64(packedVaultData &gt;&gt; _BITPOS_VEST_END);</span></a>
+<a name="623"><span class="lineNum">     623 </span><span class="lineCov">        445 :         vault.lastVestClaim = uint64(packedVaultData &gt;&gt; _BITPOS_LAST_VEST);</span></a>
 <a name="624"><span class="lineNum">     624 </span>            :     }</a>
 <a name="625"><span class="lineNum">     625 </span>            : </a>
 <a name="626"><span class="lineNum">     626 </span>            :     /// @notice Returns whether the current vesting period has ended,</a>
@@ -692,9 +692,9 @@
 <a name="630"><span class="lineNum">     630 </span>            :     function _checkVestStatus(</a>
 <a name="631"><span class="lineNum">     631 </span>            :         uint256 packedVaultData</a>
 <a name="632"><span class="lineNum">     632 </span>            :     ) internal pure returns (bool) {</a>
-<a name="633"><span class="lineNum">     633 </span><span class="lineCov">         12 :         return</span></a>
-<a name="634"><span class="lineNum">     634 </span><span class="lineCov">         12 :             uint64(packedVaultData &gt;&gt; _BITPOS_LAST_VEST) &gt;=</span></a>
-<a name="635"><span class="lineNum">     635 </span><span class="lineCov">         12 :             uint64(packedVaultData &gt;&gt; _BITPOS_VEST_END);</span></a>
+<a name="633"><span class="lineNum">     633 </span><span class="lineCov">         16 :         return</span></a>
+<a name="634"><span class="lineNum">     634 </span><span class="lineCov">         16 :             uint64(packedVaultData &gt;&gt; _BITPOS_LAST_VEST) &gt;=</span></a>
+<a name="635"><span class="lineNum">     635 </span><span class="lineCov">         16 :             uint64(packedVaultData &gt;&gt; _BITPOS_VEST_END);</span></a>
 <a name="636"><span class="lineNum">     636 </span>            :     }</a>
 <a name="637"><span class="lineNum">     637 </span>            : </a>
 <a name="638"><span class="lineNum">     638 </span>            :     /// @notice Sets the last vest claim data for the vault.</a>
@@ -702,19 +702,19 @@
 <a name="640"><span class="lineNum">     640 </span>            :     ///                     the last vesting claim.</a>
 <a name="641"><span class="lineNum">     641 </span>            :     function _setlastVestClaim(uint64 newVestClaim) internal {</a>
 <a name="642"><span class="lineNum">     642 </span>            :         // Cache vault data.</a>
-<a name="643"><span class="lineNum">     643 </span><span class="lineCov">        182 :         uint256 packedVaultData = _vaultData;</span></a>
-<a name="644"><span class="lineNum">     644 </span><span class="lineCov">        182 :         uint256 lastVestClaimCasted;</span></a>
+<a name="643"><span class="lineNum">     643 </span><span class="lineCov">        188 :         uint256 packedVaultData = _vaultData;</span></a>
+<a name="644"><span class="lineNum">     644 </span><span class="lineCov">        188 :         uint256 lastVestClaimCasted;</span></a>
 <a name="645"><span class="lineNum">     645 </span>            :         // Cast `newVestClaim` with assembly to avoid redundant masking.</a>
 <a name="646"><span class="lineNum">     646 </span>            :         assembly {</a>
-<a name="647"><span class="lineNum">     647 </span><span class="lineCov">        182 :             lastVestClaimCasted := newVestClaim</span></a>
+<a name="647"><span class="lineNum">     647 </span><span class="lineCov">        188 :             lastVestClaimCasted := newVestClaim</span></a>
 <a name="648"><span class="lineNum">     648 </span>            :         }</a>
 <a name="649"><span class="lineNum">     649 </span>            :         // Calculate new packed vault data.</a>
-<a name="650"><span class="lineNum">     650 </span><span class="lineCov">        182 :         packedVaultData =</span></a>
+<a name="650"><span class="lineNum">     650 </span><span class="lineCov">        188 :         packedVaultData =</span></a>
 <a name="651"><span class="lineNum">     651 </span>            :             (packedVaultData &amp; _BITMASK_LAST_CLAIM_COMPLEMENT) |</a>
 <a name="652"><span class="lineNum">     652 </span>            :             (lastVestClaimCasted &lt;&lt; _BITPOS_LAST_VEST);</a>
 <a name="653"><span class="lineNum">     653 </span>            : </a>
 <a name="654"><span class="lineNum">     654 </span>            :         // Update `_vaultData` invariant.</a>
-<a name="655"><span class="lineNum">     655 </span><span class="lineCov">        182 :         _vaultData = packedVaultData;</span></a>
+<a name="655"><span class="lineNum">     655 </span><span class="lineCov">        188 :         _vaultData = packedVaultData;</span></a>
 <a name="656"><span class="lineNum">     656 </span>            :     }</a>
 <a name="657"><span class="lineNum">     657 </span>            : </a>
 <a name="658"><span class="lineNum">     658 </span>            :     // REWARD AND HARVESTING LOGIC</a>
@@ -728,11 +728,11 @@
 <a name="666"><span class="lineNum">     666 </span>            :         view</a>
 <a name="667"><span class="lineNum">     667 </span>            :         returns (uint256 pendingRewards)</a>
 <a name="668"><span class="lineNum">     668 </span>            :     {</a>
-<a name="669"><span class="lineNum">     669 </span><span class="lineCov">        431 :         VaultData memory vaultData = _unpackedVaultData(_vaultData);</span></a>
+<a name="669"><span class="lineNum">     669 </span><span class="lineCov">        445 :         VaultData memory vaultData = _unpackedVaultData(_vaultData);</span></a>
 <a name="670"><span class="lineNum">     670 </span>            :         // Check whether there are pending rewards vesting.</a>
 <a name="671"><span class="lineNum">     671 </span>            :         if (</a>
-<a name="672"><span class="lineNum">     672 </span><span class="lineCov">        431 :             vaultData.rewardRate &gt; 0 &amp;&amp;</span></a>
-<a name="673"><span class="lineNum">     673 </span><span class="lineCov">         23 :             vaultData.lastVestClaim &lt; vaultData.vestingPeriodEnd</span></a>
+<a name="672"><span class="lineNum">     672 </span><span class="lineCov">        445 :             vaultData.rewardRate &gt; 0 &amp;&amp;</span></a>
+<a name="673"><span class="lineNum">     673 </span><span class="lineCov">         31 :             vaultData.lastVestClaim &lt; vaultData.vestingPeriodEnd</span></a>
 <a name="674"><span class="lineNum">     674 </span>            :         ) {</a>
 <a name="675"><span class="lineNum">     675 </span>            :             // When calculating pending rewards:</a>
 <a name="676"><span class="lineNum">     676 </span>            :             // pendingRewards = </a>
@@ -742,7 +742,7 @@
 <a name="680"><span class="lineNum">     680 </span>            :             // PR = rewardRate * (vestingPeriodEnd - lastTimeVestClaimed)).</a>
 <a name="681"><span class="lineNum">     681 </span>            :             // Then in either case:</a>
 <a name="682"><span class="lineNum">     682 </span>            :             // Divide the pending rewards by `WAD` (1e18) for precision.</a>
-<a name="683"><span class="lineNum">     683 </span><span class="lineCov">         23 :             pendingRewards =</span></a>
+<a name="683"><span class="lineNum">     683 </span><span class="lineCov">         31 :             pendingRewards =</span></a>
 <a name="684"><span class="lineNum">     684 </span>            :                 (</a>
 <a name="685"><span class="lineNum">     685 </span>            :                     block.timestamp &lt; vaultData.vestingPeriodEnd</a>
 <a name="686"><span class="lineNum">     686 </span>            :                         ? (vaultData.rewardRate *</a>
@@ -757,11 +757,11 @@
 <a name="695"><span class="lineNum">     695 </span>            : </a>
 <a name="696"><span class="lineNum">     696 </span>            :     /// @notice Checks if the caller can compound pending vaults rewards.</a>
 <a name="697"><span class="lineNum">     697 </span>            :     function _canCompound() internal view {</a>
-<a name="698"><span class="lineNum">     698 </span><span class="lineCov">         12 :         if (!centralRegistry.isHarvester(msg.sender)) {</span></a>
+<a name="698"><span class="lineNum">     698 </span><span class="lineCov">         16 :         if (!centralRegistry.isHarvester(msg.sender)) {</span></a>
 <a name="699"><span class="lineNum">     699 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
 <a name="700"><span class="lineNum">     700 </span>            :         }</a>
 <a name="701"><span class="lineNum">     701 </span>            : </a>
-<a name="702"><span class="lineNum">     702 </span><span class="lineCov">         12 :         if (compoundingPaused == 2) {</span></a>
+<a name="702"><span class="lineNum">     702 </span><span class="lineCov">         16 :         if (compoundingPaused == 2) {</span></a>
 <a name="703"><span class="lineNum">     703 </span><span class="lineNoCov">          0 :             revert CTokenCompounding__CompoundingPaused();</span></a>
 <a name="704"><span class="lineNum">     704 </span>            :         }</a>
 <a name="705"><span class="lineNum">     705 </span>            :     }</a>
@@ -770,20 +770,20 @@
 <a name="708"><span class="lineNum">     708 </span>            :     /// @param currentAssets The current assets of the vault.</a>
 <a name="709"><span class="lineNum">     709 </span>            :     function _vestRewards(uint256 currentAssets) internal {</a>
 <a name="710"><span class="lineNum">     710 </span>            :         // Update the lastVestClaim timestamp.</a>
-<a name="711"><span class="lineNum">     711 </span><span class="lineCov">         11 :         _setlastVestClaim(uint64(block.timestamp));</span></a>
+<a name="711"><span class="lineNum">     711 </span><span class="lineCov">         15 :         _setlastVestClaim(uint64(block.timestamp));</span></a>
 <a name="712"><span class="lineNum">     712 </span>            : </a>
 <a name="713"><span class="lineNum">     713 </span>            :         // Set internal _totalAssets balance to `currentAssets`.</a>
-<a name="714"><span class="lineNum">     714 </span><span class="lineCov">         11 :         _totalAssets = currentAssets;</span></a>
+<a name="714"><span class="lineNum">     714 </span><span class="lineCov">         15 :         _totalAssets = currentAssets;</span></a>
 <a name="715"><span class="lineNum">     715 </span>            :     }</a>
 <a name="716"><span class="lineNum">     716 </span>            : </a>
 <a name="717"><span class="lineNum">     717 </span>            :     /// @notice Vests pending rewards, and updates vault data,</a>
 <a name="718"><span class="lineNum">     718 </span>            :     ///         but only if needed.</a>
 <a name="719"><span class="lineNum">     719 </span>            :     function _vestIfNeeded() internal {</a>
-<a name="720"><span class="lineNum">     720 </span><span class="lineCov">         12 :         uint256 pending = _calculatePendingRewards();</span></a>
+<a name="720"><span class="lineNum">     720 </span><span class="lineCov">         16 :         uint256 pending = _calculatePendingRewards();</span></a>
 <a name="721"><span class="lineNum">     721 </span>            :         // Check whether there are pending rewards to vest.</a>
-<a name="722"><span class="lineNum">     722 </span><span class="lineCov">         12 :         if (pending &gt; 0) {</span></a>
+<a name="722"><span class="lineNum">     722 </span><span class="lineCov">         16 :         if (pending &gt; 0) {</span></a>
 <a name="723"><span class="lineNum">     723 </span>            :             // Vest pending rewards.</a>
-<a name="724"><span class="lineNum">     724 </span><span class="lineCov">          5 :             _vestRewards(_totalAssets + pending);</span></a>
+<a name="724"><span class="lineNum">     724 </span><span class="lineCov">          7 :             _vestRewards(_totalAssets + pending);</span></a>
 <a name="725"><span class="lineNum">     725 </span>            :         }</a>
 <a name="726"><span class="lineNum">     726 </span>            :     }</a>
 <a name="727"><span class="lineNum">     727 </span>            : </a>
@@ -792,7 +792,7 @@
 <a name="730"><span class="lineNum">     730 </span>            :     ///      and prior vest is done then `vestPeriod` is updated.</a>
 <a name="731"><span class="lineNum">     731 </span>            :     function _updateVestingPeriodIfNeeded() internal {</a>
 <a name="732"><span class="lineNum">     732 </span>            :         // Check whether there is a pending update to reward vesting schedule.</a>
-<a name="733"><span class="lineNum">     733 </span><span class="lineCov">         12 :         if (pendingVestUpdate.updateNeeded) {</span></a>
+<a name="733"><span class="lineNum">     733 </span><span class="lineCov">         16 :         if (pendingVestUpdate.updateNeeded) {</span></a>
 <a name="734"><span class="lineNum">     734 </span>            :             // Update vesting period.</a>
 <a name="735"><span class="lineNum">     735 </span><span class="lineNoCov">          0 :             vestPeriod = pendingVestUpdate.newVestPeriod;</span></a>
 <a name="736"><span class="lineNum">     736 </span>            :             // Remove pending vesting update flag.</a>

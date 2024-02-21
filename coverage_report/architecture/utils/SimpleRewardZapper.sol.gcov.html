@@ -31,18 +31,18 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">29</td>
             <td class="headerCovTableEntry">91</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntryLo">31.9 %</td>
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">8</td>
             <td class="headerCovTableEntry">14</td>
-            <td class="headerCovTableEntryLo">0.0 %</td>
+            <td class="headerCovTableEntryLo">57.1 %</td>
           </tr>
           <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
         </table>
@@ -121,427 +121,422 @@
 <a name="59"><span class="lineNum">      59 </span>            : </a>
 <a name="60"><span class="lineNum">      60 </span>            :     receive() external payable {}</a>
 <a name="61"><span class="lineNum">      61 </span>            : </a>
-<a name="62"><span class="lineNum">      62 </span>            :     constructor(</a>
-<a name="63"><span class="lineNum">      63 </span>            :         ICentralRegistry centralRegistry_,</a>
-<a name="64"><span class="lineNum">      64 </span>            :         address WETH_</a>
-<a name="65"><span class="lineNum">      65 </span>            :     ) {</a>
-<a name="66"><span class="lineNum">      66 </span>            :         if (</a>
-<a name="67"><span class="lineNum">      67 </span>            :             !ERC165Checker.supportsInterface(</a>
-<a name="68"><span class="lineNum">      68 </span>            :                 address(centralRegistry_),</a>
-<a name="69"><span class="lineNum">      69 </span>            :                 type(ICentralRegistry).interfaceId</a>
-<a name="70"><span class="lineNum">      70 </span>            :             )</a>
-<a name="71"><span class="lineNum">      71 </span>            :         ) {</a>
-<a name="72"><span class="lineNum">      72 </span>            :             revert SimpleRewardZapper__InvalidCentralRegistry();</a>
-<a name="73"><span class="lineNum">      73 </span>            :         }</a>
-<a name="74"><span class="lineNum">      74 </span>            : </a>
-<a name="75"><span class="lineNum">      75 </span>            :         address locker = centralRegistry_.cveLocker();</a>
-<a name="76"><span class="lineNum">      76 </span>            : </a>
-<a name="77"><span class="lineNum">      77 </span>            :         // Validate that CVE locker is properly configured inside</a>
-<a name="78"><span class="lineNum">      78 </span>            :         // the Central Registry.</a>
-<a name="79"><span class="lineNum">      79 </span>            :         if (locker == address(0)) {</a>
-<a name="80"><span class="lineNum">      80 </span>            :             revert SimpleRewardZapper__InvalidCVELocker();</a>
-<a name="81"><span class="lineNum">      81 </span>            :         }</a>
-<a name="82"><span class="lineNum">      82 </span>            : </a>
-<a name="83"><span class="lineNum">      83 </span>            :         centralRegistry = centralRegistry_;</a>
-<a name="84"><span class="lineNum">      84 </span>            :         cveLocker = ICVELocker(locker);</a>
-<a name="85"><span class="lineNum">      85 </span>            :         rewardToken = ICVELocker(locker).rewardToken();</a>
-<a name="86"><span class="lineNum">      86 </span>            :         WETH = WETH_;</a>
-<a name="87"><span class="lineNum">      87 </span>            :     }</a>
-<a name="88"><span class="lineNum">      88 </span>            : </a>
-<a name="89"><span class="lineNum">      89 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
-<a name="90"><span class="lineNum">      90 </span>            : </a>
-<a name="91"><span class="lineNum">      91 </span>            :     /// @notice Claims CVE locker rewards, then swaps and transfers</a>
-<a name="92"><span class="lineNum">      92 </span>            :     ///         `swapperData.outputToken` to `recipient`.</a>
-<a name="93"><span class="lineNum">      93 </span>            :     /// @param swapperData Swap instruction data.</a>
-<a name="94"><span class="lineNum">      94 </span>            :     /// @param recipient Address that should receive swapped output.</a>
-<a name="95"><span class="lineNum">      95 </span>            :     /// @return outAmount The output amount received from swapping.</a>
-<a name="96"><span class="lineNum">      96 </span>            :     function claimAndSwap(</a>
-<a name="97"><span class="lineNum">      97 </span>            :         SwapperLib.Swap memory swapperData,</a>
-<a name="98"><span class="lineNum">      98 </span>            :         address recipient</a>
-<a name="99"><span class="lineNum">      99 </span>            :     ) external nonReentrant returns (uint256 outAmount) {</a>
-<a name="100"><span class="lineNum">     100 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
-<a name="101"><span class="lineNum">     101 </span>            :         // token, but we use cve lockers are built with non gas token</a>
-<a name="102"><span class="lineNum">     102 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
-<a name="103"><span class="lineNum">     103 </span>            :         // CommonLib.isETH here.</a>
-<a name="104"><span class="lineNum">     104 </span>            : </a>
-<a name="105"><span class="lineNum">     105 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
-<a name="106"><span class="lineNum">     106 </span>            :         // rather than hardcoding input here this also acts as check that</a>
-<a name="107"><span class="lineNum">     107 </span>            :         // solver API call instructions have been configured properly.</a>
-<a name="108"><span class="lineNum">     108 </span><span class="lineNoCov">          0 :         if (swapperData.inputToken != rewardToken) {</span></a>
-<a name="109"><span class="lineNum">     109 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
-<a name="110"><span class="lineNum">     110 </span>            :         }</a>
-<a name="111"><span class="lineNum">     111 </span>            : </a>
-<a name="112"><span class="lineNum">     112 </span>            :         // Validate that the desired output token is approved.</a>
-<a name="113"><span class="lineNum">     113 </span><span class="lineNoCov">          0 :         if (authorizedOutputToken[swapperData.outputToken] != 2) {</span></a>
-<a name="114"><span class="lineNum">     114 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
-<a name="115"><span class="lineNum">     115 </span>            :         }</a>
-<a name="116"><span class="lineNum">     116 </span>            : </a>
-<a name="117"><span class="lineNum">     117 </span>            :         // Validate target contract is an approved swapper.</a>
-<a name="118"><span class="lineNum">     118 </span><span class="lineNoCov">          0 :         if (!centralRegistry.isSwapper(swapperData.target)) {</span></a>
-<a name="119"><span class="lineNum">     119 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidZapper(swapperData.target);</span></a>
-<a name="120"><span class="lineNum">     120 </span>            :         }</a>
+<a name="62"><span class="lineNum">      62 </span>            :     constructor(ICentralRegistry centralRegistry_, address WETH_) {</a>
+<a name="63"><span class="lineNum">      63 </span>            :         if (</a>
+<a name="64"><span class="lineNum">      64 </span>            :             !ERC165Checker.supportsInterface(</a>
+<a name="65"><span class="lineNum">      65 </span>            :                 address(centralRegistry_),</a>
+<a name="66"><span class="lineNum">      66 </span>            :                 type(ICentralRegistry).interfaceId</a>
+<a name="67"><span class="lineNum">      67 </span>            :             )</a>
+<a name="68"><span class="lineNum">      68 </span>            :         ) {</a>
+<a name="69"><span class="lineNum">      69 </span>            :             revert SimpleRewardZapper__InvalidCentralRegistry();</a>
+<a name="70"><span class="lineNum">      70 </span>            :         }</a>
+<a name="71"><span class="lineNum">      71 </span>            : </a>
+<a name="72"><span class="lineNum">      72 </span>            :         address locker = centralRegistry_.cveLocker();</a>
+<a name="73"><span class="lineNum">      73 </span>            : </a>
+<a name="74"><span class="lineNum">      74 </span>            :         // Validate that CVE locker is properly configured inside</a>
+<a name="75"><span class="lineNum">      75 </span>            :         // the Central Registry.</a>
+<a name="76"><span class="lineNum">      76 </span>            :         if (locker == address(0)) {</a>
+<a name="77"><span class="lineNum">      77 </span>            :             revert SimpleRewardZapper__InvalidCVELocker();</a>
+<a name="78"><span class="lineNum">      78 </span>            :         }</a>
+<a name="79"><span class="lineNum">      79 </span>            : </a>
+<a name="80"><span class="lineNum">      80 </span>            :         centralRegistry = centralRegistry_;</a>
+<a name="81"><span class="lineNum">      81 </span>            :         cveLocker = ICVELocker(locker);</a>
+<a name="82"><span class="lineNum">      82 </span>            :         rewardToken = ICVELocker(locker).rewardToken();</a>
+<a name="83"><span class="lineNum">      83 </span>            :         WETH = WETH_;</a>
+<a name="84"><span class="lineNum">      84 </span>            :     }</a>
+<a name="85"><span class="lineNum">      85 </span>            : </a>
+<a name="86"><span class="lineNum">      86 </span>            :     /// EXTERNAL FUNCTIONS ///</a>
+<a name="87"><span class="lineNum">      87 </span>            : </a>
+<a name="88"><span class="lineNum">      88 </span>            :     /// @notice Claims CVE locker rewards, then swaps and transfers</a>
+<a name="89"><span class="lineNum">      89 </span>            :     ///         `swapperData.outputToken` to `recipient`.</a>
+<a name="90"><span class="lineNum">      90 </span>            :     /// @param swapperData Swap instruction data.</a>
+<a name="91"><span class="lineNum">      91 </span>            :     /// @param recipient Address that should receive swapped output.</a>
+<a name="92"><span class="lineNum">      92 </span>            :     /// @return outAmount The output amount received from swapping.</a>
+<a name="93"><span class="lineNum">      93 </span>            :     function claimAndSwap(</a>
+<a name="94"><span class="lineNum">      94 </span>            :         SwapperLib.Swap memory swapperData,</a>
+<a name="95"><span class="lineNum">      95 </span>            :         address recipient</a>
+<a name="96"><span class="lineNum">      96 </span>            :     ) external nonReentrant returns (uint256 outAmount) {</a>
+<a name="97"><span class="lineNum">      97 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
+<a name="98"><span class="lineNum">      98 </span>            :         // token, but we use cve lockers are built with non gas token</a>
+<a name="99"><span class="lineNum">      99 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
+<a name="100"><span class="lineNum">     100 </span>            :         // CommonLib.isETH here.</a>
+<a name="101"><span class="lineNum">     101 </span>            : </a>
+<a name="102"><span class="lineNum">     102 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
+<a name="103"><span class="lineNum">     103 </span>            :         // rather than hardcoding input here this also acts as check that</a>
+<a name="104"><span class="lineNum">     104 </span>            :         // solver API call instructions have been configured properly.</a>
+<a name="105"><span class="lineNum">     105 </span><span class="lineCov">        512 :         if (swapperData.inputToken != rewardToken) {</span></a>
+<a name="106"><span class="lineNum">     106 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
+<a name="107"><span class="lineNum">     107 </span>            :         }</a>
+<a name="108"><span class="lineNum">     108 </span>            : </a>
+<a name="109"><span class="lineNum">     109 </span>            :         // Validate that the desired output token is approved.</a>
+<a name="110"><span class="lineNum">     110 </span><span class="lineCov">        512 :         if (authorizedOutputToken[swapperData.outputToken] != 2) {</span></a>
+<a name="111"><span class="lineNum">     111 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
+<a name="112"><span class="lineNum">     112 </span>            :         }</a>
+<a name="113"><span class="lineNum">     113 </span>            : </a>
+<a name="114"><span class="lineNum">     114 </span>            :         // Validate target contract is an approved swapper.</a>
+<a name="115"><span class="lineNum">     115 </span><span class="lineCov">        512 :         if (!centralRegistry.isSwapper(swapperData.target)) {</span></a>
+<a name="116"><span class="lineNum">     116 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidZapper(swapperData.target);</span></a>
+<a name="117"><span class="lineNum">     117 </span>            :         }</a>
+<a name="118"><span class="lineNum">     118 </span>            : </a>
+<a name="119"><span class="lineNum">     119 </span>            :         // Claim caller rewards and cache reward amount.</a>
+<a name="120"><span class="lineNum">     120 </span><span class="lineCov">        512 :         uint256 rewards = _processRewards(msg.sender);</span></a>
 <a name="121"><span class="lineNum">     121 </span>            : </a>
-<a name="122"><span class="lineNum">     122 </span>            :         // Claim caller rewards and cache reward amount.</a>
-<a name="123"><span class="lineNum">     123 </span><span class="lineNoCov">          0 :         uint256 rewards = _processRewards(msg.sender);</span></a>
-<a name="124"><span class="lineNum">     124 </span>            : </a>
-<a name="125"><span class="lineNum">     125 </span>            :         // Validate swap input amount equals rewards received.</a>
-<a name="126"><span class="lineNum">     126 </span><span class="lineNoCov">          0 :         if (swapperData.inputAmount != rewards) {</span></a>
-<a name="127"><span class="lineNum">     127 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
-<a name="128"><span class="lineNum">     128 </span>            :         }</a>
+<a name="122"><span class="lineNum">     122 </span>            :         // Validate swap input amount equals rewards received.</a>
+<a name="123"><span class="lineNum">     123 </span><span class="lineCov">        512 :         if (swapperData.inputAmount != rewards) {</span></a>
+<a name="124"><span class="lineNum">     124 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
+<a name="125"><span class="lineNum">     125 </span>            :         }</a>
+<a name="126"><span class="lineNum">     126 </span>            : </a>
+<a name="127"><span class="lineNum">     127 </span>            :         // Check how much in rewards were received from the swap.</a>
+<a name="128"><span class="lineNum">     128 </span><span class="lineCov">        512 :         outAmount = SwapperLib.swap(centralRegistry, swapperData);</span></a>
 <a name="129"><span class="lineNum">     129 </span>            : </a>
-<a name="130"><span class="lineNum">     130 </span>            :         // Check how much in rewards were received from the swap.</a>
-<a name="131"><span class="lineNum">     131 </span><span class="lineNoCov">          0 :         outAmount = SwapperLib.swap(centralRegistry, swapperData);</span></a>
-<a name="132"><span class="lineNum">     132 </span>            : </a>
-<a name="133"><span class="lineNum">     133 </span>            :         // Make sure we did not somehow end up with an empty swap through</a>
-<a name="134"><span class="lineNum">     134 </span>            :         // all prior checks, slippage checks are native handled by the solver</a>
-<a name="135"><span class="lineNum">     135 </span>            :         // so we do not need to measure slippage % here.</a>
-<a name="136"><span class="lineNum">     136 </span><span class="lineNoCov">          0 :         if (outAmount == 0) {</span></a>
-<a name="137"><span class="lineNum">     137 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
-<a name="138"><span class="lineNum">     138 </span>            :         }</a>
-<a name="139"><span class="lineNum">     139 </span>            : </a>
-<a name="140"><span class="lineNum">     140 </span>            :         // Transfer output tokens to `recipient`.</a>
-<a name="141"><span class="lineNum">     141 </span><span class="lineNoCov">          0 :         _transferToRecipient(swapperData.outputToken, recipient, outAmount);</span></a>
-<a name="142"><span class="lineNum">     142 </span>            :     }</a>
-<a name="143"><span class="lineNum">     143 </span>            : </a>
-<a name="144"><span class="lineNum">     144 </span>            :     /// @notice Claims CVE locker rewards, then Zaps, then deposits</a>
-<a name="145"><span class="lineNum">     145 </span>            :     ///         `zapperCall.inputToken`, a cToken underlying, and enters</a>
-<a name="146"><span class="lineNum">     146 </span>            :     ///         into Curvance collateral position.</a>
-<a name="147"><span class="lineNum">     147 </span>            :     /// @param zapperCall Zap instruction data to execute the Zap.</a>
-<a name="148"><span class="lineNum">     148 </span>            :     /// @param marketManager The Curvance market manager address which has</a>
-<a name="149"><span class="lineNum">     149 </span>            :     ///                      listed `cToken`.</a>
-<a name="150"><span class="lineNum">     150 </span>            :     /// @param cToken The Curvance cToken address.</a>
-<a name="151"><span class="lineNum">     151 </span>            :     /// @param recipient Address that should receive Zapped deposit.</a>
-<a name="152"><span class="lineNum">     152 </span>            :     /// @return The output amount of cTokens received from Zapping.</a>
-<a name="153"><span class="lineNum">     153 </span>            :     function claimZapAndDeposit(</a>
-<a name="154"><span class="lineNum">     154 </span>            :         SwapperLib.ZapperCall memory zapperCall,</a>
-<a name="155"><span class="lineNum">     155 </span>            :         address marketManager,</a>
-<a name="156"><span class="lineNum">     156 </span>            :         address cToken,</a>
-<a name="157"><span class="lineNum">     157 </span>            :         address recipient</a>
-<a name="158"><span class="lineNum">     158 </span>            :     ) external nonReentrant returns (uint256) {</a>
-<a name="159"><span class="lineNum">     159 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
-<a name="160"><span class="lineNum">     160 </span>            :         // token, but we use cve lockers are built with non gas token</a>
-<a name="161"><span class="lineNum">     161 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
-<a name="162"><span class="lineNum">     162 </span>            :         // CommonLib.isETH here.</a>
-<a name="163"><span class="lineNum">     163 </span>            : </a>
-<a name="164"><span class="lineNum">     164 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
-<a name="165"><span class="lineNum">     165 </span>            :         // rather than hardcoding input here this also acts as check that</a>
-<a name="166"><span class="lineNum">     166 </span>            :         // solver API call instructions have been configured properly.</a>
-<a name="167"><span class="lineNum">     167 </span><span class="lineNoCov">          0 :         if (zapperCall.inputToken != rewardToken) {</span></a>
-<a name="168"><span class="lineNum">     168 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
-<a name="169"><span class="lineNum">     169 </span>            :         }</a>
-<a name="170"><span class="lineNum">     170 </span>            : </a>
-<a name="171"><span class="lineNum">     171 </span>            :         // Validate that the desired Market Manager is approved.</a>
-<a name="172"><span class="lineNum">     172 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[marketManager] != 2) {</span></a>
-<a name="173"><span class="lineNum">     173 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
-<a name="174"><span class="lineNum">     174 </span>            :         }</a>
-<a name="175"><span class="lineNum">     175 </span>            : </a>
-<a name="176"><span class="lineNum">     176 </span>            :         // Validate that `cToken` is listed inside the associated</a>
-<a name="177"><span class="lineNum">     177 </span>            :         // Market Manager.</a>
-<a name="178"><span class="lineNum">     178 </span><span class="lineNoCov">          0 :         if (!IMarketManager(marketManager).isListed(cToken)) {</span></a>
-<a name="179"><span class="lineNum">     179 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
-<a name="180"><span class="lineNum">     180 </span>            :         }</a>
+<a name="130"><span class="lineNum">     130 </span>            :         // Make sure we did not somehow end up with an empty swap through</a>
+<a name="131"><span class="lineNum">     131 </span>            :         // all prior checks, slippage checks are native handled by the solver</a>
+<a name="132"><span class="lineNum">     132 </span>            :         // so we do not need to measure slippage % here.</a>
+<a name="133"><span class="lineNum">     133 </span><span class="lineCov">        512 :         if (outAmount == 0) {</span></a>
+<a name="134"><span class="lineNum">     134 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
+<a name="135"><span class="lineNum">     135 </span>            :         }</a>
+<a name="136"><span class="lineNum">     136 </span>            : </a>
+<a name="137"><span class="lineNum">     137 </span>            :         // Transfer output tokens to `recipient`.</a>
+<a name="138"><span class="lineNum">     138 </span><span class="lineCov">        512 :         _transferToRecipient(swapperData.outputToken, recipient, outAmount);</span></a>
+<a name="139"><span class="lineNum">     139 </span>            :     }</a>
+<a name="140"><span class="lineNum">     140 </span>            : </a>
+<a name="141"><span class="lineNum">     141 </span>            :     /// @notice Claims CVE locker rewards, then Zaps, then deposits</a>
+<a name="142"><span class="lineNum">     142 </span>            :     ///         `zapperCall.inputToken`, a cToken underlying, and enters</a>
+<a name="143"><span class="lineNum">     143 </span>            :     ///         into Curvance collateral position.</a>
+<a name="144"><span class="lineNum">     144 </span>            :     /// @param zapperCall Zap instruction data to execute the Zap.</a>
+<a name="145"><span class="lineNum">     145 </span>            :     /// @param marketManager The Curvance market manager address which has</a>
+<a name="146"><span class="lineNum">     146 </span>            :     ///                      listed `cToken`.</a>
+<a name="147"><span class="lineNum">     147 </span>            :     /// @param cToken The Curvance cToken address.</a>
+<a name="148"><span class="lineNum">     148 </span>            :     /// @param recipient Address that should receive Zapped deposit.</a>
+<a name="149"><span class="lineNum">     149 </span>            :     /// @return The output amount of cTokens received from Zapping.</a>
+<a name="150"><span class="lineNum">     150 </span>            :     function claimZapAndDeposit(</a>
+<a name="151"><span class="lineNum">     151 </span>            :         SwapperLib.ZapperCall memory zapperCall,</a>
+<a name="152"><span class="lineNum">     152 </span>            :         address marketManager,</a>
+<a name="153"><span class="lineNum">     153 </span>            :         address cToken,</a>
+<a name="154"><span class="lineNum">     154 </span>            :         address recipient</a>
+<a name="155"><span class="lineNum">     155 </span>            :     ) external nonReentrant returns (uint256) {</a>
+<a name="156"><span class="lineNum">     156 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
+<a name="157"><span class="lineNum">     157 </span>            :         // token, but we use cve lockers are built with non gas token</a>
+<a name="158"><span class="lineNum">     158 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
+<a name="159"><span class="lineNum">     159 </span>            :         // CommonLib.isETH here.</a>
+<a name="160"><span class="lineNum">     160 </span>            : </a>
+<a name="161"><span class="lineNum">     161 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
+<a name="162"><span class="lineNum">     162 </span>            :         // rather than hardcoding input here this also acts as check that</a>
+<a name="163"><span class="lineNum">     163 </span>            :         // solver API call instructions have been configured properly.</a>
+<a name="164"><span class="lineNum">     164 </span><span class="lineNoCov">          0 :         if (zapperCall.inputToken != rewardToken) {</span></a>
+<a name="165"><span class="lineNum">     165 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
+<a name="166"><span class="lineNum">     166 </span>            :         }</a>
+<a name="167"><span class="lineNum">     167 </span>            : </a>
+<a name="168"><span class="lineNum">     168 </span>            :         // Validate that the desired Market Manager is approved.</a>
+<a name="169"><span class="lineNum">     169 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[marketManager] != 2) {</span></a>
+<a name="170"><span class="lineNum">     170 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
+<a name="171"><span class="lineNum">     171 </span>            :         }</a>
+<a name="172"><span class="lineNum">     172 </span>            : </a>
+<a name="173"><span class="lineNum">     173 </span>            :         // Validate that `cToken` is listed inside the associated</a>
+<a name="174"><span class="lineNum">     174 </span>            :         // Market Manager.</a>
+<a name="175"><span class="lineNum">     175 </span><span class="lineNoCov">          0 :         if (!IMarketManager(marketManager).isListed(cToken)) {</span></a>
+<a name="176"><span class="lineNum">     176 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
+<a name="177"><span class="lineNum">     177 </span>            :         }</a>
+<a name="178"><span class="lineNum">     178 </span>            : </a>
+<a name="179"><span class="lineNum">     179 </span>            :         // We do not need to check for an output token approval here since all</a>
+<a name="180"><span class="lineNum">     180 </span>            :         // cTokens are natively authorized.</a>
 <a name="181"><span class="lineNum">     181 </span>            : </a>
-<a name="182"><span class="lineNum">     182 </span>            :         // We do not need to check for an output token approval here since all</a>
-<a name="183"><span class="lineNum">     183 </span>            :         // cTokens are natively authorized.</a>
-<a name="184"><span class="lineNum">     184 </span>            : </a>
-<a name="185"><span class="lineNum">     185 </span>            :         // Validate target contract is an approved Zapper.</a>
-<a name="186"><span class="lineNum">     186 </span><span class="lineNoCov">          0 :         if (!centralRegistry.isZapper(zapperCall.target)) {</span></a>
-<a name="187"><span class="lineNum">     187 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidZapper(zapperCall.target);</span></a>
-<a name="188"><span class="lineNum">     188 </span>            :         }</a>
+<a name="182"><span class="lineNum">     182 </span>            :         // Validate target contract is an approved Zapper.</a>
+<a name="183"><span class="lineNum">     183 </span><span class="lineNoCov">          0 :         if (!centralRegistry.isZapper(zapperCall.target)) {</span></a>
+<a name="184"><span class="lineNum">     184 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidZapper(zapperCall.target);</span></a>
+<a name="185"><span class="lineNum">     185 </span>            :         }</a>
+<a name="186"><span class="lineNum">     186 </span>            : </a>
+<a name="187"><span class="lineNum">     187 </span>            :         // Claim caller rewards and cache reward amount.</a>
+<a name="188"><span class="lineNum">     188 </span><span class="lineNoCov">          0 :         uint256 rewards = _processRewards(msg.sender);</span></a>
 <a name="189"><span class="lineNum">     189 </span>            : </a>
-<a name="190"><span class="lineNum">     190 </span>            :         // Claim caller rewards and cache reward amount.</a>
-<a name="191"><span class="lineNum">     191 </span><span class="lineNoCov">          0 :         uint256 rewards = _processRewards(msg.sender);</span></a>
-<a name="192"><span class="lineNum">     192 </span>            : </a>
-<a name="193"><span class="lineNum">     193 </span>            :         // Validate Zap input amount equals rewards received.</a>
-<a name="194"><span class="lineNum">     194 </span><span class="lineNoCov">          0 :         if (zapperCall.inputAmount != rewards) {</span></a>
-<a name="195"><span class="lineNum">     195 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
-<a name="196"><span class="lineNum">     196 </span>            :         }</a>
+<a name="190"><span class="lineNum">     190 </span>            :         // Validate Zap input amount equals rewards received.</a>
+<a name="191"><span class="lineNum">     191 </span><span class="lineNoCov">          0 :         if (zapperCall.inputAmount != rewards) {</span></a>
+<a name="192"><span class="lineNum">     192 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
+<a name="193"><span class="lineNum">     193 </span>            :         }</a>
+<a name="194"><span class="lineNum">     194 </span>            : </a>
+<a name="195"><span class="lineNum">     195 </span>            :         // Execute Zap into cToken underlying.</a>
+<a name="196"><span class="lineNum">     196 </span><span class="lineNoCov">          0 :         SwapperLib.zap(zapperCall);</span></a>
 <a name="197"><span class="lineNum">     197 </span>            : </a>
-<a name="198"><span class="lineNum">     198 </span>            :         // Execute Zap into cToken underlying.</a>
-<a name="199"><span class="lineNum">     199 </span><span class="lineNoCov">          0 :         SwapperLib.zap(zapperCall);</span></a>
-<a name="200"><span class="lineNum">     200 </span>            : </a>
-<a name="201"><span class="lineNum">     201 </span>            :         // Enter Curvance cToken position.</a>
-<a name="202"><span class="lineNum">     202 </span><span class="lineNoCov">          0 :         return _enterCurvance(cToken, recipient);</span></a>
-<a name="203"><span class="lineNum">     203 </span>            :     }</a>
-<a name="204"><span class="lineNum">     204 </span>            : </a>
-<a name="205"><span class="lineNum">     205 </span>            :     /// @notice Claims CVE locker rewards, then may swap, then repays</a>
-<a name="206"><span class="lineNum">     206 </span>            :     ///         dToken debt inside Curvance.</a>
-<a name="207"><span class="lineNum">     207 </span>            :     /// @dev Sends any excess dToken underlying to `recipient`.</a>
-<a name="208"><span class="lineNum">     208 </span>            :     ///      Only needs to swap if `rewardToken` != dToken underlying.</a>
-<a name="209"><span class="lineNum">     209 </span>            :     /// @param swapperData Optional swap instruction data to execute the repayment.</a>
-<a name="210"><span class="lineNum">     210 </span>            :     /// @param marketManager The Curvance market manager address which has</a>
-<a name="211"><span class="lineNum">     211 </span>            :     ///                      listed `dToken`.</a>
-<a name="212"><span class="lineNum">     212 </span>            :     /// @param dToken The Curvance dToken address.</a>
-<a name="213"><span class="lineNum">     213 </span>            :     /// @param repayAmount The amount of dToken underlying to be repaid.</a>
-<a name="214"><span class="lineNum">     214 </span>            :     /// @param recipient Address that should have its outstanding debt repaid.</a>
-<a name="215"><span class="lineNum">     215 </span>            :     /// @return The excess amount of dToken underlying that was returned</a>
-<a name="216"><span class="lineNum">     216 </span>            :     ///         to `recipient`.</a>
-<a name="217"><span class="lineNum">     217 </span>            :     function claimSwapAndRepay(</a>
-<a name="218"><span class="lineNum">     218 </span>            :         SwapperLib.Swap memory swapperData,</a>
-<a name="219"><span class="lineNum">     219 </span>            :         address marketManager,</a>
-<a name="220"><span class="lineNum">     220 </span>            :         address dToken,</a>
-<a name="221"><span class="lineNum">     221 </span>            :         uint256 repayAmount,</a>
-<a name="222"><span class="lineNum">     222 </span>            :         address recipient</a>
-<a name="223"><span class="lineNum">     223 </span>            :     ) external nonReentrant returns (uint256) {</a>
-<a name="224"><span class="lineNum">     224 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
-<a name="225"><span class="lineNum">     225 </span>            :         // token, but we use cve lockers are built with non gas token</a>
-<a name="226"><span class="lineNum">     226 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
-<a name="227"><span class="lineNum">     227 </span>            :         // CommonLib.isETH here.</a>
-<a name="228"><span class="lineNum">     228 </span>            : </a>
-<a name="229"><span class="lineNum">     229 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
-<a name="230"><span class="lineNum">     230 </span>            :         // rather than hardcoding input here this also acts as check that</a>
-<a name="231"><span class="lineNum">     231 </span>            :         // solver API call instructions have been configured properly.</a>
-<a name="232"><span class="lineNum">     232 </span><span class="lineNoCov">          0 :         if (swapperData.inputToken != rewardToken) {</span></a>
-<a name="233"><span class="lineNum">     233 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
-<a name="234"><span class="lineNum">     234 </span>            :         }</a>
-<a name="235"><span class="lineNum">     235 </span>            : </a>
-<a name="236"><span class="lineNum">     236 </span>            :         // Validate that the desired Market Manager is approved.</a>
-<a name="237"><span class="lineNum">     237 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[marketManager] != 2) {</span></a>
-<a name="238"><span class="lineNum">     238 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
-<a name="239"><span class="lineNum">     239 </span>            :         }</a>
-<a name="240"><span class="lineNum">     240 </span>            : </a>
-<a name="241"><span class="lineNum">     241 </span>            :         // Validate that `dToken` is listed inside the associated</a>
-<a name="242"><span class="lineNum">     242 </span>            :         // Market Manager.</a>
-<a name="243"><span class="lineNum">     243 </span><span class="lineNoCov">          0 :         if (!IMarketManager(marketManager).isListed(dToken)) {</span></a>
-<a name="244"><span class="lineNum">     244 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
-<a name="245"><span class="lineNum">     245 </span>            :         }</a>
+<a name="198"><span class="lineNum">     198 </span>            :         // Enter Curvance cToken position.</a>
+<a name="199"><span class="lineNum">     199 </span><span class="lineNoCov">          0 :         return _enterCurvance(cToken, recipient);</span></a>
+<a name="200"><span class="lineNum">     200 </span>            :     }</a>
+<a name="201"><span class="lineNum">     201 </span>            : </a>
+<a name="202"><span class="lineNum">     202 </span>            :     /// @notice Claims CVE locker rewards, then may swap, then repays</a>
+<a name="203"><span class="lineNum">     203 </span>            :     ///         dToken debt inside Curvance.</a>
+<a name="204"><span class="lineNum">     204 </span>            :     /// @dev Sends any excess dToken underlying to `recipient`.</a>
+<a name="205"><span class="lineNum">     205 </span>            :     ///      Only needs to swap if `rewardToken` != dToken underlying.</a>
+<a name="206"><span class="lineNum">     206 </span>            :     /// @param swapperData Optional swap instruction data to execute the repayment.</a>
+<a name="207"><span class="lineNum">     207 </span>            :     /// @param marketManager The Curvance market manager address which has</a>
+<a name="208"><span class="lineNum">     208 </span>            :     ///                      listed `dToken`.</a>
+<a name="209"><span class="lineNum">     209 </span>            :     /// @param dToken The Curvance dToken address.</a>
+<a name="210"><span class="lineNum">     210 </span>            :     /// @param repayAmount The amount of dToken underlying to be repaid.</a>
+<a name="211"><span class="lineNum">     211 </span>            :     /// @param recipient Address that should have its outstanding debt repaid.</a>
+<a name="212"><span class="lineNum">     212 </span>            :     /// @return The excess amount of dToken underlying that was returned</a>
+<a name="213"><span class="lineNum">     213 </span>            :     ///         to `recipient`.</a>
+<a name="214"><span class="lineNum">     214 </span>            :     function claimSwapAndRepay(</a>
+<a name="215"><span class="lineNum">     215 </span>            :         SwapperLib.Swap memory swapperData,</a>
+<a name="216"><span class="lineNum">     216 </span>            :         address marketManager,</a>
+<a name="217"><span class="lineNum">     217 </span>            :         address dToken,</a>
+<a name="218"><span class="lineNum">     218 </span>            :         uint256 repayAmount,</a>
+<a name="219"><span class="lineNum">     219 </span>            :         address recipient</a>
+<a name="220"><span class="lineNum">     220 </span>            :     ) external nonReentrant returns (uint256) {</a>
+<a name="221"><span class="lineNum">     221 </span>            :         // Normally in swappers we check whether the input is a networks gas</a>
+<a name="222"><span class="lineNum">     222 </span>            :         // token, but we use cve lockers are built with non gas token</a>
+<a name="223"><span class="lineNum">     223 </span>            :         // stablecoins as reward tokens. This means we do not need to check</a>
+<a name="224"><span class="lineNum">     224 </span>            :         // CommonLib.isETH here.</a>
+<a name="225"><span class="lineNum">     225 </span>            : </a>
+<a name="226"><span class="lineNum">     226 </span>            :         // Swap input token must match the reward token from the CVE locker,</a>
+<a name="227"><span class="lineNum">     227 </span>            :         // rather than hardcoding input here this also acts as check that</a>
+<a name="228"><span class="lineNum">     228 </span>            :         // solver API call instructions have been configured properly.</a>
+<a name="229"><span class="lineNum">     229 </span><span class="lineNoCov">          0 :         if (swapperData.inputToken != rewardToken) {</span></a>
+<a name="230"><span class="lineNum">     230 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
+<a name="231"><span class="lineNum">     231 </span>            :         }</a>
+<a name="232"><span class="lineNum">     232 </span>            : </a>
+<a name="233"><span class="lineNum">     233 </span>            :         // Validate that the desired Market Manager is approved.</a>
+<a name="234"><span class="lineNum">     234 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[marketManager] != 2) {</span></a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
+<a name="236"><span class="lineNum">     236 </span>            :         }</a>
+<a name="237"><span class="lineNum">     237 </span>            : </a>
+<a name="238"><span class="lineNum">     238 </span>            :         // Validate that `dToken` is listed inside the associated</a>
+<a name="239"><span class="lineNum">     239 </span>            :         // Market Manager.</a>
+<a name="240"><span class="lineNum">     240 </span><span class="lineNoCov">          0 :         if (!IMarketManager(marketManager).isListed(dToken)) {</span></a>
+<a name="241"><span class="lineNum">     241 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
+<a name="242"><span class="lineNum">     242 </span>            :         }</a>
+<a name="243"><span class="lineNum">     243 </span>            : </a>
+<a name="244"><span class="lineNum">     244 </span>            :         // Claim caller rewards and cache reward amount.</a>
+<a name="245"><span class="lineNum">     245 </span><span class="lineNoCov">          0 :         uint256 rewards = _processRewards(msg.sender);</span></a>
 <a name="246"><span class="lineNum">     246 </span>            : </a>
-<a name="247"><span class="lineNum">     247 </span>            :         // Claim caller rewards and cache reward amount.</a>
-<a name="248"><span class="lineNum">     248 </span><span class="lineNoCov">          0 :         uint256 rewards = _processRewards(msg.sender);</span></a>
-<a name="249"><span class="lineNum">     249 </span>            : </a>
-<a name="250"><span class="lineNum">     250 </span>            :         // Validate swap input amount equals rewards received.</a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineNoCov">          0 :         if (swapperData.inputAmount != rewards) {</span></a>
-<a name="252"><span class="lineNum">     252 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
-<a name="253"><span class="lineNum">     253 </span>            :         }</a>
+<a name="247"><span class="lineNum">     247 </span>            :         // Validate swap input amount equals rewards received.</a>
+<a name="248"><span class="lineNum">     248 </span><span class="lineNoCov">          0 :         if (swapperData.inputAmount != rewards) {</span></a>
+<a name="249"><span class="lineNum">     249 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidInputAmount();</span></a>
+<a name="250"><span class="lineNum">     250 </span>            :         }</a>
+<a name="251"><span class="lineNum">     251 </span>            : </a>
+<a name="252"><span class="lineNum">     252 </span>            :         // Cache underlying to minimize external calls.</a>
+<a name="253"><span class="lineNum">     253 </span><span class="lineNoCov">          0 :         address dTokenUnderlying = DToken(dToken).underlying();</span></a>
 <a name="254"><span class="lineNum">     254 </span>            : </a>
-<a name="255"><span class="lineNum">     255 </span>            :         // Cache underlying to minimize external calls.</a>
-<a name="256"><span class="lineNum">     256 </span><span class="lineNoCov">          0 :         address dTokenUnderlying = DToken(dToken).underlying();</span></a>
-<a name="257"><span class="lineNum">     257 </span>            : </a>
-<a name="258"><span class="lineNum">     258 </span><span class="lineNoCov">          0 :         if (swapperData.outputToken != dTokenUnderlying) {</span></a>
-<a name="259"><span class="lineNum">     259 </span>            :             // Validate target contract is an approved swapper.</a>
-<a name="260"><span class="lineNum">     260 </span><span class="lineNoCov">          0 :             if (!centralRegistry.isSwapper(swapperData.target)) {</span></a>
-<a name="261"><span class="lineNum">     261 </span><span class="lineNoCov">          0 :                 revert SimpleRewardZapper__InvalidZapper(swapperData.target);</span></a>
-<a name="262"><span class="lineNum">     262 </span>            :             }</a>
-<a name="263"><span class="lineNum">     263 </span>            : </a>
-<a name="264"><span class="lineNum">     264 </span>            :             // Swap from reward token into `dTokenUnderlying`.</a>
-<a name="265"><span class="lineNum">     265 </span><span class="lineNoCov">          0 :             SwapperLib.swap(centralRegistry, swapperData);</span></a>
-<a name="266"><span class="lineNum">     266 </span>            :         }</a>
-<a name="267"><span class="lineNum">     267 </span>            : </a>
-<a name="268"><span class="lineNum">     268 </span>            :         // Repay Curvance dToken debt.</a>
-<a name="269"><span class="lineNum">     269 </span><span class="lineNoCov">          0 :         return _repayDebt(dToken, dTokenUnderlying, repayAmount, recipient);</span></a>
-<a name="270"><span class="lineNum">     270 </span>            :     }</a>
-<a name="271"><span class="lineNum">     271 </span>            : </a>
-<a name="272"><span class="lineNum">     272 </span>            :     /// PERMISSIONED EXTERNAL FUNCTIONS ///</a>
-<a name="273"><span class="lineNum">     273 </span>            : </a>
-<a name="274"><span class="lineNum">     274 </span>            :     /// @notice Authorizes a market manager for Zapping.</a>
-<a name="275"><span class="lineNum">     275 </span>            :     /// @dev Only callable on by an entity with elevated DAO permissions.</a>
-<a name="276"><span class="lineNum">     276 </span>            :     ///      Such as the timelock controller.</a>
-<a name="277"><span class="lineNum">     277 </span>            :     /// @param newMarketManager The address of the market manager to authorize.</a>
-<a name="278"><span class="lineNum">     278 </span>            :     function addAuthorizedMarketManager(address newMarketManager) external {</a>
-<a name="279"><span class="lineNum">     279 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
-<a name="280"><span class="lineNum">     280 </span>            : </a>
-<a name="281"><span class="lineNum">     281 </span>            :         // Validate `newMarketManager` is </a>
-<a name="282"><span class="lineNum">     282 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[newMarketManager] == 2) {</span></a>
-<a name="283"><span class="lineNum">     283 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsAlreadyAuthorized();</span></a>
-<a name="284"><span class="lineNum">     284 </span>            :         }</a>
-<a name="285"><span class="lineNum">     285 </span>            : </a>
-<a name="286"><span class="lineNum">     286 </span>            :         // Validate that `newMarketManager` is configured as a market manager</a>
-<a name="287"><span class="lineNum">     287 </span>            :         // inside the Central Registry.</a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineNoCov">          0 :         if (!centralRegistry.isMarketManager(newMarketManager)) {</span></a>
-<a name="289"><span class="lineNum">     289 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidMarketManager();</span></a>
-<a name="290"><span class="lineNum">     290 </span>            :         }</a>
-<a name="291"><span class="lineNum">     291 </span>            : </a>
-<a name="292"><span class="lineNum">     292 </span>            :         // Authorize new Market Manager.</a>
-<a name="293"><span class="lineNum">     293 </span><span class="lineNoCov">          0 :         authorizedMarketManager[newMarketManager] = 2;</span></a>
-<a name="294"><span class="lineNum">     294 </span>            :     }</a>
-<a name="295"><span class="lineNum">     295 </span>            : </a>
-<a name="296"><span class="lineNum">     296 </span>            :     /// @notice Removes authorization of market manager for Zapping.</a>
-<a name="297"><span class="lineNum">     297 </span>            :     /// @dev Only callable on by an entity with DAO permissions or higher.</a>
-<a name="298"><span class="lineNum">     298 </span>            :     /// @param currentMarketManager The address of the market manager to deauthorize.</a>
-<a name="299"><span class="lineNum">     299 </span>            :     function removeAuthorizedMarketManager(address currentMarketManager) external {</a>
-<a name="300"><span class="lineNum">     300 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
-<a name="301"><span class="lineNum">     301 </span>            : </a>
-<a name="302"><span class="lineNum">     302 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[currentMarketManager] != 2) {</span></a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsNotAuthorized();</span></a>
-<a name="304"><span class="lineNum">     304 </span>            :         }</a>
-<a name="305"><span class="lineNum">     305 </span>            : </a>
-<a name="306"><span class="lineNum">     306 </span>            :         // Deauthorize current Market Manager.</a>
-<a name="307"><span class="lineNum">     307 </span><span class="lineNoCov">          0 :         authorizedMarketManager[currentMarketManager] = 1;</span></a>
-<a name="308"><span class="lineNum">     308 </span>            :     }</a>
-<a name="309"><span class="lineNum">     309 </span>            : </a>
-<a name="310"><span class="lineNum">     310 </span>            :     /// @notice Authorizes a new reward token.</a>
-<a name="311"><span class="lineNum">     311 </span>            :     /// @dev Only callable on by an entity with elevated DAO permissions.</a>
-<a name="312"><span class="lineNum">     312 </span>            :     ///      Such as the timelock controller.</a>
-<a name="313"><span class="lineNum">     313 </span>            :     /// @param outputToken The address of the token to authorize.</a>
-<a name="314"><span class="lineNum">     314 </span>            :     function addAuthorizedOutputToken(address outputToken) external {</a>
-<a name="315"><span class="lineNum">     315 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
-<a name="316"><span class="lineNum">     316 </span>            : </a>
-<a name="317"><span class="lineNum">     317 </span><span class="lineNoCov">          0 :         if (outputToken == address(0)) {</span></a>
-<a name="318"><span class="lineNum">     318 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
-<a name="319"><span class="lineNum">     319 </span>            :         }</a>
-<a name="320"><span class="lineNum">     320 </span>            : </a>
-<a name="321"><span class="lineNum">     321 </span><span class="lineNoCov">          0 :         if (authorizedOutputToken[outputToken] == 2) {</span></a>
-<a name="322"><span class="lineNum">     322 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsAlreadyAuthorized();</span></a>
-<a name="323"><span class="lineNum">     323 </span>            :         }</a>
-<a name="324"><span class="lineNum">     324 </span>            : </a>
-<a name="325"><span class="lineNum">     325 </span><span class="lineNoCov">          0 :         authorizedOutputToken[outputToken] = 2;</span></a>
-<a name="326"><span class="lineNum">     326 </span>            :     }</a>
-<a name="327"><span class="lineNum">     327 </span>            : </a>
-<a name="328"><span class="lineNum">     328 </span>            :     /// @notice Removes an authorized reward token.</a>
-<a name="329"><span class="lineNum">     329 </span>            :     /// @dev Only callable on by an entity with DAO permissions or higher.</a>
-<a name="330"><span class="lineNum">     330 </span>            :     /// @param outputToken The address of the token to deauthorize.</a>
-<a name="331"><span class="lineNum">     331 </span>            :     function removeAuthorizedOutputToken(address outputToken) external {</a>
-<a name="332"><span class="lineNum">     332 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
-<a name="333"><span class="lineNum">     333 </span>            : </a>
-<a name="334"><span class="lineNum">     334 </span><span class="lineNoCov">          0 :         if (outputToken == address(0)) {</span></a>
-<a name="335"><span class="lineNum">     335 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
-<a name="336"><span class="lineNum">     336 </span>            :         }</a>
-<a name="337"><span class="lineNum">     337 </span>            : </a>
-<a name="338"><span class="lineNum">     338 </span><span class="lineNoCov">          0 :         if (authorizedOutputToken[outputToken] != 2) {</span></a>
-<a name="339"><span class="lineNum">     339 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsNotAuthorized();</span></a>
-<a name="340"><span class="lineNum">     340 </span>            :         }</a>
-<a name="341"><span class="lineNum">     341 </span>            : </a>
-<a name="342"><span class="lineNum">     342 </span><span class="lineNoCov">          0 :         authorizedOutputToken[outputToken] = 1;</span></a>
-<a name="343"><span class="lineNum">     343 </span>            :     }</a>
-<a name="344"><span class="lineNum">     344 </span>            : </a>
-<a name="345"><span class="lineNum">     345 </span>            :     /// INTERNAL FUNCTIONS ///</a>
-<a name="346"><span class="lineNum">     346 </span>            : </a>
-<a name="347"><span class="lineNum">     347 </span>            :     /// @notice Deposits cToken underlying into Curvance cToken contract.</a>
-<a name="348"><span class="lineNum">     348 </span>            :     /// @param cToken The Curvance cToken address.</a>
-<a name="349"><span class="lineNum">     349 </span>            :     /// @param recipient Address that should receive Curvance cTokens.</a>
-<a name="350"><span class="lineNum">     350 </span>            :     /// @return The output amount of cTokens received.</a>
-<a name="351"><span class="lineNum">     351 </span>            :     function _enterCurvance(</a>
-<a name="352"><span class="lineNum">     352 </span>            :         address cToken,</a>
-<a name="353"><span class="lineNum">     353 </span>            :         address recipient</a>
-<a name="354"><span class="lineNum">     354 </span>            :     ) internal returns (uint256) {</a>
-<a name="355"><span class="lineNum">     355 </span><span class="lineNoCov">          0 :         address cTokenUnderlying = CTokenPrimitive(cToken).underlying();</span></a>
-<a name="356"><span class="lineNum">     356 </span><span class="lineNoCov">          0 :         uint256 balance = IERC20(cTokenUnderlying).balanceOf(address(this));</span></a>
-<a name="357"><span class="lineNum">     357 </span>            : </a>
-<a name="358"><span class="lineNum">     358 </span>            :         // Approve cToken to take `inputToken`.</a>
-<a name="359"><span class="lineNum">     359 </span><span class="lineNoCov">          0 :         SwapperLib._approveTokenIfNeeded(cTokenUnderlying, cToken, balance);</span></a>
-<a name="360"><span class="lineNum">     360 </span>            : </a>
-<a name="361"><span class="lineNum">     361 </span><span class="lineNoCov">          0 :         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);</span></a>
-<a name="362"><span class="lineNum">     362 </span>            : </a>
-<a name="363"><span class="lineNum">     363 </span>            :         // Enter Curvance cToken position and make sure `recipient` got</a>
-<a name="364"><span class="lineNum">     364 </span>            :         // cTokens.</a>
-<a name="365"><span class="lineNum">     365 </span><span class="lineNoCov">          0 :         if (CTokenPrimitive(cToken).deposit(balance, recipient) == 0) {</span></a>
-<a name="366"><span class="lineNum">     366 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
-<a name="367"><span class="lineNum">     367 </span>            :         }</a>
-<a name="368"><span class="lineNum">     368 </span>            : </a>
-<a name="369"><span class="lineNum">     369 </span>            :         // Remove any excess approval.</a>
-<a name="370"><span class="lineNum">     370 </span><span class="lineNoCov">          0 :         SwapperLib._removeApprovalIfNeeded(cTokenUnderlying, cToken);</span></a>
-<a name="371"><span class="lineNum">     371 </span>            : </a>
-<a name="372"><span class="lineNum">     372 </span>            :         // Bubble up how many cTokens `recipient` received.</a>
-<a name="373"><span class="lineNum">     373 </span><span class="lineNoCov">          0 :         return IERC20(cToken).balanceOf(recipient) - priorBalance;</span></a>
-<a name="374"><span class="lineNum">     374 </span>            :     }</a>
-<a name="375"><span class="lineNum">     375 </span>            : </a>
-<a name="376"><span class="lineNum">     376 </span>            :     /// @notice Repays Curvance lenders dToken underlying owed on behalf</a>
-<a name="377"><span class="lineNum">     377 </span>            :     ///         of `recipient`.</a>
-<a name="378"><span class="lineNum">     378 </span>            :     /// @param dToken The Curvance dToken address.</a>
-<a name="379"><span class="lineNum">     379 </span>            :     /// @param dTokenUnderlying The underlying token for `dToken`.</a>
-<a name="380"><span class="lineNum">     380 </span>            :     /// @param repayAmount The amount of dToken underlying to be repaid.</a>
-<a name="381"><span class="lineNum">     381 </span>            :     /// @param recipient Address that should have outstanding debt repaid.</a>
-<a name="382"><span class="lineNum">     382 </span>            :     /// @return outAmount The excess amount of dToken underlying that was</a>
-<a name="383"><span class="lineNum">     383 </span>            :     ///                   returned to `recipient`.</a>
-<a name="384"><span class="lineNum">     384 </span>            :     function _repayDebt(</a>
-<a name="385"><span class="lineNum">     385 </span>            :         address dToken,</a>
-<a name="386"><span class="lineNum">     386 </span>            :         address dTokenUnderlying,</a>
-<a name="387"><span class="lineNum">     387 </span>            :         uint256 repayAmount,</a>
-<a name="388"><span class="lineNum">     388 </span>            :         address recipient</a>
-<a name="389"><span class="lineNum">     389 </span>            :     ) internal returns (uint256 outAmount) {</a>
-<a name="390"><span class="lineNum">     390 </span>            :         // Manually query balance here since its possible we did not swap if</a>
-<a name="391"><span class="lineNum">     391 </span>            :         // rewardToken == outputToken.</a>
-<a name="392"><span class="lineNum">     392 </span>            :         // We also never need to worry about this capturing other peoples</a>
-<a name="393"><span class="lineNum">     393 </span>            :         // balances since the Zapper should never be holding any reward token,</a>
-<a name="394"><span class="lineNum">     394 </span>            :         // or dToken underlying itself.</a>
-<a name="395"><span class="lineNum">     395 </span><span class="lineNoCov">          0 :         outAmount = IERC20(dTokenUnderlying).balanceOf(address(this));</span></a>
-<a name="396"><span class="lineNum">     396 </span>            :         </a>
-<a name="397"><span class="lineNum">     397 </span>            :         // Revert if the swap experienced too much slippage.</a>
-<a name="398"><span class="lineNum">     398 </span><span class="lineNoCov">          0 :         if (outAmount &lt; repayAmount) {</span></a>
-<a name="399"><span class="lineNum">     399 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InsufficientToRepay();</span></a>
-<a name="400"><span class="lineNum">     400 </span>            :         }</a>
-<a name="401"><span class="lineNum">     401 </span>            : </a>
-<a name="402"><span class="lineNum">     402 </span>            :         // Approve `dTokenUnderlying` to dToken contract, if necessary.</a>
-<a name="403"><span class="lineNum">     403 </span><span class="lineNoCov">          0 :         SwapperLib._approveTokenIfNeeded(</span></a>
-<a name="404"><span class="lineNum">     404 </span>            :             dTokenUnderlying,</a>
-<a name="405"><span class="lineNum">     405 </span>            :             dToken,</a>
-<a name="406"><span class="lineNum">     406 </span>            :             repayAmount</a>
-<a name="407"><span class="lineNum">     407 </span>            :         );</a>
-<a name="408"><span class="lineNum">     408 </span>            : </a>
-<a name="409"><span class="lineNum">     409 </span>            :         // Execute repayment of dToken debt.</a>
-<a name="410"><span class="lineNum">     410 </span><span class="lineNoCov">          0 :         DToken(dToken).repayFor(recipient, repayAmount);</span></a>
-<a name="411"><span class="lineNum">     411 </span>            : </a>
-<a name="412"><span class="lineNum">     412 </span>            :         // Remove any excess approval.</a>
-<a name="413"><span class="lineNum">     413 </span><span class="lineNoCov">          0 :         SwapperLib._removeApprovalIfNeeded(dTokenUnderlying, dToken);</span></a>
-<a name="414"><span class="lineNum">     414 </span>            : </a>
-<a name="415"><span class="lineNum">     415 </span><span class="lineNoCov">          0 :         outAmount -= repayAmount;</span></a>
-<a name="416"><span class="lineNum">     416 </span>            : </a>
-<a name="417"><span class="lineNum">     417 </span>            :         // Transfer any remaining `dTokenUnderlying` to `recipient`.</a>
-<a name="418"><span class="lineNum">     418 </span><span class="lineNoCov">          0 :         if (outAmount &gt; 0) {</span></a>
-<a name="419"><span class="lineNum">     419 </span><span class="lineNoCov">          0 :             _transferToRecipient(</span></a>
-<a name="420"><span class="lineNum">     420 </span>            :                 dTokenUnderlying, </a>
-<a name="421"><span class="lineNum">     421 </span>            :                 recipient, </a>
-<a name="422"><span class="lineNum">     422 </span>            :                 outAmount</a>
-<a name="423"><span class="lineNum">     423 </span>            :             );</a>
-<a name="424"><span class="lineNum">     424 </span>            :         }</a>
-<a name="425"><span class="lineNum">     425 </span>            :     }</a>
-<a name="426"><span class="lineNum">     426 </span>            : </a>
-<a name="427"><span class="lineNum">     427 </span>            :     /// @notice Checks whether `user` has rewards, if they do, claim them</a>
-<a name="428"><span class="lineNum">     428 </span>            :     ///         to this contract and bubble up the reward amount.</a>
-<a name="429"><span class="lineNum">     429 </span>            :     /// @param user The address of the user to process rewards for.</a>
-<a name="430"><span class="lineNum">     430 </span>            :     /// @return The amount of rewards received from processing.</a>
-<a name="431"><span class="lineNum">     431 </span>            :     function _processRewards(address user) internal returns (uint256) {</a>
-<a name="432"><span class="lineNum">     432 </span><span class="lineNoCov">          0 :         uint256 epochs = cveLocker.epochsToClaim(user);</span></a>
+<a name="255"><span class="lineNum">     255 </span><span class="lineNoCov">          0 :         if (swapperData.outputToken != dTokenUnderlying) {</span></a>
+<a name="256"><span class="lineNum">     256 </span>            :             // Validate target contract is an approved swapper.</a>
+<a name="257"><span class="lineNum">     257 </span><span class="lineNoCov">          0 :             if (!centralRegistry.isSwapper(swapperData.target)) {</span></a>
+<a name="258"><span class="lineNum">     258 </span><span class="lineNoCov">          0 :                 revert SimpleRewardZapper__InvalidZapper(swapperData.target);</span></a>
+<a name="259"><span class="lineNum">     259 </span>            :             }</a>
+<a name="260"><span class="lineNum">     260 </span>            : </a>
+<a name="261"><span class="lineNum">     261 </span>            :             // Swap from reward token into `dTokenUnderlying`.</a>
+<a name="262"><span class="lineNum">     262 </span><span class="lineNoCov">          0 :             SwapperLib.swap(centralRegistry, swapperData);</span></a>
+<a name="263"><span class="lineNum">     263 </span>            :         }</a>
+<a name="264"><span class="lineNum">     264 </span>            : </a>
+<a name="265"><span class="lineNum">     265 </span>            :         // Repay Curvance dToken debt.</a>
+<a name="266"><span class="lineNum">     266 </span><span class="lineNoCov">          0 :         return _repayDebt(dToken, dTokenUnderlying, repayAmount, recipient);</span></a>
+<a name="267"><span class="lineNum">     267 </span>            :     }</a>
+<a name="268"><span class="lineNum">     268 </span>            : </a>
+<a name="269"><span class="lineNum">     269 </span>            :     /// PERMISSIONED EXTERNAL FUNCTIONS ///</a>
+<a name="270"><span class="lineNum">     270 </span>            : </a>
+<a name="271"><span class="lineNum">     271 </span>            :     /// @notice Authorizes a market manager for Zapping.</a>
+<a name="272"><span class="lineNum">     272 </span>            :     /// @dev Only callable on by an entity with elevated DAO permissions.</a>
+<a name="273"><span class="lineNum">     273 </span>            :     ///      Such as the timelock controller.</a>
+<a name="274"><span class="lineNum">     274 </span>            :     /// @param newMarketManager The address of the market manager to authorize.</a>
+<a name="275"><span class="lineNum">     275 </span>            :     function addAuthorizedMarketManager(address newMarketManager) external {</a>
+<a name="276"><span class="lineNum">     276 </span><span class="lineNoCov">          0 :         _checkElevatedPermissions();</span></a>
+<a name="277"><span class="lineNum">     277 </span>            : </a>
+<a name="278"><span class="lineNum">     278 </span>            :         // Validate `newMarketManager` is</a>
+<a name="279"><span class="lineNum">     279 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[newMarketManager] == 2) {</span></a>
+<a name="280"><span class="lineNum">     280 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsAlreadyAuthorized();</span></a>
+<a name="281"><span class="lineNum">     281 </span>            :         }</a>
+<a name="282"><span class="lineNum">     282 </span>            : </a>
+<a name="283"><span class="lineNum">     283 </span>            :         // Validate that `newMarketManager` is configured as a market manager</a>
+<a name="284"><span class="lineNum">     284 </span>            :         // inside the Central Registry.</a>
+<a name="285"><span class="lineNum">     285 </span><span class="lineNoCov">          0 :         if (!centralRegistry.isMarketManager(newMarketManager)) {</span></a>
+<a name="286"><span class="lineNum">     286 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InvalidMarketManager();</span></a>
+<a name="287"><span class="lineNum">     287 </span>            :         }</a>
+<a name="288"><span class="lineNum">     288 </span>            : </a>
+<a name="289"><span class="lineNum">     289 </span>            :         // Authorize new Market Manager.</a>
+<a name="290"><span class="lineNum">     290 </span><span class="lineNoCov">          0 :         authorizedMarketManager[newMarketManager] = 2;</span></a>
+<a name="291"><span class="lineNum">     291 </span>            :     }</a>
+<a name="292"><span class="lineNum">     292 </span>            : </a>
+<a name="293"><span class="lineNum">     293 </span>            :     /// @notice Removes authorization of market manager for Zapping.</a>
+<a name="294"><span class="lineNum">     294 </span>            :     /// @dev Only callable on by an entity with DAO permissions or higher.</a>
+<a name="295"><span class="lineNum">     295 </span>            :     /// @param currentMarketManager The address of the market manager to deauthorize.</a>
+<a name="296"><span class="lineNum">     296 </span>            :     function removeAuthorizedMarketManager(</a>
+<a name="297"><span class="lineNum">     297 </span>            :         address currentMarketManager</a>
+<a name="298"><span class="lineNum">     298 </span>            :     ) external {</a>
+<a name="299"><span class="lineNum">     299 </span><span class="lineNoCov">          0 :         _checkDaoPermissions();</span></a>
+<a name="300"><span class="lineNum">     300 </span>            : </a>
+<a name="301"><span class="lineNum">     301 </span><span class="lineNoCov">          0 :         if (authorizedMarketManager[currentMarketManager] != 2) {</span></a>
+<a name="302"><span class="lineNum">     302 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__IsNotAuthorized();</span></a>
+<a name="303"><span class="lineNum">     303 </span>            :         }</a>
+<a name="304"><span class="lineNum">     304 </span>            : </a>
+<a name="305"><span class="lineNum">     305 </span>            :         // Deauthorize current Market Manager.</a>
+<a name="306"><span class="lineNum">     306 </span><span class="lineNoCov">          0 :         authorizedMarketManager[currentMarketManager] = 1;</span></a>
+<a name="307"><span class="lineNum">     307 </span>            :     }</a>
+<a name="308"><span class="lineNum">     308 </span>            : </a>
+<a name="309"><span class="lineNum">     309 </span>            :     /// @notice Authorizes a new reward token.</a>
+<a name="310"><span class="lineNum">     310 </span>            :     /// @dev Only callable on by an entity with elevated DAO permissions.</a>
+<a name="311"><span class="lineNum">     311 </span>            :     ///      Such as the timelock controller.</a>
+<a name="312"><span class="lineNum">     312 </span>            :     /// @param outputToken The address of the token to authorize.</a>
+<a name="313"><span class="lineNum">     313 </span>            :     function addAuthorizedOutputToken(address outputToken) external {</a>
+<a name="314"><span class="lineNum">     314 </span><span class="lineCov">        520 :         _checkElevatedPermissions();</span></a>
+<a name="315"><span class="lineNum">     315 </span>            : </a>
+<a name="316"><span class="lineNum">     316 </span><span class="lineCov">        519 :         if (outputToken == address(0)) {</span></a>
+<a name="317"><span class="lineNum">     317 </span><span class="lineCov">          1 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
+<a name="318"><span class="lineNum">     318 </span>            :         }</a>
+<a name="319"><span class="lineNum">     319 </span>            : </a>
+<a name="320"><span class="lineNum">     320 </span><span class="lineCov">        518 :         if (authorizedOutputToken[outputToken] == 2) {</span></a>
+<a name="321"><span class="lineNum">     321 </span><span class="lineCov">          1 :             revert SimpleRewardZapper__IsAlreadyAuthorized();</span></a>
+<a name="322"><span class="lineNum">     322 </span>            :         }</a>
+<a name="323"><span class="lineNum">     323 </span>            : </a>
+<a name="324"><span class="lineNum">     324 </span><span class="lineCov">        517 :         authorizedOutputToken[outputToken] = 2;</span></a>
+<a name="325"><span class="lineNum">     325 </span>            :     }</a>
+<a name="326"><span class="lineNum">     326 </span>            : </a>
+<a name="327"><span class="lineNum">     327 </span>            :     /// @notice Removes an authorized reward token.</a>
+<a name="328"><span class="lineNum">     328 </span>            :     /// @dev Only callable on by an entity with DAO permissions or higher.</a>
+<a name="329"><span class="lineNum">     329 </span>            :     /// @param outputToken The address of the token to deauthorize.</a>
+<a name="330"><span class="lineNum">     330 </span>            :     function removeAuthorizedOutputToken(address outputToken) external {</a>
+<a name="331"><span class="lineNum">     331 </span><span class="lineCov">          4 :         _checkDaoPermissions();</span></a>
+<a name="332"><span class="lineNum">     332 </span>            : </a>
+<a name="333"><span class="lineNum">     333 </span><span class="lineCov">          3 :         if (outputToken == address(0)) {</span></a>
+<a name="334"><span class="lineNum">     334 </span><span class="lineCov">          1 :             revert SimpleRewardZapper__UnknownOutputToken();</span></a>
+<a name="335"><span class="lineNum">     335 </span>            :         }</a>
+<a name="336"><span class="lineNum">     336 </span>            : </a>
+<a name="337"><span class="lineNum">     337 </span><span class="lineCov">          2 :         if (authorizedOutputToken[outputToken] != 2) {</span></a>
+<a name="338"><span class="lineNum">     338 </span><span class="lineCov">          1 :             revert SimpleRewardZapper__IsNotAuthorized();</span></a>
+<a name="339"><span class="lineNum">     339 </span>            :         }</a>
+<a name="340"><span class="lineNum">     340 </span>            : </a>
+<a name="341"><span class="lineNum">     341 </span><span class="lineCov">          1 :         authorizedOutputToken[outputToken] = 1;</span></a>
+<a name="342"><span class="lineNum">     342 </span>            :     }</a>
+<a name="343"><span class="lineNum">     343 </span>            : </a>
+<a name="344"><span class="lineNum">     344 </span>            :     /// INTERNAL FUNCTIONS ///</a>
+<a name="345"><span class="lineNum">     345 </span>            : </a>
+<a name="346"><span class="lineNum">     346 </span>            :     /// @notice Deposits cToken underlying into Curvance cToken contract.</a>
+<a name="347"><span class="lineNum">     347 </span>            :     /// @param cToken The Curvance cToken address.</a>
+<a name="348"><span class="lineNum">     348 </span>            :     /// @param recipient Address that should receive Curvance cTokens.</a>
+<a name="349"><span class="lineNum">     349 </span>            :     /// @return The output amount of cTokens received.</a>
+<a name="350"><span class="lineNum">     350 </span>            :     function _enterCurvance(</a>
+<a name="351"><span class="lineNum">     351 </span>            :         address cToken,</a>
+<a name="352"><span class="lineNum">     352 </span>            :         address recipient</a>
+<a name="353"><span class="lineNum">     353 </span>            :     ) internal returns (uint256) {</a>
+<a name="354"><span class="lineNum">     354 </span><span class="lineNoCov">          0 :         address cTokenUnderlying = CTokenPrimitive(cToken).underlying();</span></a>
+<a name="355"><span class="lineNum">     355 </span><span class="lineNoCov">          0 :         uint256 balance = IERC20(cTokenUnderlying).balanceOf(address(this));</span></a>
+<a name="356"><span class="lineNum">     356 </span>            : </a>
+<a name="357"><span class="lineNum">     357 </span>            :         // Approve cToken to take `inputToken`.</a>
+<a name="358"><span class="lineNum">     358 </span><span class="lineNoCov">          0 :         SwapperLib._approveTokenIfNeeded(cTokenUnderlying, cToken, balance);</span></a>
+<a name="359"><span class="lineNum">     359 </span>            : </a>
+<a name="360"><span class="lineNum">     360 </span><span class="lineNoCov">          0 :         uint256 priorBalance = IERC20(cToken).balanceOf(recipient);</span></a>
+<a name="361"><span class="lineNum">     361 </span>            : </a>
+<a name="362"><span class="lineNum">     362 </span>            :         // Enter Curvance cToken position and make sure `recipient` got</a>
+<a name="363"><span class="lineNum">     363 </span>            :         // cTokens.</a>
+<a name="364"><span class="lineNum">     364 </span><span class="lineNoCov">          0 :         if (CTokenPrimitive(cToken).deposit(balance, recipient) == 0) {</span></a>
+<a name="365"><span class="lineNum">     365 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__ExecutionError();</span></a>
+<a name="366"><span class="lineNum">     366 </span>            :         }</a>
+<a name="367"><span class="lineNum">     367 </span>            : </a>
+<a name="368"><span class="lineNum">     368 </span>            :         // Remove any excess approval.</a>
+<a name="369"><span class="lineNum">     369 </span><span class="lineNoCov">          0 :         SwapperLib._removeApprovalIfNeeded(cTokenUnderlying, cToken);</span></a>
+<a name="370"><span class="lineNum">     370 </span>            : </a>
+<a name="371"><span class="lineNum">     371 </span>            :         // Bubble up how many cTokens `recipient` received.</a>
+<a name="372"><span class="lineNum">     372 </span><span class="lineNoCov">          0 :         return IERC20(cToken).balanceOf(recipient) - priorBalance;</span></a>
+<a name="373"><span class="lineNum">     373 </span>            :     }</a>
+<a name="374"><span class="lineNum">     374 </span>            : </a>
+<a name="375"><span class="lineNum">     375 </span>            :     /// @notice Repays Curvance lenders dToken underlying owed on behalf</a>
+<a name="376"><span class="lineNum">     376 </span>            :     ///         of `recipient`.</a>
+<a name="377"><span class="lineNum">     377 </span>            :     /// @param dToken The Curvance dToken address.</a>
+<a name="378"><span class="lineNum">     378 </span>            :     /// @param dTokenUnderlying The underlying token for `dToken`.</a>
+<a name="379"><span class="lineNum">     379 </span>            :     /// @param repayAmount The amount of dToken underlying to be repaid.</a>
+<a name="380"><span class="lineNum">     380 </span>            :     /// @param recipient Address that should have outstanding debt repaid.</a>
+<a name="381"><span class="lineNum">     381 </span>            :     /// @return outAmount The excess amount of dToken underlying that was</a>
+<a name="382"><span class="lineNum">     382 </span>            :     ///                   returned to `recipient`.</a>
+<a name="383"><span class="lineNum">     383 </span>            :     function _repayDebt(</a>
+<a name="384"><span class="lineNum">     384 </span>            :         address dToken,</a>
+<a name="385"><span class="lineNum">     385 </span>            :         address dTokenUnderlying,</a>
+<a name="386"><span class="lineNum">     386 </span>            :         uint256 repayAmount,</a>
+<a name="387"><span class="lineNum">     387 </span>            :         address recipient</a>
+<a name="388"><span class="lineNum">     388 </span>            :     ) internal returns (uint256 outAmount) {</a>
+<a name="389"><span class="lineNum">     389 </span>            :         // Manually query balance here since its possible we did not swap if</a>
+<a name="390"><span class="lineNum">     390 </span>            :         // rewardToken == outputToken.</a>
+<a name="391"><span class="lineNum">     391 </span>            :         // We also never need to worry about this capturing other peoples</a>
+<a name="392"><span class="lineNum">     392 </span>            :         // balances since the Zapper should never be holding any reward token,</a>
+<a name="393"><span class="lineNum">     393 </span>            :         // or dToken underlying itself.</a>
+<a name="394"><span class="lineNum">     394 </span><span class="lineNoCov">          0 :         outAmount = IERC20(dTokenUnderlying).balanceOf(address(this));</span></a>
+<a name="395"><span class="lineNum">     395 </span>            : </a>
+<a name="396"><span class="lineNum">     396 </span>            :         // Revert if the swap experienced too much slippage.</a>
+<a name="397"><span class="lineNum">     397 </span><span class="lineNoCov">          0 :         if (outAmount &lt; repayAmount) {</span></a>
+<a name="398"><span class="lineNum">     398 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__InsufficientToRepay();</span></a>
+<a name="399"><span class="lineNum">     399 </span>            :         }</a>
+<a name="400"><span class="lineNum">     400 </span>            : </a>
+<a name="401"><span class="lineNum">     401 </span>            :         // Approve `dTokenUnderlying` to dToken contract, if necessary.</a>
+<a name="402"><span class="lineNum">     402 </span><span class="lineNoCov">          0 :         SwapperLib._approveTokenIfNeeded(</span></a>
+<a name="403"><span class="lineNum">     403 </span>            :             dTokenUnderlying,</a>
+<a name="404"><span class="lineNum">     404 </span>            :             dToken,</a>
+<a name="405"><span class="lineNum">     405 </span>            :             repayAmount</a>
+<a name="406"><span class="lineNum">     406 </span>            :         );</a>
+<a name="407"><span class="lineNum">     407 </span>            : </a>
+<a name="408"><span class="lineNum">     408 </span>            :         // Execute repayment of dToken debt.</a>
+<a name="409"><span class="lineNum">     409 </span><span class="lineNoCov">          0 :         DToken(dToken).repayFor(recipient, repayAmount);</span></a>
+<a name="410"><span class="lineNum">     410 </span>            : </a>
+<a name="411"><span class="lineNum">     411 </span>            :         // Remove any excess approval.</a>
+<a name="412"><span class="lineNum">     412 </span><span class="lineNoCov">          0 :         SwapperLib._removeApprovalIfNeeded(dTokenUnderlying, dToken);</span></a>
+<a name="413"><span class="lineNum">     413 </span>            : </a>
+<a name="414"><span class="lineNum">     414 </span><span class="lineNoCov">          0 :         outAmount -= repayAmount;</span></a>
+<a name="415"><span class="lineNum">     415 </span>            : </a>
+<a name="416"><span class="lineNum">     416 </span>            :         // Transfer any remaining `dTokenUnderlying` to `recipient`.</a>
+<a name="417"><span class="lineNum">     417 </span><span class="lineNoCov">          0 :         if (outAmount &gt; 0) {</span></a>
+<a name="418"><span class="lineNum">     418 </span><span class="lineNoCov">          0 :             _transferToRecipient(dTokenUnderlying, recipient, outAmount);</span></a>
+<a name="419"><span class="lineNum">     419 </span>            :         }</a>
+<a name="420"><span class="lineNum">     420 </span>            :     }</a>
+<a name="421"><span class="lineNum">     421 </span>            : </a>
+<a name="422"><span class="lineNum">     422 </span>            :     /// @notice Checks whether `user` has rewards, if they do, claim them</a>
+<a name="423"><span class="lineNum">     423 </span>            :     ///         to this contract and bubble up the reward amount.</a>
+<a name="424"><span class="lineNum">     424 </span>            :     /// @param user The address of the user to process rewards for.</a>
+<a name="425"><span class="lineNum">     425 </span>            :     /// @return The amount of rewards received from processing.</a>
+<a name="426"><span class="lineNum">     426 </span>            :     function _processRewards(address user) internal returns (uint256) {</a>
+<a name="427"><span class="lineNum">     427 </span><span class="lineCov">        512 :         uint256 epochs = cveLocker.epochsToClaim(user);</span></a>
+<a name="428"><span class="lineNum">     428 </span>            : </a>
+<a name="429"><span class="lineNum">     429 </span>            :         // Validate that the caller actually has rewards to claim.</a>
+<a name="430"><span class="lineNum">     430 </span><span class="lineCov">        512 :         if (epochs == 0) {</span></a>
+<a name="431"><span class="lineNum">     431 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__NoRewardsToClaim();</span></a>
+<a name="432"><span class="lineNum">     432 </span>            :         }</a>
 <a name="433"><span class="lineNum">     433 </span>            : </a>
-<a name="434"><span class="lineNum">     434 </span>            :         // Validate that the caller actually has rewards to claim.</a>
-<a name="435"><span class="lineNum">     435 </span><span class="lineNoCov">          0 :         if (epochs == 0) {</span></a>
-<a name="436"><span class="lineNum">     436 </span><span class="lineNoCov">          0 :             revert SimpleRewardZapper__NoRewardsToClaim();</span></a>
-<a name="437"><span class="lineNum">     437 </span>            :         }</a>
-<a name="438"><span class="lineNum">     438 </span>            : </a>
-<a name="439"><span class="lineNum">     439 </span><span class="lineNoCov">          0 :         return cveLocker.manageRewardsFor(user, epochs);</span></a>
-<a name="440"><span class="lineNum">     440 </span>            :     }</a>
-<a name="441"><span class="lineNum">     441 </span>            : </a>
-<a name="442"><span class="lineNum">     442 </span>            :     /// @notice Helper function for efficiently transferring tokens</a>
-<a name="443"><span class="lineNum">     443 </span>            :     ///         to desired user.</a>
-<a name="444"><span class="lineNum">     444 </span>            :     /// @param token The token to transfer to `recipient`, </a>
-<a name="445"><span class="lineNum">     445 </span>            :     ///              this can be the network gas token.</a>
-<a name="446"><span class="lineNum">     446 </span>            :     /// @param recipient The user receiving `token`.</a>
-<a name="447"><span class="lineNum">     447 </span>            :     /// @param amount The amount of `token` to be transferred to `recipient`.</a>
-<a name="448"><span class="lineNum">     448 </span>            :     function _transferToRecipient(</a>
-<a name="449"><span class="lineNum">     449 </span>            :         address token,</a>
-<a name="450"><span class="lineNum">     450 </span>            :         address recipient,</a>
-<a name="451"><span class="lineNum">     451 </span>            :         uint256 amount</a>
-<a name="452"><span class="lineNum">     452 </span>            :     ) internal {</a>
-<a name="453"><span class="lineNum">     453 </span><span class="lineNoCov">          0 :         if (CommonLib.isETH(token)) {</span></a>
-<a name="454"><span class="lineNum">     454 </span><span class="lineNoCov">          0 :             return SafeTransferLib.forceSafeTransferETH(recipient, amount);</span></a>
-<a name="455"><span class="lineNum">     455 </span>            :         }</a>
-<a name="456"><span class="lineNum">     456 </span>            :             </a>
-<a name="457"><span class="lineNum">     457 </span><span class="lineNoCov">          0 :         SafeTransferLib.safeTransfer(token, recipient, amount);</span></a>
-<a name="458"><span class="lineNum">     458 </span>            :     }</a>
-<a name="459"><span class="lineNum">     459 </span>            : </a>
-<a name="460"><span class="lineNum">     460 </span>            :     /// @dev Internal helper for reverting efficiently.</a>
-<a name="461"><span class="lineNum">     461 </span>            :     function _revert(uint256 s) internal pure {</a>
-<a name="462"><span class="lineNum">     462 </span>            :         /// @solidity memory-safe-assembly</a>
-<a name="463"><span class="lineNum">     463 </span>            :         assembly {</a>
-<a name="464"><span class="lineNum">     464 </span>            :             mstore(0x00, s)</a>
-<a name="465"><span class="lineNum">     465 </span>            :             revert(0x1c, 0x04)</a>
-<a name="466"><span class="lineNum">     466 </span>            :         }</a>
-<a name="467"><span class="lineNum">     467 </span>            :     }</a>
-<a name="468"><span class="lineNum">     468 </span>            : </a>
-<a name="469"><span class="lineNum">     469 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
-<a name="470"><span class="lineNum">     470 </span>            :     function _checkDaoPermissions() internal view {</a>
-<a name="471"><span class="lineNum">     471 </span><span class="lineNoCov">          0 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
-<a name="472"><span class="lineNum">     472 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
-<a name="473"><span class="lineNum">     473 </span>            :         }</a>
-<a name="474"><span class="lineNum">     474 </span>            :     }</a>
-<a name="475"><span class="lineNum">     475 </span>            : </a>
-<a name="476"><span class="lineNum">     476 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
-<a name="477"><span class="lineNum">     477 </span>            :     function _checkElevatedPermissions() internal view {</a>
-<a name="478"><span class="lineNum">     478 </span><span class="lineNoCov">          0 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
-<a name="479"><span class="lineNum">     479 </span><span class="lineNoCov">          0 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
-<a name="480"><span class="lineNum">     480 </span>            :         }</a>
-<a name="481"><span class="lineNum">     481 </span>            :     }</a>
-<a name="482"><span class="lineNum">     482 </span>            : }</a>
+<a name="434"><span class="lineNum">     434 </span><span class="lineCov">        512 :         return cveLocker.manageRewardsFor(user, epochs);</span></a>
+<a name="435"><span class="lineNum">     435 </span>            :     }</a>
+<a name="436"><span class="lineNum">     436 </span>            : </a>
+<a name="437"><span class="lineNum">     437 </span>            :     /// @notice Helper function for efficiently transferring tokens</a>
+<a name="438"><span class="lineNum">     438 </span>            :     ///         to desired user.</a>
+<a name="439"><span class="lineNum">     439 </span>            :     /// @param token The token to transfer to `recipient`,</a>
+<a name="440"><span class="lineNum">     440 </span>            :     ///              this can be the network gas token.</a>
+<a name="441"><span class="lineNum">     441 </span>            :     /// @param recipient The user receiving `token`.</a>
+<a name="442"><span class="lineNum">     442 </span>            :     /// @param amount The amount of `token` to be transferred to `recipient`.</a>
+<a name="443"><span class="lineNum">     443 </span>            :     function _transferToRecipient(</a>
+<a name="444"><span class="lineNum">     444 </span>            :         address token,</a>
+<a name="445"><span class="lineNum">     445 </span>            :         address recipient,</a>
+<a name="446"><span class="lineNum">     446 </span>            :         uint256 amount</a>
+<a name="447"><span class="lineNum">     447 </span>            :     ) internal {</a>
+<a name="448"><span class="lineNum">     448 </span><span class="lineCov">        512 :         if (CommonLib.isETH(token)) {</span></a>
+<a name="449"><span class="lineNum">     449 </span><span class="lineNoCov">          0 :             return SafeTransferLib.forceSafeTransferETH(recipient, amount);</span></a>
+<a name="450"><span class="lineNum">     450 </span>            :         }</a>
+<a name="451"><span class="lineNum">     451 </span>            : </a>
+<a name="452"><span class="lineNum">     452 </span><span class="lineCov">        512 :         SafeTransferLib.safeTransfer(token, recipient, amount);</span></a>
+<a name="453"><span class="lineNum">     453 </span>            :     }</a>
+<a name="454"><span class="lineNum">     454 </span>            : </a>
+<a name="455"><span class="lineNum">     455 </span>            :     /// @dev Internal helper for reverting efficiently.</a>
+<a name="456"><span class="lineNum">     456 </span>            :     function _revert(uint256 s) internal pure {</a>
+<a name="457"><span class="lineNum">     457 </span>            :         /// @solidity memory-safe-assembly</a>
+<a name="458"><span class="lineNum">     458 </span>            :         assembly {</a>
+<a name="459"><span class="lineNum">     459 </span>            :             mstore(0x00, s)</a>
+<a name="460"><span class="lineNum">     460 </span>            :             revert(0x1c, 0x04)</a>
+<a name="461"><span class="lineNum">     461 </span>            :         }</a>
+<a name="462"><span class="lineNum">     462 </span>            :     }</a>
+<a name="463"><span class="lineNum">     463 </span>            : </a>
+<a name="464"><span class="lineNum">     464 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
+<a name="465"><span class="lineNum">     465 </span>            :     function _checkDaoPermissions() internal view {</a>
+<a name="466"><span class="lineNum">     466 </span><span class="lineCov">          4 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
+<a name="467"><span class="lineNum">     467 </span><span class="lineCov">          1 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
+<a name="468"><span class="lineNum">     468 </span>            :         }</a>
+<a name="469"><span class="lineNum">     469 </span>            :     }</a>
+<a name="470"><span class="lineNum">     470 </span>            : </a>
+<a name="471"><span class="lineNum">     471 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
+<a name="472"><span class="lineNum">     472 </span>            :     function _checkElevatedPermissions() internal view {</a>
+<a name="473"><span class="lineNum">     473 </span><span class="lineCov">        520 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
+<a name="474"><span class="lineNum">     474 </span><span class="lineCov">          1 :             _revert(_UNAUTHORIZED_SELECTOR);</span></a>
+<a name="475"><span class="lineNum">     475 </span>            :         }</a>
+<a name="476"><span class="lineNum">     476 </span>            :     }</a>
+<a name="477"><span class="lineNum">     477 </span>            : }</a>
 </pre>
       </td>
     </tr>

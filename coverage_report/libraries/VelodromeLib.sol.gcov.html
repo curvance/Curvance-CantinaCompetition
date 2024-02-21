@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">5</td>
@@ -251,11 +251,11 @@
 <a name="189"><span class="lineNum">     189 </span>            :         uint256 slippage</a>
 <a name="190"><span class="lineNum">     190 </span>            :     ) internal returns (uint256 liquidity) {</a>
 <a name="191"><span class="lineNum">     191 </span>            :         // Approve Router to take token0 and token1.</a>
-<a name="192"><span class="lineNum">     192 </span><span class="lineCov">          6 :         SwapperLib._approveTokenIfNeeded(token0, router, amount0);</span></a>
-<a name="193"><span class="lineNum">     193 </span><span class="lineCov">          6 :         SwapperLib._approveTokenIfNeeded(token1, router, amount1);</span></a>
+<a name="192"><span class="lineNum">     192 </span><span class="lineCov">         10 :         SwapperLib._approveTokenIfNeeded(token0, router, amount0);</span></a>
+<a name="193"><span class="lineNum">     193 </span><span class="lineCov">         10 :         SwapperLib._approveTokenIfNeeded(token1, router, amount1);</span></a>
 <a name="194"><span class="lineNum">     194 </span>            : </a>
 <a name="195"><span class="lineNum">     195 </span>            :         // Deposit liquidity into Velodrome.</a>
-<a name="196"><span class="lineNum">     196 </span><span class="lineCov">          6 :         (, , liquidity) = IVeloRouter(router).addLiquidity(</span></a>
+<a name="196"><span class="lineNum">     196 </span><span class="lineCov">         10 :         (, , liquidity) = IVeloRouter(router).addLiquidity(</span></a>
 <a name="197"><span class="lineNum">     197 </span>            :             token0,</a>
 <a name="198"><span class="lineNum">     198 </span>            :             token1,</a>
 <a name="199"><span class="lineNum">     199 </span>            :             stable,</a>
@@ -268,8 +268,8 @@
 <a name="206"><span class="lineNum">     206 </span>            :         );</a>
 <a name="207"><span class="lineNum">     207 </span>            : </a>
 <a name="208"><span class="lineNum">     208 </span>            :         // Remove any excess approval.</a>
-<a name="209"><span class="lineNum">     209 </span><span class="lineCov">          6 :         SwapperLib._removeApprovalIfNeeded(token0, router);</span></a>
-<a name="210"><span class="lineNum">     210 </span><span class="lineCov">          6 :         SwapperLib._removeApprovalIfNeeded(token1, router);</span></a>
+<a name="209"><span class="lineNum">     209 </span><span class="lineCov">         10 :         SwapperLib._removeApprovalIfNeeded(token0, router);</span></a>
+<a name="210"><span class="lineNum">     210 </span><span class="lineCov">         10 :         SwapperLib._removeApprovalIfNeeded(token1, router);</span></a>
 <a name="211"><span class="lineNum">     211 </span>            :     }</a>
 <a name="212"><span class="lineNum">     212 </span>            : </a>
 <a name="213"><span class="lineNum">     213 </span>            :     /// @notice Calculates the optimal amount of TokenA to swap to TokenB</a>
@@ -294,33 +294,33 @@
 <a name="232"><span class="lineNum">     232 </span>            :         bool stable</a>
 <a name="233"><span class="lineNum">     233 </span>            :     ) internal view returns (uint256) {</a>
 <a name="234"><span class="lineNum">     234 </span>            :         // Cache swap fee from pair factory.</a>
-<a name="235"><span class="lineNum">     235 </span><span class="lineCov">          6 :         uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, stable);</span></a>
-<a name="236"><span class="lineNum">     236 </span><span class="lineCov">          6 :         uint256 a;</span></a>
+<a name="235"><span class="lineNum">     235 </span><span class="lineCov">         10 :         uint256 swapFee = IVeloPairFactory(factory).getFee(lpToken, stable);</span></a>
+<a name="236"><span class="lineNum">     236 </span><span class="lineCov">         10 :         uint256 a;</span></a>
 <a name="237"><span class="lineNum">     237 </span>            : </a>
 <a name="238"><span class="lineNum">     238 </span>            :         // sAMM deposit calculation.</a>
-<a name="239"><span class="lineNum">     239 </span><span class="lineCov">          6 :         if (stable) {</span></a>
-<a name="240"><span class="lineNum">     240 </span><span class="lineCov">          2 :             a = (((amount0 * 10000) / (10000 - swapFee)) * 1e18) / decimals0;</span></a>
+<a name="239"><span class="lineNum">     239 </span><span class="lineCov">         10 :         if (stable) {</span></a>
+<a name="240"><span class="lineNum">     240 </span><span class="lineCov">          4 :             a = (((amount0 * 10000) / (10000 - swapFee)) * 1e18) / decimals0;</span></a>
 <a name="241"><span class="lineNum">     241 </span>            : </a>
-<a name="242"><span class="lineNum">     242 </span><span class="lineCov">          2 :             uint256 x = (reserve0 * 1e18) / decimals0;</span></a>
-<a name="243"><span class="lineNum">     243 </span><span class="lineCov">          2 :             uint256 y = (reserve1 * 1e18) / decimals1;</span></a>
-<a name="244"><span class="lineNum">     244 </span><span class="lineCov">          2 :             uint256 x2 = (x * x) / 1e18;</span></a>
-<a name="245"><span class="lineNum">     245 </span><span class="lineCov">          2 :             uint256 y2 = (y * y) / 1e18;</span></a>
-<a name="246"><span class="lineNum">     246 </span><span class="lineCov">          2 :             uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;</span></a>
+<a name="242"><span class="lineNum">     242 </span><span class="lineCov">          4 :             uint256 x = (reserve0 * 1e18) / decimals0;</span></a>
+<a name="243"><span class="lineNum">     243 </span><span class="lineCov">          4 :             uint256 y = (reserve1 * 1e18) / decimals1;</span></a>
+<a name="244"><span class="lineNum">     244 </span><span class="lineCov">          4 :             uint256 x2 = (x * x) / 1e18;</span></a>
+<a name="245"><span class="lineNum">     245 </span><span class="lineCov">          4 :             uint256 y2 = (y * y) / 1e18;</span></a>
+<a name="246"><span class="lineNum">     246 </span><span class="lineCov">          4 :             uint256 p = (y * (((x2 * 3 + y2) * 1e18) / (y2 * 3 + x2))) / x;</span></a>
 <a name="247"><span class="lineNum">     247 </span>            : </a>
-<a name="248"><span class="lineNum">     248 </span><span class="lineCov">          2 :             uint256 num = a * y;</span></a>
-<a name="249"><span class="lineNum">     249 </span><span class="lineCov">          2 :             uint256 den = ((a + x) * p) / 1e18 + y;</span></a>
+<a name="248"><span class="lineNum">     248 </span><span class="lineCov">          4 :             uint256 num = a * y;</span></a>
+<a name="249"><span class="lineNum">     249 </span><span class="lineCov">          4 :             uint256 den = ((a + x) * p) / 1e18 + y;</span></a>
 <a name="250"><span class="lineNum">     250 </span>            : </a>
-<a name="251"><span class="lineNum">     251 </span><span class="lineCov">          2 :             return ((num / den) * decimals0) / 1e18;</span></a>
+<a name="251"><span class="lineNum">     251 </span><span class="lineCov">          4 :             return ((num / den) * decimals0) / 1e18;</span></a>
 <a name="252"><span class="lineNum">     252 </span>            :         }</a>
 <a name="253"><span class="lineNum">     253 </span>            : </a>
 <a name="254"><span class="lineNum">     254 </span>            :         // vAMM deposit calculation.</a>
-<a name="255"><span class="lineNum">     255 </span><span class="lineCov">          4 :         uint256 swapFeeFactor = 10000 - swapFee;</span></a>
+<a name="255"><span class="lineNum">     255 </span><span class="lineCov">          6 :         uint256 swapFeeFactor = 10000 - swapFee;</span></a>
 <a name="256"><span class="lineNum">     256 </span>            :         </a>
-<a name="257"><span class="lineNum">     257 </span><span class="lineCov">          4 :         a = (10000 + swapFeeFactor) * reserve0;</span></a>
-<a name="258"><span class="lineNum">     258 </span><span class="lineCov">          4 :         uint256 b = amount0 * 10000 * reserve0 * 4 * swapFeeFactor;</span></a>
-<a name="259"><span class="lineNum">     259 </span><span class="lineCov">          4 :         uint256 c = FixedPointMathLib.sqrt(a * a + b);</span></a>
-<a name="260"><span class="lineNum">     260 </span><span class="lineCov">          4 :         uint256 d = swapFeeFactor * 2;</span></a>
-<a name="261"><span class="lineNum">     261 </span><span class="lineCov">          4 :         return (c - a) / d;</span></a>
+<a name="257"><span class="lineNum">     257 </span><span class="lineCov">          6 :         a = (10000 + swapFeeFactor) * reserve0;</span></a>
+<a name="258"><span class="lineNum">     258 </span><span class="lineCov">          6 :         uint256 b = amount0 * 10000 * reserve0 * 4 * swapFeeFactor;</span></a>
+<a name="259"><span class="lineNum">     259 </span><span class="lineCov">          6 :         uint256 c = FixedPointMathLib.sqrt(a * a + b);</span></a>
+<a name="260"><span class="lineNum">     260 </span><span class="lineCov">          6 :         uint256 d = swapFeeFactor * 2;</span></a>
+<a name="261"><span class="lineNum">     261 </span><span class="lineCov">          6 :         return (c - a) / d;</span></a>
 <a name="262"><span class="lineNum">     262 </span>            :         </a>
 <a name="263"><span class="lineNum">     263 </span>            :     }</a>
 <a name="264"><span class="lineNum">     264 </span>            : </a>
@@ -341,16 +341,16 @@
 <a name="279"><span class="lineNum">     279 </span>            :         bool stable</a>
 <a name="280"><span class="lineNum">     280 </span>            :     ) internal returns (uint256) {</a>
 <a name="281"><span class="lineNum">     281 </span>            :         // Approve Router to take `tokenIn`.</a>
-<a name="282"><span class="lineNum">     282 </span><span class="lineCov">          6 :         SwapperLib._approveTokenIfNeeded(tokenIn, router, amount);</span></a>
+<a name="282"><span class="lineNum">     282 </span><span class="lineCov">         10 :         SwapperLib._approveTokenIfNeeded(tokenIn, router, amount);</span></a>
 <a name="283"><span class="lineNum">     283 </span>            : </a>
-<a name="284"><span class="lineNum">     284 </span><span class="lineCov">          6 :         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);</span></a>
-<a name="285"><span class="lineNum">     285 </span><span class="lineCov">          6 :         routes[0].from = tokenIn;</span></a>
-<a name="286"><span class="lineNum">     286 </span><span class="lineCov">          6 :         routes[0].to = tokenOut;</span></a>
-<a name="287"><span class="lineNum">     287 </span><span class="lineCov">          6 :         routes[0].stable = stable;</span></a>
-<a name="288"><span class="lineNum">     288 </span><span class="lineCov">          6 :         routes[0].factory = IVeloPool(lpToken).factory();</span></a>
+<a name="284"><span class="lineNum">     284 </span><span class="lineCov">         10 :         IVeloRouter.Route[] memory routes = new IVeloRouter.Route[](1);</span></a>
+<a name="285"><span class="lineNum">     285 </span><span class="lineCov">         10 :         routes[0].from = tokenIn;</span></a>
+<a name="286"><span class="lineNum">     286 </span><span class="lineCov">         10 :         routes[0].to = tokenOut;</span></a>
+<a name="287"><span class="lineNum">     287 </span><span class="lineCov">         10 :         routes[0].stable = stable;</span></a>
+<a name="288"><span class="lineNum">     288 </span><span class="lineCov">         10 :         routes[0].factory = IVeloPool(lpToken).factory();</span></a>
 <a name="289"><span class="lineNum">     289 </span>            : </a>
 <a name="290"><span class="lineNum">     290 </span>            :         // Swap `tokenIn` into `tokenOut`.</a>
-<a name="291"><span class="lineNum">     291 </span><span class="lineCov">          6 :         uint256[] memory amountsOut = IVeloRouter(router)</span></a>
+<a name="291"><span class="lineNum">     291 </span><span class="lineCov">         10 :         uint256[] memory amountsOut = IVeloRouter(router)</span></a>
 <a name="292"><span class="lineNum">     292 </span>            :             .swapExactTokensForTokens(</a>
 <a name="293"><span class="lineNum">     293 </span>            :                 amount,</a>
 <a name="294"><span class="lineNum">     294 </span>            :                 0,</a>
@@ -360,9 +360,9 @@
 <a name="298"><span class="lineNum">     298 </span>            :             );</a>
 <a name="299"><span class="lineNum">     299 </span>            : </a>
 <a name="300"><span class="lineNum">     300 </span>            :         // Remove any excess approval.</a>
-<a name="301"><span class="lineNum">     301 </span><span class="lineCov">          6 :         SwapperLib._removeApprovalIfNeeded(tokenIn, router);</span></a>
+<a name="301"><span class="lineNum">     301 </span><span class="lineCov">         10 :         SwapperLib._removeApprovalIfNeeded(tokenIn, router);</span></a>
 <a name="302"><span class="lineNum">     302 </span>            : </a>
-<a name="303"><span class="lineNum">     303 </span><span class="lineCov">          6 :         return amountsOut[amountsOut.length - 1];</span></a>
+<a name="303"><span class="lineNum">     303 </span><span class="lineCov">         10 :         return amountsOut[amountsOut.length - 1];</span></a>
 <a name="304"><span class="lineNum">     304 </span>            :     }</a>
 <a name="305"><span class="lineNum">     305 </span>            : }</a>
 </pre>
