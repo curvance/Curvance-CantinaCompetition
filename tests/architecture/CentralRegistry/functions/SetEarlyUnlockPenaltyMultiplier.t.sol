@@ -3,18 +3,17 @@ pragma solidity 0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
-import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract SetEarlyUnlockPenaltyMultiplierTest is TestBaseMarket {
     function test_setEarlyUnlockPenaltyMultiplier_fail_whenUnauthorized()
         public
     {
-        vm.startPrank(address(0));
+        vm.prank(address(0));
+
         vm.expectRevert(
             CentralRegistry.CentralRegistry__Unauthorized.selector
         );
         centralRegistry.setEarlyUnlockPenaltyMultiplier(100);
-        vm.stopPrank();
     }
 
     function test_setEarlyUnlockPenaltyMultiplier_fail_whenParametersMisconfigured()

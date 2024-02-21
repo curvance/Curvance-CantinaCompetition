@@ -252,7 +252,7 @@ contract CVEInitialDistribution is ReentrancyGuard {
         _checkDaoPermissions();
 
         uint256 currentState = isPaused;
-        isPaused = paused ? 1 : 2;
+        isPaused = paused ? 2 : 1;
 
         // If it was paused prior,
         // you need to provide users 6 weeks to claim their distribution.

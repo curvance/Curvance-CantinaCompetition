@@ -13,10 +13,12 @@ contract MigrateTimelockConfigurationTest is TestBaseMarket {
     );
 
     function test_migrateTimelockConfiguration_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
+        vm.prank(address(0));
+
+        vm.expectRevert(
+            CentralRegistry.CentralRegistry__Unauthorized.selector
+        );
         centralRegistry.migrateTimelockConfiguration(newTimelock);
-        vm.stopPrank();
     }
 
     function test_migrateTimelockConfiguration_success() public {

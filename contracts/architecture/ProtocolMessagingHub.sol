@@ -400,11 +400,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @param dstChainId Chain ID of the target blockchain.
     /// @return Required fee.
     function cveBridgeFee(uint256 dstChainId) external view returns (uint256) {
-        return
-            _quoteWormholeFee(
-                centralRegistry.wormholeChainId(dstChainId),
-                true
-            );
+        return _quoteWormholeFee(dstChainId, true);
     }
 
     /// PERMISSIONED EXTERNAL FUNCTIONS ///

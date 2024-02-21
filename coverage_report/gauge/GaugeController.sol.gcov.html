@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-01 22:51:55</td>
+            <td class="headerValue">2024-02-16 18:08:13</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">10</td>
@@ -199,7 +199,7 @@
 <a name="137"><span class="lineNum">     137 </span>            : </a>
 <a name="138"><span class="lineNum">     138 </span>            :     /// @notice Returns current epoch number.</a>
 <a name="139"><span class="lineNum">     139 </span>            :     function currentEpoch() public view returns (uint256) {</a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      10337 :         return epochOfTimestamp(block.timestamp);</span></a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">      10411 :         return epochOfTimestamp(block.timestamp);</span></a>
 <a name="141"><span class="lineNum">     141 </span>            :     }</a>
 <a name="142"><span class="lineNum">     142 </span>            : </a>
 <a name="143"><span class="lineNum">     143 </span>            :     /// @notice Returns epoch number of `timestamp`.</a>
@@ -207,8 +207,8 @@
 <a name="145"><span class="lineNum">     145 </span>            :     function epochOfTimestamp(</a>
 <a name="146"><span class="lineNum">     146 </span>            :         uint256 timestamp</a>
 <a name="147"><span class="lineNum">     147 </span>            :     ) public view returns (uint256) {</a>
-<a name="148"><span class="lineNum">     148 </span><span class="lineCov">      20624 :         _checkGaugeHasStarted();</span></a>
-<a name="149"><span class="lineNum">     149 </span><span class="lineCov">      20624 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
+<a name="148"><span class="lineNum">     148 </span><span class="lineCov">      20772 :         _checkGaugeHasStarted();</span></a>
+<a name="149"><span class="lineNum">     149 </span><span class="lineCov">      20772 :         return (timestamp - startTime) / EPOCH_WINDOW;</span></a>
 <a name="150"><span class="lineNum">     150 </span>            :     }</a>
 <a name="151"><span class="lineNum">     151 </span>            : </a>
 <a name="152"><span class="lineNum">     152 </span>            :     /// @notice Returns start time of `epoch`.</a>
@@ -221,8 +221,8 @@
 <a name="159"><span class="lineNum">     159 </span>            :     /// @notice Returns end time of `epoch`.</a>
 <a name="160"><span class="lineNum">     160 </span>            :     /// @param epoch Epoch number to return end time for.</a>
 <a name="161"><span class="lineNum">     161 </span>            :     function epochEndTime(uint256 epoch) public view returns (uint256) {</a>
-<a name="162"><span class="lineNum">     162 </span><span class="lineCov">        103 :         _checkGaugeHasStarted();</span></a>
-<a name="163"><span class="lineNum">     163 </span><span class="lineCov">        103 :         return startTime + (epoch + 1) * EPOCH_WINDOW;</span></a>
+<a name="162"><span class="lineNum">     162 </span><span class="lineCov">        104 :         _checkGaugeHasStarted();</span></a>
+<a name="163"><span class="lineNum">     163 </span><span class="lineCov">        104 :         return startTime + (epoch + 1) * EPOCH_WINDOW;</span></a>
 <a name="164"><span class="lineNum">     164 </span>            :     }</a>
 <a name="165"><span class="lineNum">     165 </span>            : </a>
 <a name="166"><span class="lineNum">     166 </span>            :     /// @notice Returns if given gauge token is enabled in `epoch`.</a>
@@ -239,14 +239,14 @@
 <a name="177"><span class="lineNum">     177 </span>            : </a>
 <a name="178"><span class="lineNum">     178 </span>            :     /// @dev Checks whether the caller has sufficient permissioning.</a>
 <a name="179"><span class="lineNum">     179 </span>            :     function _checkDaoPermissions() internal view {</a>
-<a name="180"><span class="lineNum">     180 </span><span class="lineCov">        330 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
+<a name="180"><span class="lineNum">     180 </span><span class="lineCov">        362 :         if (!centralRegistry.hasDaoPermissions(msg.sender)) {</span></a>
 <a name="181"><span class="lineNum">     181 </span><span class="lineNoCov">          0 :             revert GaugeErrors.Unauthorized();</span></a>
 <a name="182"><span class="lineNum">     182 </span>            :         }</a>
 <a name="183"><span class="lineNum">     183 </span>            :     }</a>
 <a name="184"><span class="lineNum">     184 </span>            : </a>
 <a name="185"><span class="lineNum">     185 </span>            :     /// @dev Checks whether the gauge controller has started or not.</a>
 <a name="186"><span class="lineNum">     186 </span>            :     function _checkGaugeHasStarted() internal view {</a>
-<a name="187"><span class="lineNum">     187 </span><span class="lineCov">      20729 :         if (startTime == 0) {</span></a>
+<a name="187"><span class="lineNum">     187 </span><span class="lineCov">      20878 :         if (startTime == 0) {</span></a>
 <a name="188"><span class="lineNum">     188 </span><span class="lineNoCov">          0 :             revert GaugeErrors.NotStarted();</span></a>
 <a name="189"><span class="lineNum">     189 </span>            :         }</a>
 <a name="190"><span class="lineNum">     190 </span>            :     }</a>

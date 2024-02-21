@@ -9,16 +9,11 @@ import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
-import { IOracleRouter } from "contracts/interfaces/IOracleRouter.sol";
-import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
 import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMessenger.sol";
 import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
-import { IERC20 } from "contracts/interfaces/IERC20.sol";
-import { ICVE } from "contracts/interfaces/ICVE.sol";
-import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
@@ -175,26 +170,11 @@ contract CentralRegistry is ERC165 {
 
     /// EVENTS ///
 
-    event FeeSet(
-        string indexed fee,
-        uint256 newFee
-    );
-    event InterestFeeSet(
-        address indexed market,
-        uint256 newFee
-    );
-    event MultiplierSet(
-        string indexed multiplier,
-        uint256 newMultiplier
-    );
-    event ApprovalIndexIncremented(
-        address indexed user,
-        uint256 newIndex
-    );
-    event DelegableStatusSet(
-        address indexed user,
-        bool delegable
-    );
+    event FeeSet(string indexed fee, uint256 newFee);
+    event InterestFeeSet(address indexed market, uint256 newFee);
+    event MultiplierSet(string indexed multiplier, uint256 newMultiplier);
+    event ApprovalIndexIncremented(address indexed user, uint256 newIndex);
+    event DelegableStatusSet(address indexed user, bool delegable);
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -837,7 +817,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds a Zapper contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be a supported Zapper contract prior. 
+    ///      Cannot be a supported Zapper contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newZapper The new Zapper contract to support for use
     ///                  in Curvance.
@@ -856,7 +836,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a Zapper contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Zapper contract prior. 
+    ///      Has to be a supported Zapper contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentZapper The supported Zapper contract to remove from
     ///                      Curvance.
@@ -875,7 +855,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds a Swapper contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be a supported Swapper contract prior. 
+    ///      Cannot be a supported Swapper contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newSwapper The new Swapper contract to support for use
     ///                   in Curvance.
@@ -894,7 +874,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a Swapper contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Swapper contract prior. 
+    ///      Has to be a supported Swapper contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentSwapper The supported Swapper contract to remove from
     ///                       Curvance.
@@ -913,7 +893,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds an approved VeCVE locker contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be an approved VeCVE locker contract prior. 
+    ///      Cannot be an approved VeCVE locker contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newVeCVELocker The new VeCVE locker contract to approve for use
     ///                       in Curvance.
@@ -932,7 +912,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes an approved VeCVE locker contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be an approved VeCVE locker contract prior. 
+    ///      Has to be an approved VeCVE locker contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentVeCVELocker The approved VeCVE locker contract to remove
     ///                           from Curvance.
@@ -951,7 +931,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds a Gauge Controller contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be a supported Gauge Controller contract prior. 
+    ///      Cannot be a supported Gauge Controller contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newGaugeController The new Gauge Controller contract to support
     ///                           for use in Curvance.
@@ -970,7 +950,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a Gauge Controller contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Gauge Controller contract prior. 
+    ///      Has to be a supported Gauge Controller contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentGaugeController The supported Gauge Controller contract
     ///                               to remove from Curvance.
@@ -992,7 +972,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds a Harvester contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be a supported Harvester contract prior. 
+    ///      Cannot be a supported Harvester contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newHarvester The new Harvester contract to support for use
     ///                     in Curvance.
@@ -1011,7 +991,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a Harvester contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Harvester contract prior. 
+    ///      Has to be a supported Harvester contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentHarvester The supported Harvester contract to remove
     ///                         from Curvance.
@@ -1030,7 +1010,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Adds an Endpoint contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Cannot be a supported Endpoint contract prior. 
+    ///      Cannot be a supported Endpoint contract prior.
     ///      Emits a {NewCurvanceContract} event.
     /// @param newEndpoint The new Endpoint contract to support for use
     ///                    in Curvance.
@@ -1049,7 +1029,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes an Endpoint contract from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Endpoint contract prior. 
+    ///      Has to be a supported Endpoint contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentEndpoint The supported Endpoint contract to remove
     ///                        from Curvance.
@@ -1125,7 +1105,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Removes a current market manager from Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Market Manager contract prior. 
+    ///      Has to be a supported Market Manager contract prior.
     ///      Emits a {RemovedCurvanceContract} event.
     /// @param currentMarketManager The supported Market Manager contract
     ///                             to remove from Curvance.
@@ -1167,6 +1147,8 @@ contract CentralRegistry is ERC165 {
 
         emit RemovedCurvanceContract("Market Manager", currentMarketManager);
     }
+
+    /// PUBLIC FUNCTIONS ///
 
     /// @notice Returns true if this contract implements the interface defined by
     ///         `interfaceId`.

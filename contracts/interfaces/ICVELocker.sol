@@ -16,7 +16,6 @@ struct RewardsData {
 }
 
 interface ICVELocker {
-
     /// @notice Returns the reward token for the CVE locker.
     function rewardToken() external view returns (address);
 
