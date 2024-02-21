@@ -26,7 +26,7 @@ contract FlipMessagingHubStatusTest is TestBaseProtocolMessagingHub {
     }
 
     function test_flipMessagingHubStatus_success() public {
-        assertEq(protocolMessagingHub.isPaused(), 0);
+        assertEq(protocolMessagingHub.isPaused(), 1);
 
         protocolMessagingHub.flipMessagingHubStatus();
 
