@@ -11,12 +11,12 @@ import { FuzzLiquidations } from "tests/fuzzing/stateless/FuzzLiquidations.sol";
 import { FuzzDTokenSystem } from "tests/fuzzing/system/FuzzDTokenSystem.sol";
 
 contract FuzzingSuite is
+    FuzzDToken,
+    FuzzLiquidations,
     TestStatefulDeployments,
     FuzzDTokenSystem,
     FuzzMarketManagerSystem,
     FuzzMarketManagerRBAC,
     FuzzMarketManagerStateChecks,
-    FuzzDToken,
-    FuzzLiquidations,
-    FuzzVECVE
+    FuzzVeCVE
 {}
