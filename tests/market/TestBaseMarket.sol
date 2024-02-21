@@ -169,7 +169,7 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0,
+            block.timestamp,
             address(0),
             _USDC_ADDRESS
         );

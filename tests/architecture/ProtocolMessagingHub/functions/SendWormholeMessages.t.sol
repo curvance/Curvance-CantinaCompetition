@@ -4,8 +4,10 @@ pragma solidity 0.8.17;
 import { TestBaseProtocolMessagingHub } from "../TestBaseProtocolMessagingHub.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
 
-contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
-    function test_sendWormholeMessages_fail_whenCallerIsNotAuthorized()
+contract ProtocolMessagingHubSendWormholeMessagesTest is
+    TestBaseProtocolMessagingHub
+{
+    function test_protocolMessagingHubSendWormholeMessages_fail_whenCallerIsNotAuthorized()
         public
     {
         vm.expectRevert(
@@ -14,7 +16,24 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
-    function test_sendWormholeMessages_fail_whenChainIsNotSupported() public {
+    function test_protocolMessagingHubSendWormholeMessages_fail_whenMessagingHubIsPaused()
+        public
+    {
+        protocolMessagingHub.flipMessagingHubStatus();
+
+        vm.prank(address(feeAccumulator));
+
+        vm.expectRevert(
+            ProtocolMessagingHub
+                .ProtocolMessagingHub__MessagingHubPaused
+                .selector
+        );
+        protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
+    }
+
+    function test_protocolMessagingHubSendWormholeMessages_fail_whenChainIsNotSupported()
+        public
+    {
         vm.expectRevert(
             ProtocolMessagingHub
                 .ProtocolMessagingHub__ChainIsNotSupported
@@ -25,7 +44,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
-    function test_sendWormholeMessages_fail_whenNativeAssetIsNotEnough()
+    function test_protocolMessagingHubSendWormholeMessages_fail_whenNativeAssetIsNotEnough()
         public
     {
         centralRegistry.addChainSupport(
@@ -44,7 +63,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
-    function test_sendWormholeMessages_success() public {
+    function test_protocolMessagingHubSendWormholeMessages_success() public {
         uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
             42161,
             false

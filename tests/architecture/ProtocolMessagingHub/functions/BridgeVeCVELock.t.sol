@@ -31,6 +31,19 @@ contract BridgeVeCVELockTest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.bridgeVeCVELock(42161, user1, _ONE, true);
     }
 
+    function test_bridgeVeCVELock_fail_whenMessagingHubIsPaused() public {
+        protocolMessagingHub.flipMessagingHubStatus();
+
+        vm.prank(address(veCVE));
+
+        vm.expectRevert(
+            ProtocolMessagingHub
+                .ProtocolMessagingHub__MessagingHubPaused
+                .selector
+        );
+        protocolMessagingHub.bridgeVeCVELock(42161, user1, _ONE, true);
+    }
+
     function test_bridgeVeCVELock_fail_whenDestinationChainIsNotRegistered()
         public
     {

@@ -333,7 +333,7 @@ contract FeeAccumulator is ReentrancyGuard {
             centralRegistry.protocolMessagingHub()
         );
 
-        (uint256 gas, ) = messagingHub.quoteWormholeFee(dstChainId, false);
+        uint256 gas = messagingHub.quoteWormholeFee(dstChainId, false);
 
         messagingHub.sendWormholeMessages{ value: gas }(
             dstChainId,
@@ -438,7 +438,7 @@ contract FeeAccumulator is ReentrancyGuard {
                     uint256(lockData.chainId)
                 );
 
-                (gas, ) = messagingHub.quoteWormholeFee(
+                gas = messagingHub.quoteWormholeFee(
                     uint256(lockData.chainId),
                     false
                 );
