@@ -1,5 +1,4 @@
 pragma solidity 0.8.17;
-import { StatefulBaseMarket } from "tests/fuzzing/StatefulBaseMarket.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { DToken } from "contracts/market/collateral/DToken.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -9,8 +8,9 @@ import { IMToken } from "contracts/market/LiquidityManager.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
 import { PriceReturnData } from "contracts/interfaces/IOracleAdaptor.sol";
+import { FuzzLiquidations } from "tests/fuzzing/stateless/FuzzLiquidations.sol";
 
-contract FuzzMarketManager is StatefulBaseMarket {
+contract FuzzMarketManager is FuzzLiquidations {
     mapping(address => bool) setCollateralValues;
     // were the collateral caps for a specific mtoken updated
     mapping(address => bool) collateralCapsUpdated;
@@ -886,6 +886,7 @@ contract FuzzMarketManager is StatefulBaseMarket {
         require(marketManager.seizePaused() != 2);
         address account = address(this);
         _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
+        calculateLiquidation_exact(amount);
 
         IMToken[] memory assets = marketManager.assetsOf(account);
 
