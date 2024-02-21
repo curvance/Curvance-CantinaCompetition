@@ -10,7 +10,6 @@ import { MockToken } from "contracts/mocks/MockToken.sol";
 import { MockDataFeed } from "contracts/mocks/MockDataFeed.sol";
 import { MockCToken } from "contracts/mocks/MockCToken.sol";
 import { MockV3Aggregator } from "contracts/mocks/MockV3Aggregator.sol";
-import { MockCircleRelayer, MockWormhole } from "contracts/mocks/MockCircleRelayer.sol";
 import { MockTokenBridgeRelayer } from "contracts/mocks/MockTokenBridgeRelayer.sol";
 
 import { CVE } from "contracts/token/CVE.sol";
@@ -23,8 +22,8 @@ import { DToken } from "contracts/market/collateral/DToken.sol";
 import { AuraCToken } from "contracts/market/collateral/AuraCToken.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { MarketManager } from "contracts/market/MarketManager.sol";
-import { Zapper } from "contracts/market/zapper/Zapper.sol";
-import { PositionFolding } from "contracts/market/leverage/PositionFolding.sol";
+import { ComplexZapper } from "contracts/market/utils/ComplexZapper.sol";
+import { PositionFolding } from "contracts/market/utils/PositionFolding.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { IVault } from "contracts/oracles/adaptors/balancer/BalancerBaseAdaptor.sol";
 import { BalancerStablePoolAdaptor } from "contracts/oracles/adaptors/balancer/BalancerStablePoolAdaptor.sol";
@@ -60,7 +59,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     PositionFolding public positionFolding;
     OracleRouter public oracleRouter;
 
-    AuraCToken public auraCToken;
     AuraCToken public cBALRETH;
 
     DToken public dUSDC;
@@ -89,7 +87,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     uint256 public lockBoostMultiplier = 10001; // 110%
     uint256 public marketInterestFactor = 1; // 10%
 
-    Zapper public zapper;
+    ComplexZapper public complexZapper;
     mapping(address => uint256) postedCollateralAt;
     // the maximum collateral cap for a specific mtoken
     mapping(address => uint256) maxCollateralCap;
@@ -138,7 +136,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         emit LogString("DEPLOYED: DAI");
         _deployCDAI();
         // emit LogString("DEPLOYED: ZAPPER");
-        // _deployZapper();
+        // _deployComplexZapper();
         emit LogString("DEPLOYED: PositionFolding");
         _deployPositionFolding();
     }

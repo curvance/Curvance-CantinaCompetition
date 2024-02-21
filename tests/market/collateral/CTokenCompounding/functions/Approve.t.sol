@@ -3,14 +3,14 @@ pragma solidity ^0.8.17;
 
 import { TestBaseCTokenCompounding } from "../TestBaseCTokenCompounding.sol";
 
-contract CTokenApproveTest is TestBaseCTokenCompounding {
+contract CTokenCompoundingApproveTest is TestBaseCTokenCompounding {
     event Approval(
         address indexed owner,
         address indexed spender,
         uint256 amount
     );
 
-    function test_cTokenApprove_success() public {
+    function test_cTokenCompoundingApprove_success() public {
         uint256 allowance = cBALRETH.allowance(address(this), user1);
 
         vm.expectEmit(true, true, true, true, address(cBALRETH));

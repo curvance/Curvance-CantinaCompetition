@@ -25,21 +25,16 @@ contract TestConvex2PoolCToken is TestBaseMarket {
     Convex2PoolCToken public cSTETH;
 
     /*
-    LP token address	0xf5f5B97624542D72A9E06f04804Bf81baA15e2B4
+    LP token address	0x21E27a5E5513D6e65C4f830167390997aA84843a
     Deposit contract address	0xF403C135812408BFbE8713b5A23a04b3D48AAE31
-    Rewards contract address	0xb05262D4aaAA38D0Af4AaB244D446ebDb5afd4A7
-    Convex pool id	188
-    Convex pool url	https://www.convexfinance.com/stake/ethereum/188
+    Rewards contract address	0x6B27D7BC63F1999D14fF9bA900069ee516669ee8
+    Convex pool id	177
+    Convex pool url	https://www.convexfinance.com/stake/ethereum/177
     */
 
     receive() external payable {}
 
     fallback() external payable {}
-
-    // this is to use address(this) as mock cToken address
-    function tokenType() external pure returns (uint256) {
-        return 1;
-    }
 
     function setUp() public override {
         super.setUp();

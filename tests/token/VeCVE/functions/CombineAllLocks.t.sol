@@ -19,7 +19,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         public
     {
         RewardsData memory emptyRewards = RewardsData(
-            address(0),
+            false,
             false,
             false,
             false
@@ -32,8 +32,10 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         vm.warp(block.timestamp + 986121 + 675582 + 1000);
         veCVE.processExpiredLock(0, false, false, emptyRewards, "", 0);
+        
         assertEq(veCVE.userPoints(address(this)), 2000000000000000000);
-        assertEq(veCVE.queryUserLocksLength(address(this)), 1);
+        (uint256[] memory lockAmounts, ) = veCVE.queryUserLocks(address(this));
+        assertEq(lockAmounts.length, 1);
 
         veCVE.createLock(1000000024330411045, false, emptyRewards, "", 0);
         veCVE.combineAllLocks(false, emptyRewards, "", 0);

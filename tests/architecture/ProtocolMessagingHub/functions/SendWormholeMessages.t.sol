@@ -11,7 +11,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         vm.expectRevert(
             ProtocolMessagingHub.ProtocolMessagingHub__Unauthorized.selector
         );
-        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
     function test_sendWormholeMessages_fail_whenChainIsNotSupported() public {
@@ -22,7 +22,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         );
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
     function test_sendWormholeMessages_fail_whenNativeAssetIsNotEnough()
@@ -41,11 +41,14 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
         vm.expectRevert();
 
         vm.prank(address(feeAccumulator));
-        protocolMessagingHub.sendWormholeMessages(23, address(this), "");
+        protocolMessagingHub.sendWormholeMessages(42161, address(this), "");
     }
 
     function test_sendWormholeMessages_success() public {
-        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(23, false);
+        uint256 messageFee = protocolMessagingHub.quoteWormholeFee(
+            42161,
+            false
+        );
         deal(address(feeAccumulator), messageFee);
 
         centralRegistry.addChainSupport(
@@ -60,7 +63,7 @@ contract SendWormholeMessagesTest is TestBaseProtocolMessagingHub {
 
         vm.prank(address(feeAccumulator));
         protocolMessagingHub.sendWormholeMessages{ value: messageFee }(
-            23,
+            42161,
             address(this),
             ""
         );

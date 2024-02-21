@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { VelodromeStableLPAdaptor } from "contracts/oracles/adaptors/velodrome/VelodromeStableLPAdaptor.sol";
 import { ChainlinkAdaptor } from "contracts/oracles/adaptors/chainlink/ChainlinkAdaptor.sol";
 import { OracleRouter } from "contracts/oracles/OracleRouter.sol";
+import { BaseStableLPAdaptor } from "contracts/oracles/adaptors/uniV2Base/BaseStableLPAdaptor.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
@@ -89,6 +90,20 @@ contract TestVelodromeStableLPAdapter is TestBaseOracleRouter {
         oracleRouter.getPrice(DAI_USDC, true, false);
     }
 
+    function testRevertAddAsset__AssetIsNotStableLP() public {
+        vm.expectRevert(
+            VelodromeStableLPAdaptor
+                .VelodromeStableLPAdaptor__AssetIsNotStableLP
+                .selector
+        );
+        adaptor.addAsset(0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b);
+    }
+
+    function testCanUpdateAsset() public {
+        adaptor.addAsset(DAI_USDC);
+        adaptor.addAsset(DAI_USDC);
+    }
+
     function testPriceDoesNotChangeAfterLargeSwap() public {
         uint256 errorCode;
         uint256 priceBefore;
@@ -119,5 +134,23 @@ contract TestVelodromeStableLPAdapter is TestBaseOracleRouter {
         (priceAfter, errorCode) = oracleRouter.getPrice(DAI_USDC, true, false);
         assertEq(errorCode, 0);
         assertApproxEqRel(priceBefore, priceAfter, 100000);
+    }
+
+    function testRevertGetPrice__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseStableLPAdaptor
+                .BaseStableLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.getPrice(address(0), true, false);
+    }
+
+    function testRevertRemoveAsset__AssetIsNotSupported() public {
+        vm.expectRevert(
+            BaseStableLPAdaptor
+                .BaseStableLPAdaptor__AssetIsNotSupported
+                .selector
+        );
+        adaptor.removeAsset(address(0));
     }
 }

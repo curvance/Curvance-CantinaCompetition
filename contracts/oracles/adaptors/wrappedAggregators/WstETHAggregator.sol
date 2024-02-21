@@ -6,6 +6,8 @@ import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggrega
 import { IWstETH } from "contracts/interfaces/external/wsteth/IWstETH.sol";
 
 contract WstETHAggregator is BaseWrappedAggregator {
+    /// STORAGE ///
+    
     address public wstETH;
     address public stETH;
     address public stETHAggregator;

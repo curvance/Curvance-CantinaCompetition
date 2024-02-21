@@ -6,6 +6,8 @@ import { BaseWrappedAggregator } from "contracts/oracles/adaptors/wrappedAggrega
 import { IStakedFrax } from "contracts/interfaces/external/frax/IStakedFrax.sol";
 
 contract StakedFraxAggregator is BaseWrappedAggregator {
+    /// STORAGE ///
+    
     address public sFrax;
     address public frax;
     address public fraxAggregator;

@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
 import { IWormholeRelayer } from "contracts/interfaces/external/wormhole/IWormholeRelayer.sol";
-import { ICircleRelayer } from "contracts/interfaces/external/wormhole/ICircleRelayer.sol";
-import { ITokenBridgeRelayer } from "contracts/interfaces/external/wormhole/ITokenBridgeRelayer.sol";
+import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMessenger.sol";
+import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 
 /// TYPES ///
 
@@ -71,9 +71,6 @@ interface ICentralRegistry {
     /// @notice Returns Oracle Router address.
     function oracleRouter() external view returns (address);
 
-    /// @notice Returns ZRO Payment address.
-    function zroAddress() external view returns (address);
-
     /// @notice Returns feeAccumulator address.
     function feeAccumulator() external view returns (address);
 
@@ -86,15 +83,19 @@ interface ICentralRegistry {
     /// @notice Returns WormholeRelayer contract address.
     function wormholeRelayer() external view returns (IWormholeRelayer);
 
-    /// @notice Returns Wormhole CircleRelayer contract address.
-    function circleRelayer() external view returns (ICircleRelayer);
+    /// @notice Returns Circle Token Messenger contract address.
+    function circleTokenMessenger() external view returns (ITokenMessenger);
 
-    /// @notice Returns Wormhole TokenBridgeRelayer contract address.
-    function tokenBridgeRelayer() external view returns (ITokenBridgeRelayer);
+    /// @notice Returns Wormhole TokenBridge contract address.
+    function tokenBridge() external view returns (ITokenBridge);
 
     /// @notice Returns wormhole specific chain ID for evm chain ID.
     /// @param chainId Evm chain ID.
     function wormholeChainId(uint256 chainId) external view returns (uint16);
+
+    /// @notice Returns CCTP domain for evm chain ID.
+    /// @param chainId Evm chain ID.
+    function cctpDomain(uint256 chainId) external view returns (uint16);
 
     /// @notice Returns Gelato sponsor address.
     function gelatoSponsor() external view returns (address);
@@ -131,6 +132,14 @@ interface ICentralRegistry {
     /// @notice Address array for all Curvance Market Managers on this chain.
     function marketManagers() external view returns (address[] memory);
 
+    /// @notice Returns `user`'s approval index.
+    /// @param user The user to check approval index for.
+    function userApprovalIndex(address user) external view returns (uint256);
+
+    /// @notice Returns whether a user has delegation disabled.
+    /// @param user The user to check delegation status for.
+    function delegatingDisabled(address user) external view returns (bool);
+
     /// @notice Returns whether a particular GETH chainId is supported.
     /// ChainId => messagingHub address, 2 = supported; 1 = unsupported.
     function supportedChainData(
@@ -154,27 +163,27 @@ interface ICentralRegistry {
     ) external view returns (uint16);
 
     /// @notice Returns whether the inputted address is an approved zapper.
-    function isZapper(address _address) external view returns (bool);
+    function isZapper(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an approved swapper.
-    function isSwapper(address _address) external view returns (bool);
+    function isSwapper(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an approved veCVELocker.
-    function isVeCVELocker(address _address) external view returns (bool);
+    function isVeCVELocker(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Gauge Controller.
-    function isGaugeController(address _address) external view returns (bool);
+    function isGaugeController(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Harvester.
-    function isHarvester(address _address) external view returns (bool);
+    function isHarvester(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is a Market Manager.
-    function isMarketManager(address _address) external view returns (bool);
+    function isMarketManager(address addressToCheck) external view returns (bool);
 
     /// @notice Returns whether the inputted address is an Approved Endpoint.
-    function isEndpoint(address _address) external view returns (bool);
+    function isEndpoint(address addressToCheck) external view returns (bool);
 
     function externalCallDataChecker(
-        address _target
+        address addressToCheck
     ) external view returns (address);
 }

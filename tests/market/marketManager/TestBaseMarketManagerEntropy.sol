@@ -5,6 +5,7 @@ import "./TestBaseMarketManagerMultiMarkets.sol";
 
 contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
     uint256 public entropy;
+    uint256 public constant BASE_UNDERLYING_RESERVE = 42069;
 
     function _genRandom(
         uint256 _value,
@@ -138,7 +139,9 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
         DToken borrowToken = dTokens[
             _genRandom(i, entropy, 0, noOfDebtTokens)
         ];
-        uint256 amount = borrowToken.marketUnderlyingHeld();
+        uint256 underlyingHeld = borrowToken.marketUnderlyingHeld();
+        uint256 amount = underlyingHeld - BASE_UNDERLYING_RESERVE;
+
         console2.log("amount %s", amount);
         if (amount < uint256(borrowToken.decimals()) * 100) {
             for (uint256 j = 0; j < noOfDebtTokens; j++) {
@@ -147,7 +150,9 @@ contract TestBaseMarketManagerEntropy is TestBaseMarketManagerMultiMarkets {
                     uint256(dTokens[j].decimals()) * 100
                 ) {
                     borrowToken = dTokens[j];
-                    amount = dTokens[j].marketUnderlyingHeld();
+                    underlyingHeld = borrowToken.marketUnderlyingHeld();
+                    amount = underlyingHeld - BASE_UNDERLYING_RESERVE;
+
                     return (false, borrowToken, amount);
                 }
             }
