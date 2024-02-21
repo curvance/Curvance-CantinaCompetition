@@ -662,6 +662,7 @@ contract FuzzMarketManager is FuzzLiquidations {
     }
 
     /// @custom:property market-23 Removing collateral for a nonexistent position should revert with invariant error hash.
+    /// @custom:property market-41 Removing 0 tokens in collateral should revert with invalid parameter selector
     /// @custom:precondition mtoken is either of: cDAI or cUSDC
     /// @custom:precondition token must be listed in marketManager
     /// @custom:precondition price feed must be up to date
@@ -690,13 +691,20 @@ contract FuzzMarketManager is FuzzLiquidations {
                 "MARKET-23 removeCollateral should fail with non existent position"
             );
         } else {
-            // expectation is that this should fail
             uint256 errorSelector = extractErrorSelector(revertData);
 
-            assertWithMsg(
-                errorSelector == marketManager_invariantErrorSelectorHash,
-                "MARKET-23 expected removeCollateral to revert with InvariantError"
-            );
+            if (tokens == 0) {
+                assertWithMsg(
+                    errorSelector ==
+                        marketManager_invalidParameterSelectorHash,
+                    "MARKET-41 removeCollateral should revert when trying to remove 0 tokens"
+                );
+            } else {
+                assertWithMsg(
+                    errorSelector == marketManager_invariantErrorSelectorHash,
+                    "MARKET-23 expected removeCollateral to revert with InvariantError"
+                );
+            }
         }
     }
 

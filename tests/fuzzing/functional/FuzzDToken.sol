@@ -339,15 +339,11 @@ contract FuzzDToken is FuzzMarketManager {
     /// @custom:precondition account has collateral posted for respective token
     /// @custom:precondition account is in "danger" of liquidation
     function liquidate_should_succeed_with_non_exact() public {
-        // TODO: these should be dynamic after liquidations run through thoroughly
+        uint256 daiPrice = DAI_PRICE;
+        uint256 usdcPrice = USDC_PRICE;
+        require(marketManager.seizePaused() != 2);
         address account = address(this);
-        address dtoken = address(dDAI);
-        address collateralToken = address(cUSDC);
-
-        hevm.warp(block.timestamp + 5 weeks);
-        borrow_should_succeed_not_accruing_interest(address(dDAI), 1000e6);
-        // TODO: make this a dynamic number, that requires that the account would be marked "flagged for liquidation"
-        mockDaiFeed.setMockAnswer(1000e8);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
 
         _checkLiquidatePreconditions(account, dtoken, collateralToken);
         // Structured for non exact liquidations, debt amount to liquidate = max
