@@ -32,19 +32,19 @@ contract FuzzDToken is FuzzMarketManager {
         require(mintingPossible);
         address underlyingTokenAddress = DToken(dtoken).underlying();
         // amount = clampBetweenBoundsFromOne(lower, amount);
-        amount = clampBetween(amount, 1, type(uint64).max);
+        amount = clampBetween(amount, 0, type(uint64).max);
         require(_mintAndApprove(underlyingTokenAddress, dtoken, amount));
         uint256 preUnderlyingBalance = IERC20(underlyingTokenAddress)
             .balanceOf(address(this));
         uint256 preDTokenBalance = DToken(dtoken).balanceOf(address(this));
         uint256 preDTokenTotalSupply = DToken(dtoken).totalSupply();
+        uint256 er = DToken(dtoken).exchangeRateCached();
 
         try DToken(dtoken).mint(amount) {
             uint256 postDTokenBalance = DToken(dtoken).balanceOf(
                 address(this)
             );
-            uint256 adjustedNumberOfTokens = (amount * WAD) /
-                DToken(dtoken).exchangeRateCached();
+            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
             uint256 postUnderlyingBalance = IERC20(underlyingTokenAddress)
                 .balanceOf(address(this));
 
@@ -88,13 +88,18 @@ contract FuzzDToken is FuzzMarketManager {
                 preDTokenBalance + adjustedNumberOfTokens,
                 preDTokenBalance
             );
-
-            // if any of the above conditions are met, then expect a revert for overflow
-            if (
+            if ((amount * WAD) / er == 0) {
+                assertEq(
+                    errorSelector,
+                    invalid_amount,
+                    "DTOK-X if amount*WAD/er==0, gauge pool deposit should fail"
+                );
+            } else if (
                 underlyingTokenSupplyOverflow ||
                 dtokenSupplyOverflow ||
                 balanceOverflow
-            ) {
+            ) // if any of the above conditions are met, then expect a revert for overflow
+            {
                 assertEq(
                     errorSelector,
                     0,

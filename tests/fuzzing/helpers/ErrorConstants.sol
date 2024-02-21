@@ -69,4 +69,7 @@ contract ErrorConstants {
         uint256(uint32(bytes4(keccak256("AllowanceOverflow()"))));
 
     uint256 overflow = uint256(uint32(bytes4(keccak256("MulDivFailed()"))));
+
+    uint256 invalid_amount =
+        uint256(uint32(bytes4(keccak256("InvalidAmount()"))));
 }

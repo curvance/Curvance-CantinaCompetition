@@ -577,12 +577,11 @@ contract FuzzMarketManager is FuzzLiquidations {
         require(marketManager.isListed(mtoken));
         _checkPriceFeed();
 
-        emit LogUint256("posted collateral at: ", postedCollateralAt[mtoken]);
-        emit LogUint256("MIN_HOLD_PERIOD: ", marketManager.MIN_HOLD_PERIOD());
-        emit LogUint256("current timestamp: ", block.timestamp);
+        emit LogUint256('cooldown timestamp for mtoken', _getCooldownTimestampFor(mtoken))
         require(
             block.timestamp >
-                postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
+                _getCooldownTimestampFor() +
+                    marketManager.MIN_HOLD_PERIOD()
         );
 
         require(_hasPosition(mtoken));
