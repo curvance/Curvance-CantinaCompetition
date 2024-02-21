@@ -3,12 +3,14 @@ pragma solidity 0.8.17;
 
 import { TestBaseMarket } from "tests/market/TestBaseMarket.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
+import { OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract AddChainSupportTest is TestBaseMarket {
     event NewChainAdded(uint256 chainId, address operatorAddress);
 
     function test_addChainSupport_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
+        vm.prank(address(0));
+
         vm.expectRevert(
             CentralRegistry.CentralRegistry__Unauthorized.selector
         );
@@ -21,7 +23,6 @@ contract AddChainSupportTest is TestBaseMarket {
             1,
             23
         );
-        vm.stopPrank();
     }
 
     function test_addChainSupport_fail_whenChainOperatorAlreadyAdded() public {
@@ -102,14 +103,12 @@ contract AddChainSupportTest is TestBaseMarket {
         assertEq(asDestinationAux, 1);
         assertEq(cveAddress, address(1));
 
-        (
-            uint256 isAuthorized,
-            uint256 messagingChainId,
-            address cveAddress_
-        ) = centralRegistry.omnichainOperators(user1, 42161);
-        assertEq(isAuthorized, 2);
-        assertEq(messagingChainId, 23);
-        assertEq(cveAddress_, address(1));
+        OmnichainData memory omnichainData = centralRegistry
+            .getOmnichainOperators(user1, 42161);
+
+        assertEq(omnichainData.isAuthorized, 2);
+        assertEq(omnichainData.messagingChainId, 23);
+        assertEq(omnichainData.cveAddress, address(1));
 
         assertEq(centralRegistry.messagingToGETHChainId(23), 42161);
         assertEq(centralRegistry.GETHToMessagingChainId(42161), 23);

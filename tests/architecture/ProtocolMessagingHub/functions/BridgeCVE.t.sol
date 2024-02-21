@@ -20,6 +20,19 @@ contract BridgeCVETest is TestBaseProtocolMessagingHub {
         protocolMessagingHub.bridgeCVE(137, user1, _ONE);
     }
 
+    function test_bridgeCVE_fail_whenMessagingHubIsPaused() public {
+        protocolMessagingHub.flipMessagingHubStatus();
+
+        vm.prank(address(cve));
+
+        vm.expectRevert(
+            ProtocolMessagingHub
+                .ProtocolMessagingHub__MessagingHubPaused
+                .selector
+        );
+        protocolMessagingHub.bridgeCVE(137, user1, _ONE);
+    }
+
     function test_bridgeCVE_fail_whenMessagingHubHasNoEnoughCVE() public {
         vm.prank(address(cve));
 
@@ -43,6 +56,8 @@ contract BridgeCVETest is TestBaseProtocolMessagingHub {
 
     function test_bridgeCVE_success() public {
         uint256 messageFee = protocolMessagingHub.quoteWormholeFee(137, true);
+
+        assertEq(protocolMessagingHub.cveBridgeFee(137), messageFee);
 
         vm.prank(address(cve));
 

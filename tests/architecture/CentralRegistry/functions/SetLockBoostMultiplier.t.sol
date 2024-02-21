@@ -7,12 +7,12 @@ import { DENOMINATOR } from "contracts/libraries/Constants.sol";
 
 contract SetLockBoostMultiplierTest is TestBaseMarket {
     function test_setLockBoostMultiplier_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
+        vm.prank(address(0));
+
         vm.expectRevert(
             CentralRegistry.CentralRegistry__Unauthorized.selector
         );
         centralRegistry.setLockBoostMultiplier(100);
-        vm.stopPrank();
     }
 
     function test_setLockBoostMultiplier_fail_whenParametersMisconfigured()

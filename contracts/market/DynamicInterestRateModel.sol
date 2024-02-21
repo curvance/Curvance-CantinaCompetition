@@ -16,8 +16,8 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 ///      The "baseInterestRate" which linearly increases interest until
 ///      `vertexStartingPoint` is reached, where `vertexInterestRate` then is
 ///      used instead. This behaves very similar to the classic "Jump Rate"
-///      interest rate model just without the risk-free rate. 
-///      
+///      interest rate model just without the risk-free rate.
+///
 ///      This model then builds on top of the previous systems by introducing
 ///      a dynamic "Vertex Multiplier" which increases the skew of
 ///      `vertexInterestRate`. The Vertex Multiplier is adjusted upward or
@@ -32,7 +32,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 ///      sensitive borrowers to repay their outstanding debt.
 ///      These two actions both will decrease net liquidity utilization,
 ///      decreasing borrow rates, and with a heavy enough drop, begin
-///      decreasing the Vertex Multiplier. 
+///      decreasing the Vertex Multiplier.
 ///
 ///      This process is optimized by the introduction of a decay mechanism.
 ///      When the Vertex Multiplier is elevated, the decay rate naturally
@@ -68,12 +68,11 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 contract DynamicInterestRateModel {
     /// TYPES ///
 
-
     /// @notice Stores configuration data for current Dynamic Interest
     ///         Rate Model.
     /// @param baseInterestRate Base rate at which interest is accumulated,
     ///                         per compound.
-    /// @param vertexInterestRate Vertex rate at which interest is 
+    /// @param vertexInterestRate Vertex rate at which interest is
     ///                           accumulated, per compound.
     /// @param vertexStartingPoint Utilization rate point where vertex rate
     ///                            is used, instead of base rate.
@@ -111,11 +110,11 @@ contract DynamicInterestRateModel {
 
     /// @notice For external contract's to call for validation.
     bool public constant IS_INTEREST_RATE_MODEL = true;
-    /// @notice Rate at which interest is compounded, in seconds. 
+    /// @notice Rate at which interest is compounded, in seconds.
     /// @dev 10 minutes = 600 seconds.
     uint256 public constant INTEREST_COMPOUND_RATE = 10 minutes;
     /// @notice Maximum Rate at which the vertex multiplier will
-    ///         decay per adjustment, in `WAD`. 
+    ///         decay per adjustment, in `WAD`.
     /// @dev .05e18 = 5%.
     uint256 public constant MAX_VERTEX_DECAY_RATE = .05e18;
     /// @notice The maximum frequency in which the vertex can have
@@ -129,13 +128,13 @@ contract DynamicInterestRateModel {
     /// @notice The maximum rate at with the vertex multiplier is adjusted,
     ///         in WAD on top of base rate (1 `WAD`).
     ///         E.g. 2 * WAD = 300% increase to vertex interest rate per
-    ///         adjustment at 100% utilization, 
+    ///         adjustment at 100% utilization,
     ///         due to 100% (in WAD) applied on top.
     uint256 public constant MAX_VERTEX_ADJUSTMENT_VELOCITY = 2e18;
     /// @notice The minimum rate at with the vertex multiplier is adjusted,
     ///         in WAD on top of base rate (1 `WAD`).
     ///         E.g. 0.5 * WAD = 150% increase to vertex interest rate per
-    ///         adjustment at 100% utilization, 
+    ///         adjustment at 100% utilization,
     ///         due to 100% (in WAD) applied on top.
     uint256 public constant MIN_VERTEX_ADJUSTMENT_VELOCITY = 0.5e18;
 
@@ -198,7 +197,7 @@ contract DynamicInterestRateModel {
     ///                          in `basis points`.
     /// @param vertexUtilStart The utilization point at which the vertex
     ///                        rate is applied, in `basis points`.
-    /// @param adjustmentRate The rate at which the vertex multiplier is 
+    /// @param adjustmentRate The rate at which the vertex multiplier is
     ///                       adjusted, in `seconds`.
     /// @param adjustmentVelocity The maximum rate at with the vertex
     ///                           multiplier is adjusted, in `basis points`.
@@ -315,7 +314,7 @@ contract DynamicInterestRateModel {
             }
         }
 
-        // Execute interest rate update if necessary. 
+        // Execute interest rate update if necessary.
         if (block.timestamp >= updateTimestamp()) {
             // If the vertex multiplier is already at its minimum,
             // and would decrease more, can break here.
@@ -354,8 +353,8 @@ contract DynamicInterestRateModel {
     ) external view returns (uint256) {
         return
             _SECONDS_PER_YEAR *
-            (getPredictedBorrowRate(cash, borrows, reserves) / 
-            INTEREST_COMPOUND_RATE);
+            (getPredictedBorrowRate(cash, borrows, reserves) /
+                INTEREST_COMPOUND_RATE);
     }
 
     /// @notice Calculates the current borrow rate per year.
@@ -453,7 +452,7 @@ contract DynamicInterestRateModel {
 
         if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
             return (getVertexInterestRate(util - vertexPoint) +
-                    getBaseInterestRate(vertexPoint));
+                getBaseInterestRate(vertexPoint));
         }
 
         uint256 vertexInterestRate = ratesConfig.vertexInterestRate;
@@ -516,7 +515,7 @@ contract DynamicInterestRateModel {
         return _currentRates & _BITMASK_VERTEX_MULTIPLIER;
     }
 
-    /// @notice Returns the next timestamp when `vertexMultiplier` 
+    /// @notice Returns the next timestamp when `vertexMultiplier`
     ///         will be updated, in unix time.
     function updateTimestamp() public view returns (uint256) {
         return uint64(_currentRates >> _BITPOS_UPDATE_TIMESTAMP);
@@ -593,7 +592,7 @@ contract DynamicInterestRateModel {
 
         // Validate Adjustment Velocity is in acceptable bounds.
         if (
-            adjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY || 
+            adjustmentVelocity > MAX_VERTEX_ADJUSTMENT_VELOCITY ||
             adjustmentVelocity < MIN_VERTEX_ADJUSTMENT_VELOCITY
         ) {
             revert DynamicInterestRateModel__InvalidAdjustmentVelocity();
@@ -635,9 +634,9 @@ contract DynamicInterestRateModel {
             // Scoping to avoid stack too deep.
             uint256 newMultiplier = vertexReset ? WAD : vertexMultiplier();
             _currentRates = _packRatesData(
-                    newMultiplier,
-                    uint64(block.timestamp + config.adjustmentRate)
-                );
+                newMultiplier,
+                uint64(block.timestamp + config.adjustmentRate)
+            );
         }
 
         config.decayRate = decayRate;
@@ -682,7 +681,7 @@ contract DynamicInterestRateModel {
     ///      If the utilization is below the 'increaseThreshold',
     ///      it simply applies the decay to the current multiplier.
     ///      If the utilization is higher, it calculates a new multiplier by
-    ///      applying a positive curve value to the adjustment. 
+    ///      applying a positive curve value to the adjustment.
     ///      This adjustment is also subjected to the decay multiplier.
     /// @param config The cached version of the current `RatesConfiguration`.
     /// @param util The current utilization value, used to determine how the
@@ -766,7 +765,8 @@ contract DynamicInterestRateModel {
             // is not used here.
             // currentMultiplier / (1 + adjustmentVelocity) = newMultiplier.
             newMultiplier =
-                ((currentMultiplier * WAD) / (WAD + config.adjustmentVelocity)) -
+                ((currentMultiplier * WAD) /
+                    (WAD + config.adjustmentVelocity)) -
                 decay;
 
             // Check if decay rate sends multiplier below 1.
@@ -826,7 +826,7 @@ contract DynamicInterestRateModel {
         // Which will result in WAD result for `cFactor`.
         // Thus, this will be bound between [0, WAD].
         uint256 cFactor = ((current - start) * WAD) / (end - start);
-   
+
         // Apply cFactor curve result to adjustment velocity.
         // Then add 100% on top for final adjustment value to `multiplier`.
         cFactor = WAD_SQUARED + (cFactor * adjustmentVelocity);
@@ -868,7 +868,7 @@ contract DynamicInterestRateModel {
         uint256 end // `decreaseThresholdMax`.
     ) internal pure returns (uint256) {
         // Calculate linear curve multiplier. We know that current > end,
-        // based on pre conditional checks. 
+        // based on pre conditional checks.
         // Thus, this will be bound between [0, WAD].
         uint256 cFactor = ((start - current) * WAD) / (start - end);
 
