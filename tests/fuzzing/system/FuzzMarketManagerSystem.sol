@@ -22,11 +22,12 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
         assertGte(
             cTokenBalance,
             collateralPostedForAddress,
-            "MARKET MANAGER - cTokenBalance must exceed collateral posted"
+            "S-MARKET-1 - cTokenBalance must exceed collateral posted"
         );
     }
 
-    /// @custom:property s-market-2 Market collateral posted should always be less than or equal to collateralCaps for a token.
+    /// @custom:property s-market-2 Market collateral posted should always equal to collateralCaps for a token if maxCollateralCap = 0.
+    /// @custom:property s-market-3 Market collateral posted should always be less than max collateralCap for a non-zero collateral cap.
     function collateralPosted_lte_collateralCaps(address token) public {
         uint256 collateralPosted = marketManager.collateralPosted(token);
 
@@ -34,13 +35,13 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
             assertEq(
                 collateralPosted,
                 maxCollateralCap[token],
-                "MARKET MANAGER - collateralPosted must be equal to 0 when max collateral is posted"
+                "S-MARKET-2 - collateralPosted must be equal to 0 when max collateral is posted"
             );
         } else {
             assertLt(
                 collateralPosted,
                 maxCollateralCap[token],
-                "MARKET MANAGER - collateralPosted must be strictly less than the max collateral posted"
+                "S-MARKET-3 - collateralPosted must be strictly less than the max collateral posted"
             );
         }
     }
@@ -51,7 +52,7 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
         assertNeq(
             MockToken(mtoken).totalSupply(),
             0,
-            "IMToken - totalSupply should never go down to zero once listed"
+            "S-MARKET-4 - totalSupply should never go down to zero once listed"
         );
     }
 

@@ -21,7 +21,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
         assertEq(
             marketUnderlyingHeld,
             underlyingBalance,
-            "DToken - marketUnderlyingHeld should return dtoken.balanceOf(dtoken)"
+            "S-DTOK-1 - marketUnderlyingHeld should return dtoken.balanceOf(dtoken)"
         );
     }
 
@@ -36,7 +36,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
         assertEq(
             DToken(dtoken).decimals(),
             IERC20(underlying).decimals(),
-            "DToken - decimals for dtoken must be equivalent to underlying decimals"
+            "S-DTOK-2 - decimals for dtoken must be equivalent to underlying decimals"
         );
     }
 
@@ -46,7 +46,7 @@ contract FuzzDTokenSystem is StatefulBaseMarket {
         _isSupportedDToken(dtoken);
         assertWithMsg(
             !DToken(dtoken).isCToken(),
-            "DTOKEN - isCToken() should return false"
+            "S-DTOK-3 - isCToken() should return false"
         );
     }
 }
