@@ -22,12 +22,12 @@ contract SetProtocolInterestRateFeeTest is TestBaseMarket {
     }
 
     function test_setProtocolInterestRateFee_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
+        vm.prank(address(0));
+
         vm.expectRevert(
             CentralRegistry.CentralRegistry__Unauthorized.selector
         );
         centralRegistry.setProtocolInterestRateFee(newMarket, 100);
-        vm.stopPrank();
     }
 
     function test_setProtocolInterestRateFee_fail_whenValueTooHigh() public {

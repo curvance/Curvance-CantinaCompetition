@@ -8,6 +8,7 @@ import { TestBase } from "tests/utils/TestBase.sol";
 import { CVE } from "contracts/token/CVE.sol";
 import { VeCVE } from "contracts/token/VeCVE.sol";
 import { CVELocker } from "contracts/architecture/CVELocker.sol";
+import { SimpleRewardZapper } from "contracts/architecture/utils/SimpleRewardZapper.sol";
 import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 import { FeeAccumulator } from "contracts/architecture/FeeAccumulator.sol";
 import { ProtocolMessagingHub } from "contracts/architecture/ProtocolMessagingHub.sol";
@@ -79,6 +80,7 @@ contract TestBaseMarket is TestBase {
     CVE public cve;
     VeCVE public veCVE;
     CVELocker public cveLocker;
+    SimpleRewardZapper public simpleRewardZapper;
     CentralRegistry public centralRegistry;
     FeeAccumulator public feeAccumulator;
     ProtocolMessagingHub public protocolMessagingHub;
@@ -167,7 +169,7 @@ contract TestBaseMarket is TestBase {
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
             _ZERO_ADDRESS,
-            0,
+            block.timestamp,
             address(0),
             _USDC_ADDRESS
         );
@@ -214,6 +216,11 @@ contract TestBaseMarket is TestBase {
             _USDC_ADDRESS
         );
         centralRegistry.setCVELocker(address(cveLocker));
+
+        simpleRewardZapper = new SimpleRewardZapper(
+            ICentralRegistry(address(centralRegistry)),
+            _WETH_ADDRESS
+        );
     }
 
     function _deployVeCVE() internal {
@@ -403,8 +410,8 @@ contract TestBaseMarket is TestBase {
         adapterData.poolDecimals = 18;
         adapterData.rateProviderDecimals[0] = 18;
         adapterData.rateProviders[
-            0
-        ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
+                0
+            ] = 0x1a8F81c256aee9C640e14bB0453ce247ea0DFE6F;
         adapterData.underlyingOrConstituent[0] = _RETH_ADDRESS;
         adapterData.underlyingOrConstituent[1] = _WETH_ADDRESS;
         balRETHAdapter.addAsset(_BALANCER_WETH_RETH, adapterData);
@@ -475,7 +482,7 @@ contract TestBaseMarket is TestBase {
         );
         return cBALRETH;
     }
-    
+
     function _deployCBALRETHWithExitFee()
         internal
         returns (MockAuraCTokenWithExitFee)
