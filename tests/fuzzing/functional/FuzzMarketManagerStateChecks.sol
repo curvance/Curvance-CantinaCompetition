@@ -171,14 +171,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition liquidity deficity for hypothetical liquidity > 0;
     function canRedeem_should_revert_deficit_exists(
         address mtoken,
-        address account,
         uint256 amount
     ) public {
+        address account = address(this);
         require(marketManager.redeemPaused() != 2);
         require(marketManager.isListed(mtoken));
         require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
-            address(this),
+            account,
             mtoken,
             amount,
             0
@@ -260,6 +260,7 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition timestamp has passed hold period
     /// @custom:precondition user has position
+    /// @custom:precondition liquidityDeficit should be = 0
     function canTransfer_should_succeed(
         address mtoken,
         uint256 amount
@@ -272,6 +273,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
                 postedCollateralAt[mtoken] + marketManager.MIN_HOLD_PERIOD()
         );
         require(_hasPosition(mtoken));
+        (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
+            address(this),
+            mtoken,
+            amount,
+            0
+        );
+        require(liquidityDeficit == 0);
+
         (uint256 accountCollateral, uint256 accountDebt) = marketManager
             .solvencyOf(address(this));
         require(accountDebt != 0);
