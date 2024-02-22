@@ -785,7 +785,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
                 assertLt(
                     preUserPoints,
                     postUserPoints,
-                    "VECVE-57 - processExpiredLock() userPoints should decrease if epochs to claim > 0 "
+                    "VECVE-57 - processExpiredLock() userPoints should decrease if epochs to claim > 0"
                 );
             } else {
                 assertEq(
