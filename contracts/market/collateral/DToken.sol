@@ -5,6 +5,7 @@ import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateMo
 import { GaugePool } from "contracts/gauge/GaugePool.sol";
 
 import { Delegable } from "contracts/libraries/Delegable.sol";
+import { FixedPointMathLib } from "contracts/libraries/FixedPointMathLib.sol";
 import { WAD } from "contracts/libraries/Constants.sol";
 import { ReentrancyGuard } from "contracts/libraries/ReentrancyGuard.sol";
 import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.sol";
@@ -958,12 +959,19 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
         // Calculate the interest and debt accumulated.
         uint256 interestAccumulated = borrowRate * interestCompounds;
-        uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;
+        uint256 debtAccumulated = FixedPointMathLib.mulDivUp(
+            interestAccumulated,
+            borrowsPrior,
+            WAD
+        );
         // Calculate new borrows, and the new exchange rate, based on
         // accumulation values above.
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
-        uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
-            WAD) + exchangeRatePrior;
+        uint256 exchangeRateNew = FixedPointMathLib.mulDivUp(
+            interestAccumulated,
+            exchangeRatePrior,
+            WAD
+        ) + exchangeRatePrior;
 
         // Update update timestamp, exchange rate, and total outstanding
         // borrows.
