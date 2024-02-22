@@ -954,7 +954,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         );
 
         // Calculate the interest compound cycles to update,
-        // in `interestCompounds`.
+        // in `interestCompounds`. Rounds down natively.
         uint256 interestCompounds = (block.timestamp -
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
         // Calculate the interest and debt accumulated.

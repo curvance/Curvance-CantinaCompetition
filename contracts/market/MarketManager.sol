@@ -548,6 +548,10 @@ contract MarketManager is LiquidityManager, ERC165 {
     /// @param account The address of the account that has just borrowed.
     function notifyBorrow(address mToken, address account) external {
         _checkIsToken(mToken);
+        if (!tokenData[mToken].isListed) {
+            _revert(_TOKEN_NOT_LISTED_SELECTOR);
+        }
+        
         accountAssets[account].cooldownTimestamp = block.timestamp;
     }
 
