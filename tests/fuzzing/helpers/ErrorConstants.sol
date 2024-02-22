@@ -68,6 +68,9 @@ contract ErrorConstants {
     uint256 token_allowance_overflow =
         uint256(uint32(bytes4(keccak256("AllowanceOverflow()"))));
 
+    uint256 dtoken_excessive_value =
+        uint256(uint32(bytes4(keccak256("DToken__ExcessiveValue()"))));
+
     uint256 overflow = uint256(uint32(bytes4(keccak256("MulDivFailed()"))));
 
     uint256 invalid_amount =

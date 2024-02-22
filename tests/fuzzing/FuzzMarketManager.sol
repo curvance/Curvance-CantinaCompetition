@@ -265,7 +265,13 @@ contract FuzzMarketManager is FuzzLiquidations {
             {
                 uint256 errorSelector = extractErrorSelector(revertData);
 
-                if (divergenceTooLarge) {
+                if (oldCR != 0 && safeBounds.collRatio == 0) {
+                    assertWithMsg(
+                        errorSelector ==
+                            marketManager_invalidParameterSelectorHash,
+                        "MARKET-8 updateCollateralToken expected to fail if trying to zero a non-zero CR"
+                    );
+                } else if (divergenceTooLarge) {
                     assertWithMsg(
                         errorSelector == marketManager_priceErrorSelectorHash,
                         "MARKET-6 expected updateCollateralToken to fail if price diverge too much or encounters error"
@@ -274,12 +280,6 @@ contract FuzzMarketManager is FuzzLiquidations {
                     assertWithMsg(
                         errorSelector == marketManager_priceErrorSelectorHash,
                         "MARKET-7 expected updateCollateralToken to fail if price diverge too much or encounters error"
-                    );
-                } else if (oldCR != 0 && safeBounds.collRatio == 0) {
-                    assertWithMsg(
-                        errorSelector ==
-                            marketManager_invalidParameterSelectorHash,
-                        "MARKET-8 updateCollateralToken expected to fail if trying to zero a non-zero CR"
                     );
                 } else {
                     // market-5
@@ -577,11 +577,13 @@ contract FuzzMarketManager is FuzzLiquidations {
         require(marketManager.isListed(mtoken));
         _checkPriceFeed();
 
-        emit LogUint256('cooldown timestamp for mtoken', _getCooldownTimestampFor(mtoken))
+        emit LogUint256(
+            "cooldown timestamp for mtoken",
+            _getCooldownTimestampFor()
+        );
         require(
             block.timestamp >
-                _getCooldownTimestampFor() +
-                    marketManager.MIN_HOLD_PERIOD()
+                _getCooldownTimestampFor() + marketManager.MIN_HOLD_PERIOD()
         );
 
         require(_hasPosition(mtoken));
@@ -1059,7 +1061,7 @@ contract FuzzMarketManager is FuzzLiquidations {
         uint256 amount,
         uint256 daiPrice,
         uint256 usdcPrice
-    ) private {
+    ) internal {
         // ensure price feeds are up to date and in sync before updating collateral token and listing
         _checkPriceFeed();
         {

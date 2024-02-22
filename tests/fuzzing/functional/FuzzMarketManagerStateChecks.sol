@@ -180,14 +180,14 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,
-            0,
-            amount
+            amount,
+            0
         );
         require(liquidityDeficit > 0);
         try marketManager.canRedeem(mtoken, account, amount) {
             assertWithMsg(
                 false,
-                "SC-MARKET-7 canRedeem expected to revert token is not listed"
+                "SC-MARKET-7 canRedeem expected to revert deficit exists"
             );
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
@@ -282,10 +282,9 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
         ) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
-            // canTransfer should have reverted with PAUSED
             assertWithMsg(
-                errorSelector == marketManager_pausedSelectorHash,
-                "SC-MARKET-10 canTransfer() expected PAUSED selector hash on failure"
+                false,
+                "SC-MARKET-10 canTransfer() canTransfer should succeed with correct preconditions"
             );
         }
     }
@@ -366,10 +365,12 @@ contract FuzzMarketManagerStateChecks is StatefulBaseMarket {
     /// @custom:precondition borrowPaused != 2
     /// @custom:precondition mtoken is listed in MarketManager
     /// @custom:precondition liquidityDeficit == 0
+    /// @custom:precondition require that the mtoken has a position in the market
     function canBorrow_should_succeed(address mtoken, uint256 amount) public {
         _isSupportedDToken(mtoken);
         require(marketManager.borrowPaused(mtoken) != 2);
         require(marketManager.isListed(mtoken));
+        require(_hasPosition(mtoken));
         (, uint256 liquidityDeficit) = marketManager.hypotheticalLiquidityOf(
             address(this),
             mtoken,

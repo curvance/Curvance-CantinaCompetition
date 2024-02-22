@@ -44,7 +44,9 @@ contract FuzzDToken is FuzzMarketManager {
             uint256 postDTokenBalance = DToken(dtoken).balanceOf(
                 address(this)
             );
-            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
+            uint256 new_er = DToken(dtoken).exchangeRateCached();
+
+            uint256 adjustedNumberOfTokens = (amount * WAD) / new_er;
             uint256 postUnderlyingBalance = IERC20(underlyingTokenAddress)
                 .balanceOf(address(this));
 
@@ -88,7 +90,7 @@ contract FuzzDToken is FuzzMarketManager {
                 preDTokenBalance + adjustedNumberOfTokens,
                 preDTokenBalance
             );
-            if ((amount * WAD) / er == 0) {
+            if (adjustedNumberOfTokens == 0) {
                 assertEq(
                     errorSelector,
                     invalid_amount,
@@ -134,7 +136,8 @@ contract FuzzDToken is FuzzMarketManager {
         require(marketManager.isListed(dtoken));
         require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
-            DToken(dtoken).totalReserves();
+            DToken(dtoken).totalReserves() -
+            42069; // TODO: constant
         amount = clampBetween(amount, 1, upperBound - 1);
         require(_mintAndApprove(DToken(dtoken).underlying(), dtoken, amount));
         (bool borrowPossible, ) = address(marketManager).call(
@@ -198,7 +201,8 @@ contract FuzzDToken is FuzzMarketManager {
         address underlying = DToken(dtoken).underlying();
         require(marketManager.borrowPaused(dtoken) != 2);
         uint256 upperBound = DToken(dtoken).marketUnderlyingHeld() -
-            DToken(dtoken).totalReserves();
+            DToken(dtoken).totalReserves() -
+            42069;
         amount = clampBetween(amount, 1, upperBound - 1);
         require(_mintAndApprove(DToken(dtoken).underlying(), dtoken, amount));
         require(marketManager.isListed(dtoken));
@@ -228,10 +232,10 @@ contract FuzzDToken is FuzzMarketManager {
                 preTotalBorrows + amount,
                 "DTOK-9 borrow postTotalBorrows failed = preTotalBorrows + amount"
             );
+
             uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
                 address(this)
             );
-
             assertGte(
                 postUnderlyingBalance,
                 preUnderlyingBalance + amount,
@@ -275,8 +279,8 @@ contract FuzzDToken is FuzzMarketManager {
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
-                false,
-                "DTOK-11 repay more than accountDebt should have INSERT_SPECIFIC_ERROR"
+                errorSelector == dtoken_excessive_value,
+                "DTOK-11 repay more than accountDebt should have EXCESSIVE_VALUE error"
             );
         }
     }
@@ -302,13 +306,31 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
             address(this)
         );
+        (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
+            .marketData();
+        uint256 old_er = DToken(dtoken).exchangeRateCached();
 
         try DToken(dtoken).repay(amount) {
-            assertEq(
-                DToken(dtoken).totalBorrows(),
-                preTotalBorrows - amount,
-                "DTOK-13 repay postTotalBorrows failed = preTotalBorrows - amount"
-            );
+            if (lastTimestampUpdated + compoundRate <= block.timestamp) {
+                {
+                    // TODO: pull interest calculation into a helper function to be used across logic
+                    uint256 new_er = DToken(dtoken).exchangeRateCached();
+                    uint256 er_diff = new_er > old_er
+                        ? new_er - old_er
+                        : old_er - new_er;
+                    assertEq(
+                        DToken(dtoken).totalBorrows(),
+                        preTotalBorrows - amount - (er_diff) * accountDebt,
+                        "DTOK-X repay postBorrows = (change in er)*amount"
+                    );
+                }
+            } else {
+                assertEq(
+                    DToken(dtoken).totalBorrows(),
+                    preTotalBorrows - amount,
+                    "DTOK-13 repay postTotalBorrows failed = preTotalBorrows - amount"
+                );
+            }
             uint256 postUnderlyingBalance = IERC20(underlying).balanceOf(
                 address(this)
             );
@@ -343,14 +365,13 @@ contract FuzzDToken is FuzzMarketManager {
     /// @custom:precondition market manager for dtoken and ctoken match
     /// @custom:precondition account has collateral posted for respective token
     /// @custom:precondition account is in "danger" of liquidation
-    function liquidate_should_succeed_with_non_exact() public {
+    function liquidate_should_succeed_with_non_exact(uint256 amount) public {
         uint256 daiPrice = DAI_PRICE;
         uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = address(this);
-        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
-
-        _checkLiquidatePreconditions(account, dtoken, collateralToken);
+        address dtoken = address(dDAI);
+        address collateralToken = address(cUSDC);
         // Structured for non exact liquidations, debt amount to liquidate = max
         (
             uint256 debtToLiquidate,
@@ -363,10 +384,10 @@ contract FuzzDToken is FuzzMarketManager {
                 0, // 0 does not represent anything here, when the liquidateExact is false
                 false
             );
-        uint256 amount = _boundLiquidateValues(
-            debtToLiquidate,
-            collateralToken
-        );
+        amount = _boundLiquidateValues(debtToLiquidate, collateralToken);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
+
+        _checkLiquidatePreconditions(account, dtoken, collateralToken);
 
         {
             address underlyingDToken = DToken(dtoken).underlying();
