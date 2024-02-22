@@ -19,7 +19,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     }
 
     /// @custom:property  vecve-1 - Creating a lock with a specified amount when the system is not in a shutdown state should succeed, with preLockCVEBalance matching postLockCVEBalance + amount and preLockVECVEBalance + amount matching postLockVECVEBalance.
-    /// @custom:property vecve-X - Creating a lock with the correct preconditions should fail
+    /// @custom:property vecve-58 - Creating a lock with the correct preconditions should fail
     /// @custom:precondition  veCVE contract must not be shut down
     /// @custom:precondition  amount clamped between [WAD, uint64.max]
     /// @custom:precondition  CVE token must approve VeCVE token contract
@@ -63,7 +63,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         } catch {
             assertWithMsg(
                 false,
-                "VECVE-X - createLock call failed unexpectedly"
+                "VECVE-58 - createLock call failed unexpectedly"
             );
         }
     }
@@ -785,13 +785,13 @@ contract FuzzVeCVE is StatefulBaseMarket {
                 assertLt(
                     preUserPoints,
                     postUserPoints,
-                    "VECVE-X - processExpiredLock() userPoints should decrease if epochs to claim remain"
+                    "VECVE-57 - processExpiredLock() userPoints should decrease if epochs to claim > 0 "
                 );
             } else {
                 assertEq(
                     preUserPoints,
                     postUserPoints,
-                    "VECVE-54 - processExpiredLock() - userPoints should be equal"
+                    "VECVE-54 - processExpiredLock() - userPoints should be equal if epochs to claim = 0"
                 );
             }
 

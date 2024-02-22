@@ -18,6 +18,7 @@ contract FuzzDToken is FuzzMarketManager {
     /// @custom:property dtok-2 underlying balance for sender DToken should decrease by amount
     /// @custom:property dtok-3  balance should increase by `amount * WAD/exchangeRateCached()`
     /// @custom:property dtok-4 DToken totalSupply should increase by `amount * WAD/exchangeRateCached()`
+    /// @custom:proeprty dtok-18 If amount * WAD / exchange_rate = 0 , the mint function should revert when trying to deposit to GaugePool.
     /// @custom:precondition amount bound between [1, uint256.max]
     function mint_should_actually_succeed(
         address dtoken,
@@ -94,7 +95,7 @@ contract FuzzDToken is FuzzMarketManager {
                 assertEq(
                     errorSelector,
                     invalid_amount,
-                    "DTOK-X if amount*WAD/er==0, gauge pool deposit should fail"
+                    "DTOK-18 if amount*WAD/er==0, gauge pool deposit should fail"
                 );
             } else if (
                 underlyingTokenSupplyOverflow ||
@@ -286,9 +287,10 @@ contract FuzzDToken is FuzzMarketManager {
     }
 
     /// @custom:property dtok-12 repaying within account debt should succeed
-    /// @custom:property dtok-13 repaying any amount should reduce totalborrows for dtoken
+    /// @custom:property dtok-13 repaying any amount should make total borrows equivalent to preTotalBorrows - amount when interest has not accrued
     /// @custom:property dtok-14 repay with amount=0 should reduce underlying balance by accountDebt
     /// @custom:property dtok-15 repay with amount!=0 should reduce underlying balance by provided amount
+    /// @custom:property dtok-17 repay with interest accruing should make totalBorrows equivalent to totalBorrows - preTotalBorrows - amount - (|new_exchange_rate - old_exchange_rate|*accountDebt)
     function repay_within_account_debt_should_succeed(
         address dtoken,
         uint256 amount
@@ -321,7 +323,7 @@ contract FuzzDToken is FuzzMarketManager {
                     assertEq(
                         DToken(dtoken).totalBorrows(),
                         preTotalBorrows - amount - (er_diff) * accountDebt,
-                        "DTOK-X repay postBorrows = (change in er)*amount"
+                        "DTOK-17 repay postBorrows = (change in er)*amount"
                     );
                 }
             } else {
