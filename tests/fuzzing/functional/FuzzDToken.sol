@@ -297,7 +297,7 @@ contract FuzzDToken is FuzzMarketManager {
         address underlying = DToken(dtoken).underlying();
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         amount = clampBetween(amount, 0, accountDebt);
-        require(_mintAndApprove(underlying, dtoken, amount));
+        require(_mintAndApprove(underlying, dtoken, accountDebt));
         require(marketManager.isListed(dtoken));
         try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;

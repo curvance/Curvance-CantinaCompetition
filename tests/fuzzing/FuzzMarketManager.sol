@@ -894,7 +894,7 @@ contract FuzzMarketManager is FuzzLiquidations {
         uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = address(this);
-        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
+        amount = _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
         calculateLiquidation_exact(amount);
 
         IMToken[] memory assets = marketManager.assetsOf(account);
@@ -1061,7 +1061,7 @@ contract FuzzMarketManager is FuzzLiquidations {
         uint256 amount,
         uint256 daiPrice,
         uint256 usdcPrice
-    ) internal {
+    ) internal returns (uint256) {
         // ensure price feeds are up to date and in sync before updating collateral token and listing
         _checkPriceFeed();
         {
@@ -1139,6 +1139,7 @@ contract FuzzMarketManager is FuzzLiquidations {
             .statusOf(address(this));
         // ensure that the collateral < accountDebt to be liquidated
         require(accountCollateral < accountDebt);
+        return amount;
     }
 
     struct TokenCollateralBounds {

@@ -747,6 +747,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         );
         uint256 preLockVECVEBalance = veCVE.balanceOf(caller);
         uint256 preLockCVEBalance = cve.balanceOf(caller);
+        bool hasEpochs = _has_epochs_to_claim();
 
         try
             veCVE.processExpiredLock(
@@ -780,12 +781,20 @@ contract FuzzVeCVE is StatefulBaseMarket {
                 );
             }
             uint256 postUserPoints = veCVE.userPoints(caller);
+            if (hasEpochs) {
+                assertLt(
+                    preUserPoints,
+                    postUserPoints,
+                    "VECVE-X - processExpiredLock() userPoints should decrease if epochs to claim remain"
+                );
+            } else {
+                assertEq(
+                    preUserPoints,
+                    postUserPoints,
+                    "VECVE-54 - processExpiredLock() - userPoints should be equal"
+                );
+            }
 
-            assertEq(
-                preUserPoints,
-                postUserPoints,
-                "VECVE-54 - processExpiredLock() - userPoints should be equal"
-            );
             uint256 postChainPoints = veCVE.chainPoints();
             assertEq(
                 preChainPoints,
@@ -1276,5 +1285,9 @@ contract FuzzVeCVE is StatefulBaseMarket {
         try cve.approve(address(veCVE), amount) {} catch {
             assertWithMsg(false, error);
         }
+    }
+
+    function _has_epochs_to_claim() private returns (bool) {
+        return cveLocker.epochsToClaim(address(this)) > 0;
     }
 }
