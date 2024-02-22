@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "./SoladyTest.sol";
+import "./utils/SoladyTest.sol";
 import {FixedPointMathLib} from "../../contracts/libraries/FixedPointMathLib.sol";
 
 contract FixedPointMathLibTest is SoladyTest {
