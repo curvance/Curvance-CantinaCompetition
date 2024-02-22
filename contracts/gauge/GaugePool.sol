@@ -137,7 +137,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         return rewardTokens.length;
     }
 
-    /// @notice Used to update gauge pool rewards for `rewardToken`, 
+    /// @notice Used to update gauge pool rewards for `rewardToken`,
     ///         during `epoch` with `newRewardPerSec`.
     /// @dev This is only be used for updating partner gauge rewards.
     /// @param token The token to set rewards for.
@@ -162,7 +162,9 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        uint256 prevRewardPerSec = _epochRewardPerSec[token][epoch][rewardToken];
+        uint256 prevRewardPerSec = _epochRewardPerSec[token][epoch][
+            rewardToken
+        ];
         _epochRewardPerSec[token][epoch][rewardToken] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
@@ -194,12 +196,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             return _epochInfo[epoch].poolWeights[token];
         }
 
-        return
-            (EPOCH_WINDOW *
-                _epochRewardPerSec[token][epoch][rewardToken] *
-                _epochInfo[epoch].poolWeights[token]) /
-            _epochInfo[epoch].totalWeights;
-        
+        return (EPOCH_WINDOW * _epochRewardPerSec[token][epoch][rewardToken]);
     }
 
     /// @notice Returns pending reward of user.
@@ -286,7 +283,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        // Make sure the token is listed inside this market, 
+        // Make sure the token is listed inside this market,
         // and that the token is executing the deposit call.
         if (
             msg.sender != token ||
@@ -353,7 +350,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        // Make sure the token is listed inside this market, 
+        // Make sure the token is listed inside this market,
         // and that the token is executing the withdraw call.
         if (
             msg.sender != token ||
@@ -395,7 +392,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             address rewardToken = rewardTokens[i++];
             uint256 rewards = userDebtInfo[token][msg.sender][rewardToken]
                 .rewardPending;
-            // If the caller has rewards, send them, 
+            // If the caller has rewards, send them,
             // and prevent transaction reversion.
             if (rewards > 0) {
                 hasRewards = true;
@@ -433,7 +430,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
-        // If gauge emissions have not started yet, 
+        // If gauge emissions have not started yet,
         // theres nothing to claimAndExtendLock.
         if (block.timestamp < startTime) {
             revert GaugeErrors.NotStarted();
@@ -497,7 +494,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
-        // If gauge emissions have not started yet, 
+        // If gauge emissions have not started yet,
         // theres nothing to claimAndLock.
         if (block.timestamp < startTime) {
             revert GaugeErrors.NotStarted();
