@@ -6,7 +6,7 @@ import { VeCVE } from "contracts/token/VeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
-    uint256 internal constant _INITIAL_AMOUNT = 30e18;
+    uint256 internal constant _INITIAL_AMOUNT = 30000e18;
 
     function setUp() public override {
         super.setUp();
@@ -15,14 +15,14 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         cve.approve(address(veCVE), _INITIAL_AMOUNT);
     }
 
-    function test_combine_all_locks() public {
+    function test_combine_all_locks_underflow() public {
+        setUp();
         RewardsData memory emptyRewards = RewardsData(
             false,
             false,
             false,
             false
         );
-        setUp();
         veCVE.createLock(1e18, false, emptyRewards, "", 0);
 
         vm.warp(block.timestamp + 1668393);
@@ -39,7 +39,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
             0
         );
 
-        vm.warp(block.timestamp + 2453733);
+        vm.warp(block.timestamp + 24537335);
         // this is when lock at index 0 becomes continuous
         veCVE.processExpiredLock(0, true, true, emptyRewards, "", 0);
 
