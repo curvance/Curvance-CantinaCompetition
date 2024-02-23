@@ -47,7 +47,7 @@ contract FuzzDToken is FuzzMarketManager {
             );
             uint256 new_er = DToken(dtoken).exchangeRateCached();
 
-            uint256 adjustedNumberOfTokens = (amount * WAD) / new_er;
+            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
             uint256 postUnderlyingBalance = IERC20(underlyingTokenAddress)
                 .balanceOf(address(this));
 
@@ -74,6 +74,10 @@ contract FuzzDToken is FuzzMarketManager {
             uint256 errorSelector = extractErrorSelector(revertData);
 
             uint256 adjustedNumberOfTokens = (amount * WAD) / er;
+            emit LogUint256(
+                "adjusted number of tokens",
+                adjustedNumberOfTokens
+            );
 
             // if the underlying token mint totalSupply calculation expected to overflow, revert
             bool underlyingTokenSupplyOverflow = doesOverflow(
@@ -442,39 +446,18 @@ contract FuzzDToken is FuzzMarketManager {
         }
     }
 
-    // helper functions
-
-    function _calculate_interest_accrued(
-        uint256 amount,
-        address dtoken,
-        uint256 old_er
-    ) private returns (uint256) {
-        return _get_er_difference(old_er, dtoken) * amount;
-    }
-
-    function _get_er_difference(
-        uint256 old_er,
-        address dtoken
-    ) private returns (uint256) {
-        uint256 new_er = DToken(dtoken).exchangeRateCached();
-        return new_er > old_er ? new_er - old_er : old_er - new_er;
-    }
-
-    /*
-
     // liquidateExact amount, with zero
-    function liquidate_should_succeed_with_exact_with_zero(
+    function liquidate_should_fail_with_exact_with_zero(
         address account,
         address dtoken,
         address collateralToken
     ) public {
-        setupLiquidations();
-        _checkLiquidatePreconditions(account, dtoken, collateralToken);
         uint256 amount = 0;
         // Structured for non exact liquidations, debt amount to liquidate = max
         uint256 collateralPostedFor = _collateralPostedFor(
             address(collateralToken)
         );
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
         // amount = _boundLiquidateValues(collateralPostedFor, collateralToken);
         (
             uint256 debtToLiquidate,
@@ -498,25 +481,16 @@ contract FuzzDToken is FuzzMarketManager {
         );
 
         // expect the above to fail
+        hevm.prank(msg.sender);
         try
-            this.prankLiquidateExact(account, amount, dtoken, collateralToken)
+            DToken(dtoken).liquidateExact(
+                account,
+                amount,
+                IMToken(collateralToken)
+            )
         {} catch {
             assert(false);
         }
-    }
-
-    function prankLiquidateExact(
-        address account,
-        uint256 amount,
-        address dtoken,
-        address collateralToken
-    ) external {
-        hevm.prank(msg.sender);
-        DToken(dtoken).liquidateExact(
-            account,
-            amount,
-            IMToken(collateralToken)
-        );
     }
 
     // liquidateExact amount, with specified amount
@@ -526,13 +500,13 @@ contract FuzzDToken is FuzzMarketManager {
         address dtoken,
         address collateralToken
     ) public {
-        setupLiquidations();
-        _checkLiquidatePreconditions(account, dtoken, collateralToken);
         // Structured for non exact liquidations, debt amount to liquidate = max
         uint256 collateralPostedFor = _collateralPostedFor(
             address(collateralToken)
         );
         amount = _boundLiquidateValues(collateralPostedFor, collateralToken);
+        _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
+
         (
             uint256 debtToLiquidate,
             uint256 seizedForLiquidation,
@@ -576,5 +550,22 @@ contract FuzzDToken is FuzzMarketManager {
             }
         }
     }
-    */
+
+    // helper functions
+
+    function _calculate_interest_accrued(
+        uint256 amount,
+        address dtoken,
+        uint256 old_er
+    ) private returns (uint256) {
+        return _get_er_difference(old_er, dtoken) * amount;
+    }
+
+    function _get_er_difference(
+        uint256 old_er,
+        address dtoken
+    ) private returns (uint256) {
+        uint256 new_er = DToken(dtoken).exchangeRateCached();
+        return new_er > old_er ? new_er - old_er : old_er - new_er;
+    }
 }

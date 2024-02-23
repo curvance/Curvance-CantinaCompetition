@@ -202,6 +202,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property vecve-12 – Combining non-continuous locks into continuous lock terminals should result in chainUnlockByEpoch decreasing for each respective epoch.
     /// @custom:property vecve-13 – Combining non-continuous locks to continuous locks should result in chainUnlockByEpochs being equal to 0.
     /// @custom:property vecve-14 – Combining non-continuous locks to continuous locks should result in the userUnlocksByEpoch being equal to 0.
+    /// @custom:property vecve-59 - Combining non-continuous locks to continuous locks should be successful with correct preconditions.
     /// @custom:precondition  user must have more than 2 existing locks
     /// @custom:precondition  some of the pre-existing locks must be non-cntinuous
     /// @custom:precondition veCVE contract is not shut down
@@ -278,7 +279,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         } catch {
             assertWithMsg(
                 false,
-                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+                "VE_CVE-59 - combineAllLocks() failed unexpectedly with correct preconditions"
             );
         }
     }
@@ -287,6 +288,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property vecve-16 – Combining some continuous locks to a non continuous terminal should result in user points decreasing.
     /// @custom:property vecve-17 – Combining no prior continuous locks to a non continuous terminal should result in no change in user points.
     /// @custom:property vecve-18 – Combining some prior continuous locks to a non continuous terminal should result in the veCVE balance of a user equaling the user points.
+    /// @custom:property vecve-60 - Combining some prior continuous locks to non continuous terminal should be successful with correct preconditions.
     /// @custom:precondition  User must have at least 2 existing locks
     /// @custom:precondition veCVE contract is not shut down
     function combineAllLocks_should_succeed_to_non_continuous_terminal()
@@ -344,7 +346,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         } catch {
             assertWithMsg(
                 false,
-                "VE_CVE - combineAllLocks() failed unexpectedly with correct preconditions"
+                "VE_CVE-60 - combineAllLocks() failed unexpectedly with correct preconditions"
             );
         }
     }
@@ -646,7 +648,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property vecve-45 – Processing a lock in a shutdown contract results in decreasing vecve tokens
     /// @custom:property vecve-46 – Processing a lock in a shutdown contract results in decreasing number of user locks
     /// @custom:precondition veCVE is shut down
-    /// @custom:limitation only tests new lock being continuous
+    /// @custom:limitation only tests relock = false
     function processExpiredLock_should_succeed_if_shutdown(
         uint256 seed
     ) public {
@@ -675,7 +677,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         try
             veCVE.processExpiredLock(
                 lockIndex,
-                false,
+                false, // user does not relock
                 true, // continuousLock = true
                 defaultRewardData,
                 bytes(""),
@@ -827,7 +829,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:precondition veCVE is not shut down
     /// @custom:precondition user has a pre-existing, expired lock
     /// @custom:limitation only tests new lock being continuous
-    function processExpiredLock_should_succeed_if_unlocktime_expired_and_not_shutdown_with_relock()
+    function processExpiredLock_should_succeed_if_unlocktime_expired_and_not_shutdown_relock()
         public
     {
         require(veCVE.isShutdown() != 2);
@@ -915,6 +917,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property vecve-22 – Disable continuous lock for a user’s continuous lock results in preChainUnlocksByEpoch + amount being equal to postChainUnlocksByEpoch
     /// @custom:property vecve-23 – Disable continuous lock should for a user’s continuous lock results in  preUserUnlocksByEpoch + amount matching postUserUnlocksByEpoch
     /// @custom:precondition user has a continuous lock they intend to disable
+    /// @custom:limitation does not test correct error if lock is non-continuous
     function disableContinuousLock_should_succeed_if_lock_exists() public {
         uint256 lockIndex = _get_continuous_lock();
         require(lockIndex != NO_LOCKS);

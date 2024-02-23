@@ -1,10 +1,10 @@
 testMode: assertion # run to detect assertions
-testLimit: 10000000 # note: significantly larger test limit for server runs
+testLimit: 10000000000 # note: significantly larger test limit for server runs
 coverage: true # turns coverage saving on
 corpusDir: "output/echidna-corpus" # save in ./output/echidna-corpus
 cryticArgs: ["--ignore-compile"] # do not recompile when running
-workers: 15 # increased number of workers
-format: text
-maxTimeDelay: 2689117
-maxBlockDelay: 2689117
-seqLen: 200
+workers: 15 # increased number of workers, note significantly higher for server runs 
+format: text # this default to text mode instead of using UI for echidna 
+maxTimeDelay: 2689117 # this increases the max time delay 
+maxBlockDelay: 2689117 # this increases the max block delay between transactions 
+seqLen: 200 # this increases the sequence length 
