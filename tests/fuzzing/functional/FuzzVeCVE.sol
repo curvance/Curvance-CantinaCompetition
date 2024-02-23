@@ -213,6 +213,8 @@ contract FuzzVeCVE is StatefulBaseMarket {
         bool continuous = true;
         require(_get_locks_length() >= 2);
         bool hasEpochs = _has_epochs_to_claim();
+
+        require(hasEpochs);
         _save_epoch_unlock_values();
 
         uint256 preCombineUserPoints = veCVE.userPoints(caller);
