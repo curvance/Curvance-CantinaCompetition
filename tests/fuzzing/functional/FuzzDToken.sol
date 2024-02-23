@@ -73,8 +73,7 @@ contract FuzzDToken is FuzzMarketManager {
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
-            uint256 adjustedNumberOfTokens = (amount * WAD) /
-                DToken(dtoken).exchangeRateCached();
+            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
 
             // if the underlying token mint totalSupply calculation expected to overflow, revert
             bool underlyingTokenSupplyOverflow = doesOverflow(
