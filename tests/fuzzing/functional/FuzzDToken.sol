@@ -261,11 +261,14 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
         address underlying = DToken(dtoken).underlying();
         require(_mintAndApprove(underlying, dtoken, amount));
+        dai.mint(amount);
+        dai.approve(address(dDAI), amount);
         require(marketManager.isListed(dtoken));
         amount = clampBetween(amount, accountDebt + 1, type(uint256).max);
         try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;
         }
+
         uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
         uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
             address(this)
