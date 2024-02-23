@@ -259,12 +259,17 @@ contract FuzzDToken is FuzzMarketManager {
     ) public {
         _isSupportedDToken(dtoken);
         uint256 accountDebt = DToken(dtoken).debtBalanceCached(address(this));
+        emit LogUint256("account debt", accountDebt);
         address underlying = DToken(dtoken).underlying();
         require(_mintAndApprove(underlying, dtoken, amount));
+        require(marketManager.isListed(dtoken));
+        (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
+            .marketData();
+        uint256 old_er = DToken(dtoken).exchangeRateCached();
+
+        amount = clampBetween(amount, accountDebt + 1, type(uint256).max);
         dai.mint(amount);
         dai.approve(address(dDAI), amount);
-        require(marketManager.isListed(dtoken));
-        amount = clampBetween(amount, accountDebt + 1, type(uint256).max);
         try marketManager.canRepay(address(dtoken), address(this)) {} catch {
             return;
         }
@@ -275,10 +280,21 @@ contract FuzzDToken is FuzzMarketManager {
         );
 
         try DToken(dtoken).repay(amount) {
-            assertWithMsg(
-                false,
-                "DTOK-11 repay more than accountDebt balance should fail"
+            uint256 interestAccrued = _calculate_interest_accrued(
+                amount,
+                dtoken,
+                old_er
             );
+            // if interest accrued and final amount underflowed, repay with more than account debt balance should fail.
+            int256 finalAmount = int256(
+                amount + interestAccrued - accountDebt
+            );
+            if (finalAmount < 0) {
+                assertWithMsg(
+                    false,
+                    "DTOK-11 repay more than accountDebt balance should fail"
+                );
+            }
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
             assertWithMsg(
@@ -316,19 +332,24 @@ contract FuzzDToken is FuzzMarketManager {
 
         try DToken(dtoken).repay(amount) {
             if (lastTimestampUpdated + compoundRate <= block.timestamp) {
+                // interest was accrued
                 {
                     // TODO: pull interest calculation into a helper function to be used across logic
-                    uint256 new_er = DToken(dtoken).exchangeRateCached();
-                    uint256 er_diff = new_er > old_er
-                        ? new_er - old_er
-                        : old_er - new_er;
+                    uint256 diff = _get_er_difference(old_er, dtoken);
                     assertEq(
                         DToken(dtoken).totalBorrows(),
-                        preTotalBorrows - amount - (er_diff) * accountDebt,
+                        preTotalBorrows -
+                            amount -
+                            _calculate_interest_accrued(
+                                amount,
+                                dtoken,
+                                old_er
+                            ),
                         "DTOK-17 repay postBorrows = (change in er)*amount"
                     );
                 }
             } else {
+                // interest was not accrued
                 assertEq(
                     DToken(dtoken).totalBorrows(),
                     preTotalBorrows - amount,
@@ -419,6 +440,24 @@ contract FuzzDToken is FuzzMarketManager {
                 );
             }
         }
+    }
+
+    // helper functions
+
+    function _calculate_interest_accrued(
+        uint256 amount,
+        address dtoken,
+        uint256 old_er
+    ) private returns (uint256) {
+        return _get_er_difference(old_er, dtoken) * amount;
+    }
+
+    function _get_er_difference(
+        uint256 old_er,
+        address dtoken
+    ) private returns (uint256) {
+        uint256 new_er = DToken(dtoken).exchangeRateCached();
+        return new_er > old_er ? new_er - old_er : old_er - new_er;
     }
 
     /*
