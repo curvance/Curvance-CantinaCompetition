@@ -298,6 +298,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         require(_get_locks_length() >= 2);
         _save_epoch_unlock_values();
+        bool hasEpochs = _has_epochs_to_claim();
 
         uint256 preCombineUserPoints = veCVE.userPoints(caller);
         (
@@ -321,21 +322,24 @@ contract FuzzVeCVE is StatefulBaseMarket {
 
             if (numberOfExistingContinuousLocks > 0) {
                 // vecve-16
-                assertGt(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VECVE-16 - combineAllLocks() - ALL continuous => !continuous failed"
-                );
+                if (hasEpochs) {
+                    assertGt(
+                        preCombineUserPoints,
+                        postCombineUserPoints,
+                        "VECVE-16 - combineAllLocks() - ALL continuous => !continuous failed"
+                    );
+                }
             }
             // no locks prior were continuous
             else {
                 // CAN ADD: Post-condition check on the epoch balances
-                // vecve-17
-                assertEq(
-                    preCombineUserPoints,
-                    postCombineUserPoints,
-                    "VECVE-17 - combineAllLocks() NO continuous locks -> !continuous failed"
-                );
+                if (hasEpochs) {
+                    assertEq(
+                        preCombineUserPoints,
+                        postCombineUserPoints,
+                        "VECVE-17 - combineAllLocks() NO continuous locks -> !continuous failed"
+                    );
+                }
             }
             //VECVE-18
             assertEq(

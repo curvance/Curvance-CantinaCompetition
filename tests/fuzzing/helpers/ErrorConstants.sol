@@ -62,6 +62,11 @@ contract ErrorConstants {
     uint256 marketManager_priceErrorSelectorHash =
         uint256(uint32(bytes4(keccak256("MarketManager__PriceError()"))));
 
+    uint256 marketManager_insufficientUnderlyingHeldSelectorHash =
+        uint256(
+            uint32(bytes4(keccak256("DToken__InsufficientUnderlyingHeld()")))
+        );
+
     uint256 token_total_supply_overflow =
         uint256(uint32(bytes4(keccak256("TotalSupplyOverflow()"))));
 

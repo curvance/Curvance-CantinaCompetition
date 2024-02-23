@@ -47,7 +47,8 @@ contract FuzzDToken is FuzzMarketManager {
             );
             uint256 new_er = DToken(dtoken).exchangeRateCached();
 
-            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
+            // The new_er needs to be used here because the _mint function first accrues interest, therefore we need the updated exchange rate
+            uint256 adjustedNumberOfTokens = (amount * WAD) / new_er;
             uint256 postUnderlyingBalance = IERC20(underlyingTokenAddress)
                 .balanceOf(address(this));
 
@@ -73,7 +74,11 @@ contract FuzzDToken is FuzzMarketManager {
         } catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
-            uint256 adjustedNumberOfTokens = (amount * WAD) / er;
+            // We need to accrue interest to get the most recent exchange rates that was used in this calculation
+            DToken(dtoken).accrueInterest();
+
+            uint256 new_er = DToken(dtoken).exchangeRateCached();
+            uint256 adjustedNumberOfTokens = (amount * WAD) / new_er;
             emit LogUint256(
                 "adjusted number of tokens",
                 adjustedNumberOfTokens
@@ -227,9 +232,15 @@ contract FuzzDToken is FuzzMarketManager {
         uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
             address(this)
         );
+        uint256 er = DToken(dtoken).exchangeRateCached();
 
         try DToken(dtoken).borrow(amount) {
             // Interest is accrued
+            uint256 interestAccrued = _calculate_interest_accrued(
+                amount,
+                dtoken,
+                er
+            );
             //  TODO: determine how much interest should have accrued instead of just Gt.
             assertGte(
                 DToken(dtoken).totalBorrows(),
@@ -247,12 +258,29 @@ contract FuzzDToken is FuzzMarketManager {
             );
             // TODO: Add check for _debtOf[account].principal
             // TODO: Add check for _debtOf[account].accountExchangeRate
-            postedCollateralAt[dtoken] = block.timestamp;
-        } catch {
-            assertWithMsg(
-                false,
-                "DTOK-8 borrow should succeed with correct preconditions"
-            );
+        } catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            // The repay function is going to first accrueInterest to update the reserves and total balances, which is why we need to match this behaviour here
+            // If there is interest to be accrued, and we don't call this, the state of the contract when doing this check will not be the same
+            DToken(dtoken).accrueInterest();
+            // This implements the same check as in the contracts to check against the correct error message
+            if (
+                DToken(dtoken).marketUnderlyingHeld() -
+                    DToken(dtoken).totalReserves() <
+                amount + 42069
+            ) {
+                assertWithMsg(
+                    errorSelector ==
+                        marketManager_insufficientUnderlyingHeldSelectorHash,
+                    "DTOK-X borrow if insufficient after accruing interest should fail"
+                );
+            } else {
+                assertWithMsg(
+                    false,
+                    "DTOK-8 borrow should succeed with correct preconditions"
+                );
+            }
         }
     }
 
@@ -338,8 +366,6 @@ contract FuzzDToken is FuzzMarketManager {
             if (lastTimestampUpdated + compoundRate <= block.timestamp) {
                 // interest was accrued
                 {
-                    // TODO: pull interest calculation into a helper function to be used across logic
-                    uint256 diff = _get_er_difference(old_er, dtoken);
                     assertEq(
                         DToken(dtoken).totalBorrows(),
                         preTotalBorrows -
@@ -349,7 +375,7 @@ contract FuzzDToken is FuzzMarketManager {
                                 dtoken,
                                 old_er
                             ),
-                        "DTOK-17 repay postBorrows = (change in er)*amount"
+                        "DTOK-17 repay totalBorrows = postBorrows - amount - interest accrued for amount"
                     );
                 }
             } else {
