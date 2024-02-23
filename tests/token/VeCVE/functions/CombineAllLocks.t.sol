@@ -15,6 +15,47 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         cve.approve(address(veCVE), _INITIAL_AMOUNT);
     }
 
+    function test_combine_all_locks() public {
+        RewardsData memory emptyRewards = RewardsData(
+            false,
+            false,
+            false,
+            false
+        );
+        setUp();
+        veCVE.createLock(1e18, false, emptyRewards, "", 0);
+
+        vm.warp(block.timestamp + 1668393);
+        veCVE.createLock(1159307271353364048, false, emptyRewards, "", 0);
+
+        vm.warp(block.timestamp + 15388973);
+
+        veCVE.increaseAmountAndExtendLock(
+            12337192967826718984,
+            1,
+            false,
+            emptyRewards,
+            "",
+            0
+        );
+
+        vm.warp(block.timestamp + 2453733);
+        // this is when lock at index 0 becomes continuous
+        veCVE.processExpiredLock(0, true, true, emptyRewards, "", 0);
+
+        // this is when lock at index 1 becomes continuous
+        veCVE.increaseAmountAndExtendLock(
+            18217003917551520407,
+            1,
+            true,
+            emptyRewards,
+            "",
+            0
+        );
+
+        veCVE.combineAllLocks(true, emptyRewards, "", 0);
+    }
+
     function test_combine_all_locks_to_non_continuous_terminal_one_wad()
         public
     {
@@ -32,7 +73,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         vm.warp(block.timestamp + 986121 + 675582 + 1000);
         veCVE.processExpiredLock(0, false, false, emptyRewards, "", 0);
-        
+
         assertEq(veCVE.userPoints(address(this)), 2000000000000000000);
         (uint256[] memory lockAmounts, ) = veCVE.queryUserLocks(address(this));
         assertEq(lockAmounts.length, 1);

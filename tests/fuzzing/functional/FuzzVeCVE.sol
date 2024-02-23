@@ -142,6 +142,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         bool continuous = true;
         require(_get_locks_length() >= 2);
+        bool hasEpochs = _has_epochs_to_claim();
 
         uint256 preCombineUserPoints = veCVE.userPoints(caller);
         (
@@ -157,16 +158,23 @@ contract FuzzVeCVE is StatefulBaseMarket {
             (, uint40 combinedUnlockTime) = _get_user_locks_info(caller, 0);
 
             uint256 postCombineUserPoints = veCVE.userPoints(caller);
-            // If the existing locks that the user had were all continuous
+            // If the existing locks that the user had were all continuous, and wants to convert to single continuous
 
-            // And a user wants to convert it to a single continuous lock
-            // Ensure that the user points before and after the combine are identical
-            // [continuous, continuous] => continuous terminal; preCombine == postCombine
-            assertEq(
-                preCombineUserPoints,
-                postCombineUserPoints,
-                "VECVE-4 - combineAllLocks() - user points should be same for all prior continuous => continuous failed"
-            );
+            if (hasEpochs) {
+                // if there are epochs remaining to claim, pre user points < post user points
+                assertLt(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VE-CVE-X - combineAllLocks() userPoints should decrease if epochs to claim >0"
+                );
+            } else {
+                // otherwise if there is nothing left to claim, pre user points = post user points
+                assertEq(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VECVE-4 - combineAllLocks() - combineAllLocks() user points should be equal if epochs to claim = 0 for all prior continuous => continuous failed"
+                );
+            }
 
             assertGte(
                 postCombineUserPoints,
@@ -203,6 +211,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         require(veCVE.isShutdown() != 2);
         bool continuous = true;
         require(_get_locks_length() >= 2);
+        bool hasEpochs = _has_epochs_to_claim();
         _save_epoch_unlock_values();
 
         uint256 preCombineUserPoints = veCVE.userPoints(caller);
@@ -227,13 +236,16 @@ contract FuzzVeCVE is StatefulBaseMarket {
                 newLockAmount,
                 "VECVE-8 - combineAllLocks() expected amount sum of new lock to equal calculated"
             );
+
             uint256 postCombineUserPoints = veCVE.userPoints(caller);
-            // vecve-9
-            assertLt(
-                preCombineUserPoints,
-                postCombineUserPoints,
-                "VECVE-9 - combineAllLocks() - some or no prior continuous => continuous failed"
-            );
+            if (hasEpochs) {
+                // vecve-9
+                assertLt(
+                    preCombineUserPoints,
+                    postCombineUserPoints,
+                    "VECVE-9 - combineAllLocks() - some or no prior continuous => continuous failed"
+                );
+            }
             // vecve-10
             assertGte(
                 postCombineUserPoints,
@@ -634,6 +646,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property vecve-45 – Processing a lock in a shutdown contract results in decreasing vecve tokens
     /// @custom:property vecve-46 – Processing a lock in a shutdown contract results in decreasing number of user locks
     /// @custom:precondition veCVE is shut down
+    /// @custom:limitation only tests new lock being continuous
     function processExpiredLock_should_succeed_if_shutdown(
         uint256 seed
     ) public {
@@ -722,6 +735,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property ve-cve-55 Processing an expired lock without relocking should result in chain points being equal.
 
     /// @custom:precondition unlock time is expired
+    /// @custom:limitation only tests new lock being continuous
     function processExpiredLock_should_succeed_if_unlocktime_expired_and_not_shutdown_no_relock()
         public
     {
@@ -753,7 +767,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
             veCVE.processExpiredLock(
                 lockIndex,
                 false,
-                true,
+                true, // This is currently only testing relock true to continuous
                 defaultRewardData,
                 bytes(""),
                 0
@@ -812,6 +826,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
     /// @custom:property ve-cve-56 Processing expired lock with relock should not change the number of locks a user has.
     /// @custom:precondition veCVE is not shut down
     /// @custom:precondition user has a pre-existing, expired lock
+    /// @custom:limitation only tests new lock being continuous
     function processExpiredLock_should_succeed_if_unlocktime_expired_and_not_shutdown_with_relock()
         public
     {
