@@ -83,7 +83,7 @@ contract CTokenPrimitive is CTokenBase {
             shares
         );
         // Checks whether callback or slippage has broken invariants.
-        marketManager.canRedeem(address(this), owner, 0);
+        marketManager.canRedeemWithPrune(address(this), owner, 0);
     }
 
     // PERMISSIONED FUNCTIONS

@@ -1187,9 +1187,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 lastLockIndex = user.length - 1;
 
         if (lockIndex != lastLockIndex) {
-            Lock memory lock = user[lockIndex];
             user[lockIndex] = user[lastLockIndex];
-            user[lastLockIndex] = lock;
         }
 
         user.pop();
@@ -1200,12 +1198,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param user The address of the user.
     /// @param points The number of points to add.
     function _incrementPoints(address user, uint256 points) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints + points;
-            userPoints[user] = userPoints[user] + points;
-        }
+        chainPoints = chainPoints + points;
+        userPoints[user] = userPoints[user] + points;
     }
 
     /// @notice Reduce token points.
@@ -1213,12 +1207,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param user The address of the user.
     /// @param points The number of points to reduce.
     function _reducePoints(address user, uint256 points) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints - points;
-            userPoints[user] = userPoints[user] - points;
-        }
+        chainPoints = chainPoints - points;
+        userPoints[user] = userPoints[user] - points;
     }
 
     /// @notice Increment token unlocks.
@@ -1232,14 +1222,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 epoch,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] +
-                points;
-        }
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] +
+            points;
     }
 
     /// @notice Reduce token unlocks.
@@ -1253,14 +1239,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 epoch,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] -
-                points;
-        }
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] -
+            points;
     }
 
     /// @notice Update token unlock data from an extended lock that
@@ -1280,20 +1262,16 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 previousPoints,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[previousEpoch] =
-                chainUnlocksByEpoch[previousEpoch] -
-                previousPoints;
-            userUnlocksByEpoch[user][previousEpoch] =
-                userUnlocksByEpoch[user][previousEpoch] -
-                previousPoints;
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] +
-                points;
-        }
+        chainUnlocksByEpoch[previousEpoch] =
+            chainUnlocksByEpoch[previousEpoch] -
+            previousPoints;
+        userUnlocksByEpoch[user][previousEpoch] =
+            userUnlocksByEpoch[user][previousEpoch] -
+            previousPoints;
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] +
+            points;
     }
 
     /// @notice Update token data from continuous lock on.
@@ -1309,16 +1287,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 points,
         uint256 unlocks
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints + points;
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - unlocks;
-            userPoints[user] = userPoints[user] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] -
-                unlocks;
-        }
+        chainPoints = chainPoints + points;
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - unlocks;
+        userPoints[user] = userPoints[user] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] -
+            unlocks;
     }
 
     /// @notice Update token data from an early expired lock.

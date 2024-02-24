@@ -349,7 +349,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
 
         // Fail if terminal position is not allowed with no additional
         // adjustment.
-        marketManager.canBorrow(address(this), account, 0);
+        marketManager.canBorrowWithPrune(address(this), account, 0);
     }
 
     /// @notice Repays underlying tokens to lenders, freeing up their
@@ -854,7 +854,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Cache borrow data to save gas.
         DebtData storage userDebtData = _debtOf[account];
 
-        // If debtBalance = 0, then borrowIndex is also 0.
+        // If theres no principal owed, can return immediately.
         if (userDebtData.principal == 0) {
             return 0;
         }
@@ -959,20 +959,12 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
         // Calculate the interest and debt accumulated.
         uint256 interestAccumulated = borrowRate * interestCompounds;
-        uint256 debtAccumulated = FixedPointMathLib.mulDivUp(
-            interestAccumulated,
-            borrowsPrior,
-            WAD
-        );
+        uint256 debtAccumulated = (interestAccumulated * borrowsPrior) / WAD;
         // Calculate new borrows, and the new exchange rate, based on
         // accumulation values above.
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
-        uint256 exchangeRateNew = FixedPointMathLib.mulDiv(
-            interestAccumulated,
-            exchangeRatePrior,
-            WAD
-        ) + exchangeRatePrior;
-
+        uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
+            WAD) + exchangeRatePrior;
         // Update update timestamp, exchange rate, and total outstanding
         // borrows.
         marketData.lastTimestampUpdated = uint40(

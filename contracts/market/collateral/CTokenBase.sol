@@ -400,7 +400,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed.
-        marketManager.canTransfer(address(this), msg.sender, amount);
+        marketManager.canTransferWithPrune(address(this), msg.sender, amount);
 
         // Cache gaugePool, then update gauge pool values for caller.
         IGaugePool gaugePool = _gaugePool();
@@ -427,7 +427,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed.
-        marketManager.canTransfer(address(this), from, amount);
+        marketManager.canTransferWithPrune(address(this), from, amount);
 
         // Cache gaugePool, then update gauge pool values for `from`.
         IGaugePool gaugePool = _gaugePool();
