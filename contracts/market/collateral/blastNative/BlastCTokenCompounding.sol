@@ -20,7 +20,9 @@ contract BlastCTokenCompounding is CTokenCompounding {
     IBlast public constant CHAIN_YIELD_MANAGER = IBlast(0x4300000000000000000000000000000000000002);
     /// @notice The address managing WETH yield, also the token itself.
     /// @dev Will change when deploying to mainnet.
-    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000023);
+    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000004);
+
+    receive() external payable {}
 
     /// CONSTRUCTOR ///
 

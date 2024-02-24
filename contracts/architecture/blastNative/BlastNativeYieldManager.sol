@@ -32,10 +32,10 @@ contract BlastNativeYieldManager is ReentrancyGuard {
     IBlast public constant CHAIN_YIELD_MANAGER = IBlast(0x4300000000000000000000000000000000000002);
     /// @notice The address managing WETH yield, also the token itself.
     /// @dev Will change when deploying to mainnet.
-    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000023);
+    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000004);
     /// @notice The address managing USDB yield, also the token itself.
     /// @dev Will change when deploying to mainnet.
-    IERC20Rebasing public constant USDB_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000022);
+    IERC20Rebasing public constant USDB_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000003);
     /// @notice Protocol epoch length.
     uint256 public constant EPOCH_WINDOW = 2 weeks;
 
@@ -103,7 +103,7 @@ contract BlastNativeYieldManager is ReentrancyGuard {
 
         // Set gas fees yield to claimable and then pass Governor
         // permissioning to Curvance DAO.
-        CHAIN_YIELD_MANAGER.configureClaimableYield();
+        CHAIN_YIELD_MANAGER.configureClaimableGas();
         CHAIN_YIELD_MANAGER.configureGovernor(centralRegistry_.daoAddress());
 
     }

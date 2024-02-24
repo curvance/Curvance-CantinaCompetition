@@ -205,103 +205,18 @@ contract TestMarketManager is TestBaseMarketManagerEntropy {
         vm.expectRevert(
             MarketManager.MarketManager__InvalidParameter.selector
         );
-        marketManager.removeCollateral(address(cTokens[0]), 0, true);
+        marketManager.removeCollateral(address(cTokens[0]), 0);
 
         vm.expectRevert(MarketManager.MarketManager__InvariantError.selector);
-        marketManager.removeCollateral(address(cTokens[0]), 1 ether, true);
+        marketManager.removeCollateral(address(cTokens[0]), 1 ether);
 
         vm.expectRevert(
             MarketManager.MarketManager__InsufficientCollateral.selector
         );
         vm.prank(users[0]);
-        marketManager.removeCollateral(address(cTokens[0]), 2 ether, true);
+        marketManager.removeCollateral(address(cTokens[0]), 2 ether);
 
         vm.prank(users[0]);
-        marketManager.removeCollateral(address(cTokens[0]), 1 ether, true);
-    }
-
-    function testClosePosition() public {
-        address[] memory users = new address[](3);
-        users[0] = address(0x1111);
-        users[1] = address(0x2222);
-        users[2] = address(0x3333);
-
-        noOfCollateralTokens = 2;
-        noOfDebtTokens = 2;
-
-        MockCTokenPrimitive[] memory cTokens = new MockCTokenPrimitive[](
-            noOfCollateralTokens
-        );
-        DToken[] memory dTokens = new DToken[](noOfDebtTokens);
-        MockV3Aggregator[] memory cTokensAgg = new MockV3Aggregator[](
-            noOfCollateralTokens
-        );
-        MockV3Aggregator[]
-            memory cTokensUnderlyingAgg = new MockV3Aggregator[](
-                noOfCollateralTokens
-            );
-        MockV3Aggregator[] memory dTokensAgg = new MockV3Aggregator[](
-            noOfDebtTokens
-        );
-
-        (
-            cTokens,
-            cTokensAgg,
-            cTokensUnderlyingAgg
-        ) = _genCollateralateraltoken(noOfCollateralTokens, 0);
-        (dTokens, dTokensAgg) = _genDebtToken(noOfDebtTokens);
-
-        _genCollateral(users[0], cTokens[0], 1 ether);
-        _postCollateral(users[0], cTokens[0], 1 ether);
-
-        _genCollateral(users[1], cTokens[1], 1 ether);
-        _postCollateral(users[1], cTokens[1], 1 ether);
-
-        _genCollateral(users[2], cTokens[1], 1 ether);
-        _postCollateral(users[2], cTokens[1], 1 ether);
-
-        _supplyDToken(users[2], dTokens[0], 3 ether);
-
-        _borrow(users[0], dTokens[0], 0.7 ether);
-        _borrow(users[1], dTokens[0], 0.7 ether);
-        _borrow(users[2], dTokens[0], 0.7 ether);
-
-        vm.startPrank(users[0]);
-        vm.expectRevert(MarketManager.MarketManager__Unauthorized.selector);
-        marketManager.closePosition(address(dTokens[0]));
-        vm.stopPrank();
-
-        skip(30 minutes);
-        MockERC20Token tokenDebt = MockERC20Token(dTokens[0].underlying());
-        vm.startPrank(users[1]);
-        tokenDebt.transfer(users[0], tokenDebt.balanceOf(users[1]));
-        vm.stopPrank();
-
-        _repay(
-            users[0],
-            dTokens[0],
-            dTokens[0].debtBalanceWithUpdateSafe(users[0])
-        );
-        vm.startPrank(users[0]);
-        marketManager.closePosition(address(dTokens[0]));
-        vm.stopPrank();
-
-        vm.startPrank(users[0]);
-        vm.expectRevert(
-            MarketManager.MarketManager__InvalidParameter.selector
-        );
-        marketManager.closePosition(address(dTokens[1]));
-        vm.stopPrank();
-
-        vm.startPrank(users[0]);
-        marketManager.closePosition(address(cTokens[0]));
-        vm.stopPrank();
-
-        vm.startPrank(users[0]);
-        vm.expectRevert(
-            MarketManager.MarketManager__InvalidParameter.selector
-        );
-        marketManager.closePosition(address(cTokens[0]));
-        vm.stopPrank();
+        marketManager.removeCollateral(address(cTokens[0]), 1 ether);
     }
 }
