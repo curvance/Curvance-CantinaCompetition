@@ -483,6 +483,39 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         );
     }
 
+    /// @notice Used by a delegated user to redeem dTokens in exchange for
+    ///         the underlying asset, on behalf of `account`.
+    /// @dev Updates pending interest before executing the redemption.
+    ///      NOTE: Be careful who you approve here!
+    ///      Not only can they take borrowed funds, but, they can delay
+    ///      repayment through repeated borrows preventing withdrawal.
+    /// @param account The account who will have their dTokens redeemed.
+    /// @param recipient The account who will receive the underlying assets.
+    /// @param tokens The number of dTokens to redeem for underlying tokens.
+    function redeemFor(
+        address account,
+        address recipient,
+        uint256 tokens
+    ) external nonReentrant {
+        if (!_checkIsDelegate(account, msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        // Update pending interest.
+        accrueInterest();
+
+        // Validate that `tokens` can be redeemed and maintain collateral
+        // requirements.
+        marketManager.canRedeem(address(this), account, tokens);
+
+        _redeem(
+            account,
+            recipient,
+            tokens,
+            (exchangeRateCached() * tokens) / WAD
+        );
+    }
+
     /// @notice Used by the position folding contract to redeem underlying tokens
     ///         from the market, on behalf of `account` to apply a complex action.
     /// @dev Only Position folding contract can call this function. 

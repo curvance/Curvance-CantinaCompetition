@@ -64,6 +64,8 @@ contract CTokenPrimitive is CTokenBase {
 
         // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
+        // We don't need to precheck approval since position folding will
+        // always call based on msg.sender, so there is no trust system.
         // Process withdraw on behalf of `owner`.
         _processWithdraw(msg.sender, msg.sender, owner, assets, shares, ta);
 
@@ -189,6 +191,17 @@ contract CTokenPrimitive is CTokenBase {
 
         // No need to check for rounding error, previewWithdraw rounds up.
         shares = _previewWithdraw(assets, ta);
+
+        // Validate caller is allowed to withdraw `shares` on behalf of
+        // `owner`.
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+
+            if (allowed != type(uint256).max) {
+                _spendAllowance(owner, msg.sender, allowed - shares);
+            }
+        }
+        
         // Validate that `owner` can redeem `shares`.
         marketManager.canRedeemWithCollateralRemoval(
             address(this),
@@ -210,6 +223,9 @@ contract CTokenPrimitive is CTokenBase {
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.
+    /// @param delegatedAction Whether the action is delegated and should
+    ///                        use delegation system instead of normal
+    ///                        approval system.
     /// @param forceRedeemCollateral Whether the collateral should be always
     ///                              reduced from `owner`'s collateralPosted.
     /// @return assets The amount of assets received by `receiver`.
@@ -217,8 +233,25 @@ contract CTokenPrimitive is CTokenBase {
         uint256 shares,
         address receiver,
         address owner,
+        bool delegatedAction,
         bool forceRedeemCollateral
     ) internal override returns (uint256 assets) {
+        // Validate caller is allowed to withdraw `shares` on behalf of
+        // `owner`. Or whether the caller has delegated approval or not.
+        if (delegatedAction) {
+            if (!_checkIsDelegate(owner, msg.sender)) {
+                _revert(_UNAUTHORIZED_SELECTOR);
+            }
+        } else {
+            if (msg.sender != owner) {
+                uint256 allowed = allowance(owner, msg.sender);
+
+                if (allowed != type(uint256).max) {
+                    _spendAllowance(owner, msg.sender, allowed - shares);
+                }
+            }
+        }
+
         // Check whether `shares` is above max allowed redemption.
         if (shares > maxRedeem(owner)) {
             // revert with "CTokenPrimitive__RedeemMoreThanMax".
@@ -305,16 +338,6 @@ contract CTokenPrimitive is CTokenBase {
         uint256 shares,
         uint256 ta
     ) internal {
-        // Validate caller is allowed to withdraw `shares` on behalf of
-        // `owner`.
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, by);
-
-            if (allowed != type(uint256).max) {
-                _spendAllowance(owner, by, allowed - shares);
-            }
-        }
-
         // Burn `owner` `shares`.
         _burn(owner, shares);
         // Document removal of `assets` from `ta` due to withdrawal.
