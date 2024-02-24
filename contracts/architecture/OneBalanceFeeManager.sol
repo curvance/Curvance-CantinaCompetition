@@ -13,7 +13,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// CONSTANTS ///
 
     /// @notice GETH Chain ID for Polygon.
-    uint256 public constant POLYGON_CHAIN_ID = 137;
+    uint256 internal constant _POLYGON_CHAIN_ID = 137;
 
     /// STORAGE ///
 
@@ -23,11 +23,17 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// @notice Address of OneBalanceFeeManager on Polygon.
     address public polygonOneBalanceFeeManager;
 
+    /// @notice Status of message hash whether it's delivered or not.
+    mapping(bytes32 => bool) public isDeliveredMessageHash;
+
     /// ERRORS ///
 
     error OneBalanceFeeManager__Unauthorized();
     error OneBalanceFeeManager__InvalidGelatoOneBalance();
     error OneBalanceFeeManager__InvalidPolygonOneBalanceFeeManager();
+    error OneBalanceFeeManager__MessageHashIsAlreadyDelivered(
+        bytes32 messageHash
+    );
 
     /// CONSTRUCTOR ///
 
@@ -36,7 +42,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
         address gelatoOneBalance_,
         address polygonOneBalanceFeeManager_
     ) FeeTokenBridgingHub(centralRegistry_) {
-        if (block.chainid == POLYGON_CHAIN_ID) {
+        if (block.chainid == _POLYGON_CHAIN_ID) {
             if (gelatoOneBalance_ == address(0)) {
                 revert OneBalanceFeeManager__InvalidGelatoOneBalance();
             }
@@ -64,11 +70,11 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     function depositOneBalanceFee() external nonReentrant {
         _checkDaoPermissions();
 
-        if (block.chainid == POLYGON_CHAIN_ID) {
+        if (block.chainid == _POLYGON_CHAIN_ID) {
             _depositOneBalanceFee();
         } else {
             _sendFeeToken(
-                POLYGON_CHAIN_ID,
+                _POLYGON_CHAIN_ID,
                 polygonOneBalanceFeeManager,
                 IERC20(feeToken).balanceOf(address(this))
             );
@@ -84,16 +90,25 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     ///                by the requester. This message's signature will already
     ///                have been verified (as long as msg.sender is
     ///                the Wormhole Relayer contract)
+    /// @param deliveryHash The VAA hash of the deliveryVAA.
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory /* additionalMessages */,
         bytes32 /* srcAddress */,
         uint16 /* srcChainId */,
-        bytes32 /* deliveryHash */
+        bytes32 deliveryHash
     ) external payable {
-        if (block.chainid != POLYGON_CHAIN_ID) {
+        if (block.chainid != _POLYGON_CHAIN_ID) {
             return;
         }
+
+        if (isDeliveredMessageHash[deliveryHash]) {
+            revert OneBalanceFeeManager__MessageHashIsAlreadyDelivered(
+                deliveryHash
+            );
+        }
+
+        isDeliveredMessageHash[deliveryHash] = true;
 
         address wormholeRelayer = address(centralRegistry.wormholeRelayer());
 
@@ -116,7 +131,7 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
     /// @param newGelatoOneBalance The address of the new gelato one balance
     ///                            account.
     function setOneBalanceAddress(address newGelatoOneBalance) external {
-        if (block.chainid != POLYGON_CHAIN_ID) {
+        if (block.chainid != _POLYGON_CHAIN_ID) {
             return;
         }
 

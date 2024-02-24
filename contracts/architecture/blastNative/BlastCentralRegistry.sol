@@ -15,8 +15,7 @@ contract BlastCentralRegistry is CentralRegistry {
     /// CONSTANT ///
 
     /// @notice The address is managing WETH yield, also the token itself.
-    /// @dev Will change when deploying to mainnet.
-    IWETH public constant WETH = IWETH(0x4200000000000000000000000000000000000004);
+    IWETH public constant WETH = IWETH(0x4300000000000000000000000000000000000004);
 
     /// STORAGE ///
 

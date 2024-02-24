@@ -19,8 +19,7 @@ contract BlastCTokenCompounding is CTokenCompounding {
     /// @notice The address managing ETH/Gas yield.
     IBlast public constant CHAIN_YIELD_MANAGER = IBlast(0x4300000000000000000000000000000000000002);
     /// @notice The address managing WETH yield, also the token itself.
-    /// @dev Will change when deploying to mainnet.
-    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4200000000000000000000000000000000000004);
+    IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4300000000000000000000000000000000000004);
 
     receive() external payable {}
 
@@ -36,6 +35,10 @@ contract BlastCTokenCompounding is CTokenCompounding {
         marketManager_
     ) {
         nativeYieldManager = IBlastCentralRegistry(address(centralRegistry_)).nativeYieldManager();
+
+        // Set gas fees yield to claimable and then pass Governor
+        // permissioning to native yield manager.
+        CHAIN_YIELD_MANAGER.configureClaimableGas();
     }
 
     /// @notice Harvests and compounds outstanding vault rewards

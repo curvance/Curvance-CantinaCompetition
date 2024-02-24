@@ -34,6 +34,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// ERRORS ///
 
+    error ProtocolMessagingHub__InvalidBalance();
     error ProtocolMessagingHub__Unauthorized();
     error ProtocolMessagingHub__ChainIsNotSupported();
     error ProtocolMessagingHub__OperatorIsNotAuthorized(
@@ -442,6 +443,19 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             centralRegistry.feeAccumulator(),
             IERC20(feeToken).balanceOf(address(this))
         );
+    }
+
+    /// @notice Withdraws `amount` gas tokens from the protocol messaging hub
+    ///         to the DAO address.
+    /// @param amount The amount of native gas tokens to withdraw.
+    function withdrawNative(uint256 amount) external {
+        _checkAuthorizedPermissions(true);
+
+        if (amount > address(this).balance) {
+            revert ProtocolMessagingHub__InvalidBalance();
+        }
+
+        SafeTransferLib.forceSafeTransferETH(amount, centralRegistry.daoAddress());
     }
 
     /// INTERNAL FUNCTIONS ///
