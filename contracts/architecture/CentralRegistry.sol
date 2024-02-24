@@ -197,6 +197,8 @@ contract CentralRegistry is ERC165 {
     event WormholeCoreSet(address newAddress);
     event WormholeRelayerSet(address newAddress);
     event CircleTokenMessengerSet(address newAddress);
+    event WormholeChainIDsSet(uint256[] chainIds, uint16[] wormholeChainIds);
+    event CCTPDomainsSet(uint256[] chainIds, uint32[] cctpDomains);
     event TokenBridgeSet(address newAddress);
     event GelatoSponsorSet(address newAddress);
     event NewChainAdded(uint256 chainId, address operatorAddress);
@@ -345,6 +347,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new Oracle Router contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newOracleRouter The new address of oracleRouter.
     function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
@@ -388,6 +391,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets an address of Circle TokenMessenger contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CircleTokenMessengerSet} event.
     /// @param newCircleTokenMessenger The new address of Circle TokenMessenger.
     function setCircleTokenMessenger(
         address newCircleTokenMessenger
@@ -400,6 +404,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets an address of Wormhole TokenBridge contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {TokenBridgeSet} event.
     /// @param newTokenBridge The new address of Wormhole TokenBridge.
     function setTokenBridge(address newTokenBridge) external {
         _checkElevatedPermissions();
@@ -408,7 +413,9 @@ contract CentralRegistry is ERC165 {
         emit TokenBridgeSet(newTokenBridge);
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @notice Registers wormhole specific chain IDs for evm chain IDs.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {WormholeChainIDsSet} event.
     /// @param chainIds Array of EVM chain IDs to register.
     /// @param wormholeChainIds Array of Wormhole specific chain IDs.
     function registerWormholeChainIDs(
@@ -421,9 +428,12 @@ contract CentralRegistry is ERC165 {
         for (uint256 i; i < numChainIds; ++i) {
             wormholeChainId[chainIds[i]] = wormholeChainIds[i];
         }
+        emit WormholeChainIDsSet(chainIds, wormholeChainIds);
     }
 
-    /// @notice Register CCTP domains for evm chain IDs.
+    /// @notice Registers CCTP domains for EVM chain IDs.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CCTPDomainsSet} event.
     /// @param chainIds EVM chain IDs.
     /// @param cctpDomains CCTP domains.
     function registerCCTPDomains(
@@ -437,6 +447,7 @@ contract CentralRegistry is ERC165 {
         for (uint256 i; i < numChainIds; ++i) {
             cctpDomain[chainIds[i]] = cctpDomains[i];
         }
+        emit CCTPDomainsSet(chainIds, cctpDomains);
     }
 
     /// @notice Sets an address of gelato sponsor.

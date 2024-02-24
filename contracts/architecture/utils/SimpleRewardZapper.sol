@@ -252,7 +252,7 @@ contract SimpleRewardZapper is ReentrancyGuard {
         // Cache underlying to minimize external calls.
         address dTokenUnderlying = DToken(dToken).underlying();
 
-        if (swapperData.outputToken != dTokenUnderlying) {
+        if (rewardToken != dTokenUnderlying) {
             // Validate target contract is an approved swapper.
             if (!centralRegistry.isSwapper(swapperData.target)) {
                 revert SimpleRewardZapper__InvalidZapper(swapperData.target);

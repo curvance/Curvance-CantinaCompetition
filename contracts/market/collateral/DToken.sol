@@ -852,10 +852,10 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @return The current balance index of `account`.
     function debtBalanceCached(address account) public view returns (uint256) {
         // Cache borrow data to save gas.
-        DebtData storage userDebtData = _debtOf[account];
+        DebtData storage accountDebt = _debtOf[account];
 
         // If theres no principal owed, can return immediately.
-        if (userDebtData.principal == 0) {
+        if (accountDebt.principal == 0) {
             return 0;
         }
 
@@ -864,8 +864,8 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // ((Account's principal * DToken's exchange rate) / 
         // Account's exchange rate).
         return
-            (userDebtData.principal * marketData.exchangeRate) /
-            userDebtData.accountExchangeRate;
+            (accountDebt.principal * marketData.exchangeRate) /
+            accountDebt.accountExchangeRate;
     }
 
     /// @notice Returns the decimals of the dToken.
