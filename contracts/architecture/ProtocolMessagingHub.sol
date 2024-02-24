@@ -455,7 +455,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             revert ProtocolMessagingHub__InvalidBalance();
         }
 
-        SafeTransferLib.forceSafeTransferETH(amount, centralRegistry.daoAddress());
+        SafeTransferLib.forceSafeTransferETH(centralRegistry.daoAddress(), amount);
     }
 
     /// INTERNAL FUNCTIONS ///
