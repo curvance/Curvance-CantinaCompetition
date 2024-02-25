@@ -12,10 +12,11 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
-import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
+import { IInterestRateModel } from "contracts/interfaces/market/IInterestRateModel.sol";
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract.
@@ -87,7 +88,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @notice Interest rate reserve factor.
     uint256 public interestFactor;
     /// @notice Current Interest Rate Model.
-    DynamicInterestRateModel public interestRateModel;
+    IInterestRateModel public interestRateModel;
     /// @notice Information corresponding to borrow exchange rate.
     MarketData public marketData;
 
@@ -183,7 +184,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         marketData.lastTimestampUpdated = uint40(block.timestamp);
         marketData.exchangeRate = uint216(WAD);
 
-        _setInterestRateModel(DynamicInterestRateModel(interestRateModel_));
+        _setInterestRateModel(IInterestRateModel(interestRateModel_));
 
         // Assign the interest factor for interest generated
         // inside this market.
@@ -739,7 +740,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Update pending interest.
         accrueInterest();
 
-        _setInterestRateModel(DynamicInterestRateModel(newInterestRateModel));
+        _setInterestRateModel(IInterestRateModel(newInterestRateModel));
     }
 
     /// @notice Accrues pending interest and updates the interest factor.
@@ -1035,10 +1036,17 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @param newInterestRateModel The new interest rate model for this
     ///                             dToken to use.
     function _setInterestRateModel(
-        DynamicInterestRateModel newInterestRateModel
+        IInterestRateModel newInterestRateModel
     ) internal {
         // Ensure we are switching to an actual Interest Rate Model.
-        newInterestRateModel.IS_INTEREST_RATE_MODEL();
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newInterestRateModel),
+                type(IInterestRateModel).interfaceId
+            )
+        ) {
+            revert DToken__ValidationFailed();
+        }
 
         // Cache the current interest rate model to save gas.
         address oldInterestRateModel = address(interestRateModel);

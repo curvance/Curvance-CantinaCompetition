@@ -16,6 +16,38 @@ import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMe
 import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
+/// @title Curvance DAO Central Registry.
+/// @notice Manages permissioning and protocol contract registration
+///         within the Curvance Protocol.
+/// @dev The Central Registry acts a single source of truth for the Curvance
+///      Protocol. This covers everything from multichain operations, to
+///      contract locations, to protocol fees, to protocol multipliers
+///      associated with various actions.
+///
+///      Permissioning inside Curvance has two tiers:
+///      - Standard DAO permissions: This is associated with actions that
+///        reduce risk inside the Curvance system, or need to continually
+///        managed by the DAO elected operating team.
+///      - Elevated DAO permissions: This is associated with actions that
+///        increase risk inside the Curvance system, the most sensitive of
+///        controls. This requires a 7 day delay from the DAO elected
+///        operating team for any action, or the "Emergency Council" made up
+///        of both Curvance Collective members and external stakeholders.
+///     
+///      All values inside Curvance are entered in basis point form. However,
+///      Fees are recorded internally in `WAD` format, or 1e18, rather than 
+///      basis points, or 1e4. This is for greater precision in computations.
+///      As a result, you will see multiplier values stored in 1e4 form,
+///      and fees stored in 1e18 form. 
+///
+///      The Central Registry also manages the delegation system, creating
+///      a new primitive as an alternative to the standard approval system.
+///      Users can "delegate" specific actions or contracts to any address.
+///      Providing that address authority on behalf of the user in the
+///      contract. Approvals can also be mass revoked via the "approval index"
+///      system. By incrementing ones approval index, a user can revoke all
+///      approved address' delegation priveleges at the same time.
+///
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
@@ -733,6 +765,18 @@ contract CentralRegistry is ERC165 {
 
     /// MULTICHAIN SUPPORT LOGIC
 
+    /// @notice Adds support for a new chain.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {NewChainAdded} event.
+    /// @param newOmnichainOperator The address that will be the source
+    ///                             address sending messaging to this chain
+    ///                             for validation.
+    /// @param messagingHub Contract address for new chains Messaging Hub.
+    /// @param cveAddress CVE address on the chain.
+    /// @param chainId GETH Chain ID where this address authorized.
+    /// @param sourceAux Auxilliary data when the chain is source.
+    /// @param destinationAux Auxilliary data when the chain is destination.
+    /// @param messagingChainId Messaging Chain ID where this address authorized.
     function addChainSupport(
         address newOmnichainOperator,
         address messagingHub,
@@ -744,15 +788,15 @@ contract CentralRegistry is ERC165 {
     ) external {
         _checkElevatedPermissions();
 
+        // Validate Chain Operator has not been added already.
         if (
             omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2
         ) {
-            // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Validate this "new" chain is not currently supported.
         if (supportedChainData[chainId].isSupported == 2) {
-            // Chain already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -775,13 +819,20 @@ contract CentralRegistry is ERC165 {
         emit NewChainAdded(chainId, newOmnichainOperator);
     }
 
-    /// @notice removes
+    /// @notice Removes support for a chain.
+    /// @dev Callable by an address with DAO Authority or higher.
+    ///      Emits a {RemovedChain} event.
+    /// @param currentOmnichainOperator The current address that is the source
+    ///                                 address sending messaging to this
+    ///                                 chain for validation.
+    /// @param chainId GETH Chain ID where `currentOmnichainOperator` is
+    ///                authorized.
     function removeChainSupport(
         address currentOmnichainOperator,
         uint256 chainId
     ) external {
-        // Lower permissioning on removing chains as it only
-        // mitigates risk to the system
+        // Lower permissioning on removing chains as it will reduce risk to
+        // the system.
         _checkDaoPermissions();
 
         OmnichainData storage operatorToRemove = omnichainOperators[
@@ -800,13 +851,13 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Remove chain support from protocol
+        // Remove chain support from protocol.
         supportedChainData[chainId].isSupported = 1;
-        // Remove operator support from protocol
+        // Remove operator support from protocol.
         operatorToRemove.isAuthorized = 1;
-        // Decrease supportedChains
+        // Decrease supportedChains.
         supportedChains--;
-        // Remove messagingChainId <> GETH chainId mapping table references
+        // Remove messagingChainId <> GETH chainId mapping table references.
         delete GETHToMessagingChainId[
             messagingToGETHChainId[operatorToRemove.messagingChainId]
         ];
