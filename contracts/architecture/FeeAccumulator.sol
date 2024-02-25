@@ -15,6 +15,28 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
+/// @title Curvance Fee Accumulator.
+/// @notice A system for managing fee collected through Curvance DAO
+///         operations within Curvance Protocol.
+/// @dev The Fee Accumulator acts as a unified hub for collecting and
+///      transforming fees collected and their preparation for delivery
+///      to Curvance DAO users. Currently, fees can be swapped via offchain
+///      solver integrations such as 1Inch. An alternative model of
+///      permissionless dutch auctions such as the work seen by Uniswap/Euler
+///      could be used. However, A/B testing may provide greater insight into
+///      the superior model.
+///
+///      Fees can be marked for OTC which will allow the Curvance DAO to
+///      purchase them, at fair market value. The Fee accumulator also works
+///      in collaboration with the Protocol Messaging Hub to manage system
+///      information and fees. Epoch fee distributions are distributed once a
+///      single chain has recorded fees accumulated and tokens locked across
+///      all supported chains inside the Curvance Protocol system.
+///
+///      These fees are distributed pro-rata based on the under of locked
+///      veCVE tokens on each chain, see "CVELocker.sol" for more information
+///      on this.
+///
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 

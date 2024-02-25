@@ -23,7 +23,7 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 ///      These changes include:
 ///      - Single choice lock duration (1 year):
 ///        This change was made to allow for a unified point system that can
-///        be managed across an infinite amount of chains, as well as
+///        be managed across an infinite number of chains, as well as
 ///        standardizing the rewards received by DAO participants.
 ///
 ///      - Removal of inflationary rewards:
@@ -55,7 +55,7 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 ///      - Multichain locks:
 ///        A voting escrow lock can be moved from any chain to any chain
 ///        inside the Curvance Protocol system. The nature of multichain fees
-///        also for chains themselves to participate in incentive markets
+///        allows for chains themselves to participate in incentive markets
 ///        in attracting Curvance DAO members to migrate their locks on to
 ///        their chain, attracting more fees, and as a result,
 ///        volume (in theory).
@@ -79,16 +79,16 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 ///        checks, this does not introduce any exploitable attack vector.
 ///
 ///      - Point system (yay points):
-///        Rather than directly looking at votes or a users veCVE balance,
+///        Rather than directly looking at votes or a user's veCVE balance,
 ///        a points system is introduced to eliminate the need for a "kicking"
-///        system. A user's points are maintained inside a current points
-///        checkpoint value, and a dynamic mapping that monitors at what epoch
-///        a users points will unlock due to voting escrow lock expiry.
+///        system. A user's points are maintained inside a points checkpoint
+///        value, and a dynamic mapping that monitors at what epoch
+///        a user's points will unlock due to voting escrow lock expiry.
 ///        Theoretically this checkpoint value can become out of sync with
 ///        chainwide system if a user lets their rewards pile up. This can
-///        result in a users checkpointed points becoming too high when
+///        result in a user's checkpointed points becoming too high when
 ///        examined directly, but does not introduce any exploitable vector
-///        since the users checkpoint will be updated as they step through
+///        since the user's checkpoint will be updated as they step through
 ///        each reward epoch. 
 ///      
 contract VeCVE is ERC20, ReentrancyGuard {
