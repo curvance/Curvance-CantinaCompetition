@@ -506,16 +506,6 @@ contract FeeAccumulator is ReentrancyGuard {
         rewardTokenInfo[token].forOTC = state ? 2 : 1;
     }
 
-    function setGasParameters(
-        uint256 gasForCalldata,
-        uint256 gasForCrosschain
-    ) external {
-        _checkDaoPermissions();
-
-        _gasForCalldata = gasForCalldata;
-        _gasForCrosschain = gasForCrosschain;
-    }
-
     /// @notice Moves fee token approval to new messaging hub.
     /// @dev Removes prior messaging hub approval for maximum safety.
     function notifyUpdatedMessagingHub() external {

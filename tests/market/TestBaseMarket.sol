@@ -259,9 +259,7 @@ contract TestBaseMarket is TestBase {
 
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            address(oneBalanceFeeManager),
-            1e9,
-            1e9
+            address(oneBalanceFeeManager)
         );
         centralRegistry.setFeeAccumulator(address(feeAccumulator));
     }
