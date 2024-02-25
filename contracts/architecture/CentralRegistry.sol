@@ -7,6 +7,7 @@ import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ITimelock } from "contracts/interfaces/ITimelock.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
@@ -674,6 +675,11 @@ contract CentralRegistry is ERC165 {
         delete hasDaoPermissions[previousDaoAddress];
         // Add new permission data.
         hasDaoPermissions[newDaoAddress] = true;
+
+        // Notify timelock controller of a DAO address update.
+        if (timelock != address(0)) {
+            ITimelock(timelock).updateDaoAddress();
+        }
 
         emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
     }

@@ -601,8 +601,8 @@ contract ComplexZapper is ReentrancyGuard {
             );
         }
 
-        // Validate that output of redemption equals expectation.
-        if (assets != expectedAssets) {
+        // Validate that output of redemption is sufficient.
+        if (assets >= expectedAssets) {
             revert ComplexZapper__ExecutionError();
         }
     }

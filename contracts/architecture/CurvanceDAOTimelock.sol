@@ -14,6 +14,7 @@ contract Timelock is TimelockController {
     uint256 public constant MINIMUM_DELAY = 7 days;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
+    /// @notice Internally stored Curvance DAO address.
     address internal _DAO_ADDRESS;
 
     /// ERRORS ///
@@ -49,6 +50,8 @@ contract Timelock is TimelockController {
         _grantRole(EXECUTOR_ROLE, _DAO_ADDRESS);
     }
 
+    /// @notice Permissionlessly update DAO address if it has been changed
+    ///         through the Curvance Central Registry.
     function updateDaoAddress() external {
         address daoAddress = centralRegistry.daoAddress();
         if (daoAddress != _DAO_ADDRESS) {
@@ -57,6 +60,7 @@ contract Timelock is TimelockController {
 
             _grantRole(PROPOSER_ROLE, daoAddress);
             _grantRole(EXECUTOR_ROLE, daoAddress);
+            _DAO_ADDRESS = daoAddress;
         }
     }
 }
