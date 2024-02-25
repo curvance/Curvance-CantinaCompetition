@@ -57,9 +57,9 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
 
-    /// @notice Token name metadata.
+    /// @notice veCVE name metadata.
     bytes32 private immutable _name;
-    /// @notice Token symbol metadata.
+    /// @notice veCVE symbol metadata.
     bytes32 private immutable _symbol;
 
     /// STORAGE ///

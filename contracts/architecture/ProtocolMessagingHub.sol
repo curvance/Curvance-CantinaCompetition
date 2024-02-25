@@ -27,9 +27,11 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
     /// STORAGE ///
 
-    /// @notice 1 = activate; 2 = paused.
+    /// @notice Whether the Protocol Messaging Hub is paused or not.
+    /// @dev 1 = activate; 2 = paused.
     uint256 public isPaused = 1;
     /// @notice Status of message hash whether it's delivered or not.
+    /// @dev False = undelivered; True = delivered.
     mapping(bytes32 => bool) public isDeliveredMessageHash;
 
     /// ERRORS ///
@@ -86,6 +88,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     ) external payable {
         _checkMessagingHubStatus();
 
+        // Validate that this is not a replay attack.
         if (isDeliveredMessageHash[deliveryHash]) {
             revert ProtocolMessagingHub__MessageHashIsAlreadyDelivered(
                 deliveryHash
@@ -93,9 +96,9 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
         }
 
         isDeliveredMessageHash[deliveryHash] = true;
-
         address wormholeRelayer = address(centralRegistry.wormholeRelayer());
 
+        // Validate that the Wormhole Relayer is the caller.
         if (msg.sender != wormholeRelayer) {
             _revert(_UNAUTHORIZED_SELECTOR);
         }
@@ -125,6 +128,8 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
         uint8 payloadId = abi.decode(payload, (uint8));
 
+        // PayloadID = 1 Indicates submitting fees and epoch lock data
+        // for THIS chain, for a reported epoch.
         if (payloadId == 1) {
             (, address token, uint256 amount) = abi.decode(
                 payload,
@@ -133,6 +138,9 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
             address feeToken = centralRegistry.feeToken();
 
+            // Make sure the token received is the
+            // fee token (locker reward token), otherwise do not execute
+            // epoch finalization.
             if (token == feeToken) {
                 ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
 
@@ -156,6 +164,9 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 locker.recordEpochRewards(amount);
                 return;
             }
+        // PayloadID = 4 Indicates receiving some crosschain information from
+        // a remote chain. Such as Gauge emissions configuration,
+        // locked token data, locker rewards data. 
         } else if (payloadId == 4) {
             (, bytes memory emissionData) = abi.decode(
                 payload,
@@ -181,7 +192,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                     )
                 );
 
-            // Message Type 1: receive feeAccumulator information of locked
+            // Message Type 1: Receive feeAccumulator information of locked
             //                 tokens on a chain for the epoch.
             if (messageType == 1) {
                 IFeeAccumulator(centralRegistry.feeAccumulator())
@@ -196,14 +207,14 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 return;
             }
 
-            // Message Type 2: receive finalized epoch rewards data.
+            // Message Type 2: Receive finalized epoch rewards data.
             if (messageType == 2) {
                 IFeeAccumulator(centralRegistry.feeAccumulator())
                     .receiveExecutableLockData(chainLockedAmount);
                 return;
             }
 
-            // Message Type 3+: update gauge emissions for all gauge
+            // Message Type 3+: Update gauge emissions for all gauge
             //                  controllers on this chain.
             {
                 // Use scoping for stack too deep logic.
@@ -229,6 +240,8 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                     }
                 }
             }
+        // PayloadID = 5 Indicates migrating a veCVE lock from the source
+        // chain to this destination chain. 
         } else if (payloadId == 5) {
             (, bytes memory lockData) = abi.decode(payload, (uint8, bytes));
 
@@ -240,7 +253,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
 
             RewardsData memory rewardData;
 
-            // rewardData is forced to be an empty struct since Curvance does
+            // RewardData is forced to be an empty struct since Curvance does
             // not how long it has been between lock destruction and creation,
             // and any dynamic action could have stale characteristics.
             IVeCVE(veCVE).createLockFor(
@@ -400,7 +413,9 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// @notice Returns required amount of native asset for message fee.
     /// @param dstChainId Chain ID of the target blockchain.
     /// @return Required fee.
-    function cveBridgeFee(uint256 dstChainId) external view returns (uint256) {
+    function cveBridgeFee(
+        uint256 dstChainId
+    ) external view returns (uint256) {
         return _quoteWormholeFee(dstChainId, true);
     }
 
@@ -455,7 +470,10 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
             revert ProtocolMessagingHub__InvalidBalance();
         }
 
-        SafeTransferLib.forceSafeTransferETH(centralRegistry.daoAddress(), amount);
+        SafeTransferLib.forceSafeTransferETH(
+            centralRegistry.daoAddress(),
+            amount
+        );
     }
 
     /// INTERNAL FUNCTIONS ///
@@ -486,7 +504,7 @@ contract ProtocolMessagingHub is FeeTokenBridgingHub {
                 centralRegistry.wormholeChainId(dstChainId),
                 toAddress,
                 abi.encode(payloadId, payload), // payload
-                0, // no receiver value needed since we're just passing a message
+                0, // No receiver value since we're just passing a message.
                 _GAS_LIMIT
             );
     }

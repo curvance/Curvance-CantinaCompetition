@@ -386,6 +386,9 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
+    /// @notice Records a Curvance reward epoch, if all chains have been
+    ///         recorded executes system wide reporting and distribution
+    ///         to all chains within the Curvance Protocol system.
     function executeEpochFeeRouter(uint256 chainId) external {
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         uint256 epoch = locker.nextEpochToDeliver();
@@ -532,7 +535,8 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Adds multiple reward tokens to the contract for Gelato Network
     ///         to read.
     /// @dev Does not fail on duplicate token, merely skips it and continues.
-    /// @param newTokens Array of token addresses to be added as reward tokens.
+    /// @param newTokens Array of token addresses to be added as reward
+    ///                  tokens.
     function addRewardTokens(address[] calldata newTokens) external {
         _checkDaoPermissions();
 
@@ -547,14 +551,15 @@ contract FeeAccumulator is ReentrancyGuard {
                 continue;
             }
 
-            // Add reward token data to both rewardTokenInfo & rewardTokenData.
+            // Add reward token data to both rewardTokenInfo
+            // and rewardTokenData.
             _addRewardToken(newTokens[i]);
         }
     }
 
     /// @notice Removes a reward token from the contract data that
     ///         Gelato Network reads.
-    /// @dev    Will revert on unsupported token address.
+    /// @dev Will revert on unsupported token address.
     /// @param rewardTokenToRemove The address of the token to be removed.
     function removeRewardToken(address rewardTokenToRemove) external {
         _checkDaoPermissions();
@@ -572,7 +577,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ) {
             if (currentTokens[i] == rewardTokenToRemove) {
-                // We found the token so break out of loop.
+                // We found the token so break out of the loop.
                 tokenIndex = i;
                 break;
             }
@@ -581,18 +586,18 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        // subtract 1 from numTokens so we properly have the end index.
+        // Subtract 1 from numTokens so we properly have the end index.
         if (tokenIndex == numTokens--) {
-            // we were unable to find the token in the array,
+            // We were unable to find the token in the array,
             // so something is wrong and we need to revert.
             revert FeeAccumulator__RemovalTokenDoesNotExist();
         }
 
-        // copy last item in list to location of item to be removed.
+        // Copy last item in list to location of item to be removed.
         address[] storage currentList = rewardTokens;
-        // copy the last token index slot to tokenIndex.
+        // Copy the last token index slot to tokenIndex.
         currentList[tokenIndex] = currentList[numTokens];
-        // remove the last element
+        // Remove the last element.
         currentList.pop();
 
         // Now delete the reward token support flag from mapping.
@@ -703,6 +708,15 @@ contract FeeAccumulator is ReentrancyGuard {
         });
     }
 
+    /// @notice Executes a Curvance reward epoch, by recording rewards on this
+    ///         chain and then distributing information and rewards to all
+    ///         other chains within the system.
+    /// @param chainData Struct containing chain data to cache execution
+    ///                  instructions.
+    /// @param numChains The number of chains to distribute rewards to.
+    /// @param epoch The epoch to distribute rewards for.
+    /// @return The rewards this epoch for having 1 CVE locked as veCVE,
+    ///         in reward tokens in `WAD` form.
     function _executeEpochFeeRouter(
         ChainData memory chainData,
         uint256 numChains,
