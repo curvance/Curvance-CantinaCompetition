@@ -39,9 +39,7 @@ contract MigrateFeeAccumulatorTest is TestBaseFeeAccumulator {
 
         FeeAccumulator newFeeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            _USDC_ADDRESS,
-            1e9,
-            1e9
+            _USDC_ADDRESS
         );
         centralRegistry.setFeeAccumulator(address(newFeeAccumulator));
 
