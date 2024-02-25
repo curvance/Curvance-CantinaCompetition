@@ -10,13 +10,10 @@ contract BlastFeeAccumulator is FeeAccumulator, BlastYieldDelegable {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address oneBalanceFeeManager_,
-        uint256 gasForCalldata_,
-        uint256 gasForCrosschain_
+        address oneBalanceFeeManager_
     ) FeeAccumulator(
         centralRegistry_,
-        oneBalanceFeeManager_,
-        gasForCalldata_,
-        gasForCrosschain_) BlastYieldDelegable (centralRegistry_) {}
+        oneBalanceFeeManager_
+    ) BlastYieldDelegable (centralRegistry_) {}
 
 }
