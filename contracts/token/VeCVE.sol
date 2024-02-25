@@ -14,6 +14,83 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
+/// @title Curvance Voting Escrow CVE token.
+/// @notice A system for managing the larger Curvance Voting Escrow System
+///         within Curvance Protocol.
+/// @dev The veCVE token uses concepts of voting escrow common in Defi,
+///      with several transformative changes.
+///
+///      These changes include:
+///      - Single choice lock duration (1 year):
+///        This change was made to allow for a unified point system that can
+///        be managed across an infinite amount of chains, as well as
+///        standardizing the rewards received by DAO participants.
+///
+///      - Removal of inflationary rewards:
+///        A popular system to incentivize people to lock tokens is
+///        inflationary rewards, these have been removed to standardize
+///        the incentives with users with creating disproportionate rewards
+///        for being "early". The goal is a continuous system that is just 
+///        as attractive in year 15 as it is on Day 1.
+///
+///      - Offchain Voting: by moving from an onchain voting mechanism we
+///        minimize expenses to users and can aggregate votes across all
+///        chains at the same time, via calling getVotes() on each chain
+///        for a user.
+///
+///      - Continuous Lock mode:
+///        A mode that every lock can be set to that eliminates the need to
+///        continually relock voting escrow positions, minimizing friction
+///        for users. Also comes with a bonus to system fees and DAO voting
+///        power to give a boost to users who have opted for longer term
+///        duration risk. Continuous lock mode can be turned on or off at any
+///        time. When shutting off continuous lock mode, a lock becomes a
+///        natural 1 year duration lock.
+///
+///      - Multichain fees:
+///        This is talked about in greater detail inside "CVELocker.sol",
+///        system fees are distributed pro-rata across all chains rather
+///        than isolated chain fee distributions.
+///
+///      - Multichain locks:
+///        A voting escrow lock can be moved from any chain to any chain
+///        inside the Curvance Protocol system. The nature of multichain fees
+///        also for chains themselves to participate in incentive markets
+///        in attracting Curvance DAO members to migrate their locks on to
+///        their chain, attracting more fees, and as a result,
+///        volume (in theory).
+///
+///      - Early Expiry optionality:
+///        Voting escrow locks introduce duration risk to participants,
+///        some of which may want to opt out of due to exogenous
+///        circumstances. Because of this, veCVE introducing the option to
+///        expire a voting escrow lock early, in exchange, a heavy penalty
+///        to the lock's CVE deposit is slashed and sent to the DAO.
+///        Providing Curvance DAO additional resources to develop and improve
+///        Curvance protocol.
+///
+///      - Combining Locks:
+///        Users also have the option to combine all their locks into a single
+///        fresh lock. This allows for consolidation, and improvement in
+///        future transaction execution quality (lower gas costs) when
+///        managing their voting escrow position(s). Combine locks can
+///        theoretically temporarily be blocked is an epoch has rolled over
+///        and has not been delivered to the chain due to runtime invariant
+///        checks, this does not introduce any exploitable attack vector.
+///
+///      - Point system (yay points):
+///        Rather than directly looking at votes or a users veCVE balance,
+///        a points system is introduced to eliminate the need for a "kicking"
+///        system. A user's points are maintained inside a current points
+///        checkpoint value, and a dynamic mapping that monitors at what epoch
+///        a users points will unlock due to voting escrow lock expiry.
+///        Theoretically this checkpoint value can become out of sync with
+///        chainwide system if a user lets their rewards pile up. This can
+///        result in a users checkpointed points becoming too high when
+///        examined directly, but does not introduce any exploitable vector
+///        since the users checkpoint will be updated as they step through
+///        each reward epoch. 
+///      
 contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
 

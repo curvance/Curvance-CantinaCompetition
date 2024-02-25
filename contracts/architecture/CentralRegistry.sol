@@ -17,20 +17,20 @@ import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridg
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance DAO Central Registry.
-/// @notice Manages permissioning and protocol contract registration
+/// @notice Manages permissions and protocol contract registration
 ///         within the Curvance Protocol.
 /// @dev The Central Registry acts a single source of truth for the Curvance
 ///      Protocol. This covers everything from multichain operations, to
 ///      contract locations, to protocol fees, to protocol multipliers
 ///      associated with various actions.
 ///
-///      Permissioning inside Curvance has two tiers:
+///      Permissions inside Curvance has two tiers:
 ///      - Standard DAO permissions: This is associated with actions that
 ///        reduce risk inside the Curvance system, or need to continually
 ///        managed by the DAO elected operating team.
 ///      - Elevated DAO permissions: This is associated with actions that
 ///        increase risk inside the Curvance system, the most sensitive of
-///        controls. This requires a 7 day delay from the DAO elected
+///        controls. This requires a 7-day delay from the DAO elected
 ///        operating team for any action, or the "Emergency Council" made up
 ///        of both Curvance Collective members and external stakeholders.
 ///     
@@ -45,8 +45,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 ///      Users can "delegate" specific actions or contracts to any address.
 ///      Providing that address authority on behalf of the user in the
 ///      contract. Approvals can also be mass revoked via the "approval index"
-///      system. By incrementing ones approval index, a user can revoke all
-///      approved address' delegation priveleges at the same time.
+///      system. By incrementing one's approval index, a user can revoke all
+///      approved address' delegation privileges at the same time.
 ///
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
