@@ -137,13 +137,13 @@ contract OneBalanceFeeManager is FeeTokenBridgingHub {
 
         _checkDaoPermissions();
 
-        // Revoke previous approval
+        // Revoke previous approval.
         SafeTransferLib.safeApprove(feeToken, address(gelatoOneBalance), 0);
 
         gelatoOneBalance = IGelatoOneBalance(newGelatoOneBalance);
 
         // We infinite approve fee token so that gelato 1Balance
-        // can drag funds to proper chain
+        // can drag funds to proper chain.
         SafeTransferLib.safeApprove(
             feeToken,
             newGelatoOneBalance,

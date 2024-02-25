@@ -704,9 +704,9 @@ contract CentralRegistry is ERC165 {
         daoAddress = newDaoAddress;
 
         // Validate the DAO address is actually being transferred.
-        if (previousDaoAddress == newDaoAddress) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
+        // if (previousDaoAddress == newDaoAddress) {
+        //     _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        // }
 
         // Delete permission data.
         delete hasDaoPermissions[previousDaoAddress];
@@ -732,9 +732,9 @@ contract CentralRegistry is ERC165 {
         timelock = newTimelock;
 
         // Validate the timelock address is actually being transferred.
-        if (previousTimelock == newTimelock) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
+        // if (previousTimelock == newTimelock) {
+        //     _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        // }
 
         // Delete permission data.
         delete hasDaoPermissions[previousTimelock];
@@ -760,9 +760,9 @@ contract CentralRegistry is ERC165 {
 
         // Validate the Emergency Council address is actually being
         // transferred.
-        if (previousEmergencyCouncil == newEmergencyCouncil) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
+        // if (previousEmergencyCouncil == newEmergencyCouncil) {
+        //     _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        // }
 
         // Delete permission data.
         delete hasDaoPermissions[previousEmergencyCouncil];

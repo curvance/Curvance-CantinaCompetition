@@ -18,8 +18,10 @@ import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegist
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
-    /// @param isRewardToken 2 = yes; 0 or 1 = no.
-    /// @param forOTC 2 = yes; 0 or 1 = no.
+    /// @param isRewardToken Whether an address is the reward token or not.
+    ///                      2 = yes; 0 or 1 = no.
+    /// @param forOTC Whether a token should be held back for DAO OTC or not.
+    ///               2 = yes; 0 or 1 = no.
     struct RewardToken {
         uint256 isRewardToken;
         uint256 forOTC;
@@ -37,8 +39,7 @@ contract FeeAccumulator is ReentrancyGuard {
     address public immutable feeToken;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Address of OneBalanceFeeManager contract
+    /// @notice Address of OneBalanceFeeManager contract.
     address public immutable oneBalanceFeeManager;
 
     /// @notice Fee token decimal unit.
@@ -46,9 +47,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// STORAGE ///
 
+    /// @notice Cached Protocol Messaging Hub address.
     address internal _messagingHubStored;
-    uint256 internal _gasForCalldata;
-    uint256 internal _gasForCrosschain;
 
     LockData[] public crossChainLockData;
     /// @notice We store token data semi redundantly to save gas
@@ -112,9 +112,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address oneBalanceFeeManager_,
-        uint256 gasForCalldata_,
-        uint256 gasForCrosschain_
+        address oneBalanceFeeManager_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -132,9 +130,6 @@ contract FeeAccumulator is ReentrancyGuard {
         feeToken = centralRegistry.feeToken();
         oneBalanceFeeManager = oneBalanceFeeManager_;
         _feeTokenUnit = 10 ** IERC20(feeToken).decimals();
-        _gasForCalldata = gasForCalldata_;
-        _gasForCrosschain = gasForCrosschain_;
-
         // We document this incase we ever need to update messaging hub
         // and want to revoke.
         _messagingHubStored = centralRegistry.protocolMessagingHub();
