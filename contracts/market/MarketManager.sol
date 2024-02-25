@@ -1373,7 +1373,6 @@ contract MarketManager is LiquidityManager, ERC165 {
             // Subtract 1 from i prior since length starts at 1 but array
             // indices start at 0.
             if (positionsToClose[--i]) {
-                
                 // If the asset is not at the end of the array swap and pop
                 // entries.
                 if (i != lastAssetIndex) {
@@ -1384,7 +1383,12 @@ contract MarketManager is LiquidityManager, ERC165 {
                     // account asset list.
                     storedAssets.pop();
                 } else {
-                    --lastAssetIndex;
+                    // If we are on the last index we don't need to decrement
+                    // lastAssetIndex again.
+                    if (lastAssetIndex != 0) {
+                        --lastAssetIndex;
+                    }
+                    
                     storedAssets.pop();
                 }
 
