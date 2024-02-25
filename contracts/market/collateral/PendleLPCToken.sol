@@ -5,7 +5,7 @@ import { CTokenCompounding, FixedPointMathLib, SafeTransferLib, IERC20, ICentral
 
 import { SwapperLib } from "contracts/libraries/SwapperLib.sol";
 
-import { IPendleRouter, ApproxParams } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
+import { IPendleRouter, ApproxParams, LimitOrderData } from "contracts/interfaces/external/pendle/IPendleRouter.sol";
 import { IPMarket } from "contracts/interfaces/external/pendle/IPMarket.sol";
 import { IPPrincipalToken } from "contracts/interfaces/external/pendle/IPPrincipalToken.sol";
 import { IPYieldToken } from "contracts/interfaces/external/pendle/IPYieldToken.sol";
@@ -166,7 +166,8 @@ contract PendleLPCToken is CTokenCompounding {
             (
                 SwapperLib.Swap[] memory swapDataArray,
                 uint256 minLPAmount,
-                ApproxParams memory approx
+                ApproxParams memory approx,
+                LimitOrderData memory limit
             ) = abi.decode(data, (SwapperLib.Swap[], uint256, ApproxParams));
 
             {
@@ -277,7 +278,8 @@ contract PendleLPCToken is CTokenCompounding {
                     address(sd.lp),
                     balance,
                     minLPAmount,
-                    approx
+                    approx,
+                    limit
                 );
             }
 

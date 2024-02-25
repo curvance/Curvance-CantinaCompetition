@@ -88,7 +88,7 @@ abstract contract CallDataCheckerBase is IExternalCallDataChecker {
                     add(tempBytes, lengthmod),
                     mul(0x20, iszero(lengthmod))
                 )
-                let end := add(mc, _length)
+                let end := add(mc, sub(_length, lengthmod))
 
                 for {
                     // The multiplication in the next line has the same exact purpose

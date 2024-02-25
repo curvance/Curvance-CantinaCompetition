@@ -72,7 +72,7 @@ contract Timelock is TimelockController, ERC165 {
     /// @return Whether `interfaceId` is implemented or not.
     function supportsInterface(
         bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    ) public view virtual override(ERC165, TimelockController) returns (bool) {
         return
             interfaceId == type(ITimelock).interfaceId ||
             super.supportsInterface(interfaceId);
