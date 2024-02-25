@@ -36,6 +36,33 @@ contract ComplexZapper is ReentrancyGuard {
         bool depositInputAsWETH;
     }
 
+    /// @param cToken The address of the cToken corresponding to Curve lp
+    ///               token to be exited.
+    /// @param shares The amount of shares to redeemed.
+    /// @param forceRedeemCollateral Whether the collateral should be always
+    ///                              reduced from callers collateralPosted.
+    struct RedemptionData {
+        address cToken;
+        uint256 shares;
+        bool forceRedeemCollateral;
+    }
+
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The BPT pool ID.
+    /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
+    ///                            token or not. 
+    ///                            false = all tokens.
+    ///                            true = single token.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` = true,
+    ///                         indicates the coin index inside the Balancer
+    ///                         BPT to withdraw as.
+    struct BPTRedemption {
+        address balancerVault;
+        bytes32 balancerPoolId;
+        bool singleAssetWithdraw;
+        uint256 singleAssetIndex;
+    }
+
     /// CONSTANTS ///
 
     /// @notice Curvance DAO hub.
@@ -96,7 +123,7 @@ contract ComplexZapper is ReentrancyGuard {
     /// @param tokens The underlying coins of the Curve lp token.
     /// @param recipient Address that should receive Zapped deposit.
     /// @return outAmount The output amount received from Zapping.
-    function curveIn(
+    function enterCurve(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -129,8 +156,8 @@ contract ComplexZapper is ReentrancyGuard {
         );
     }
 
-    /// @notice Withdraws a Curvance Curve lp position, and zaps it into
-    ///         desired token (zapData.outputToken).
+    /// @notice Exits a Curve lp, and zaps it into desired
+    ///         token (zapData.outputToken).
     /// @param lpMinter The minter address of the Curve lp token.
     /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokens The underlying token addresses of the Curve lp token.
@@ -145,7 +172,7 @@ contract ComplexZapper is ReentrancyGuard {
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param recipient Address that should receive Zapped withdrawal.
     /// @return outAmount The output amount received from Zapping.
-    function curveOut(
+    function exitCurve(
         address lpMinter,
         ZapperData calldata zapData,
         address[] calldata tokens,
@@ -163,40 +190,72 @@ contract ComplexZapper is ReentrancyGuard {
         );
 
         // Exit Curve lp position.
-        CurveLib.exitCurve(
+        outAmount = _exitCurve(
             lpMinter,
-            zapData.inputToken,
+            zapData,
             tokens,
-            zapData.inputAmount,
             singleAssetWithdraw,
-            singleAssetIndex
+            singleAssetIndex,
+            tokenSwaps,
+            recipient
         );
-
-        uint256 numTokenSwaps = tokenSwaps.length;
-        // Swap unwrapped token(s) into `zapData.outputToken`.
-        for (uint256 i; i < numTokenSwaps; ) {
-            // Validate target contract is an approved swapper.
-            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
-            }
-
-            // Execute swap(s) into `zapData.outputToken`.
-            unchecked {
-                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
-            }
-        }
-
-        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        // Validate zap output is sufficient.
-        if (outAmount < zapData.minimumOut) {
-            revert ComplexZapper__SlippageError();
-        }
-
-        // Transfer output tokens to `recipient`.
-        _transferToRecipient(zapData.outputToken, recipient, outAmount);
     }
 
-    /// @notice Swaps then deposits `zapData.inputToken` into BPT, and
+    /// @notice Withdraws a Curvance Curve lp position, and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param redemptionData Struct containing information on redemption action
+    ///                       to execute. Containing values:
+    ///                       1. The address of the cToken corresponding to Curve lp
+    ///                          token to be exited.
+    ///                       2. The amount of shares to redeemed.
+    ///                       3. Whether the collateral should be always
+    ///                          reduced from callers collateralPosted.
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokens The underlying token addresses of the Curve lp token.
+    /// @param singleAssetWithdraw Whether lp should be unwrapped to a single
+    ///                            token or not. 
+    ///                            0 = all tokens.
+    ///                            1 = single token; uint256 interface.
+    ///                            2+ = single token; int128 interface.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` != 0, indicates
+    ///                         the coin index inside the Curve lp
+    ///                         to withdraw as.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function redeemAndExitCurve(
+        RedemptionData calldata redemptionData,
+        address lpMinter,
+        ZapperData calldata zapData,
+        address[] calldata tokens,
+        uint256 singleAssetWithdraw,
+        uint256 singleAssetIndex,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) external nonReentrant returns (uint256 outAmount) {
+        // Exit Curvance position.
+        _exitCurvance(
+            redemptionData.cToken,
+            redemptionData.shares,
+            redemptionData.forceRedeemCollateral,
+            zapData.inputToken,
+            zapData.inputAmount
+        );
+    
+        // Exit Curve lp position.
+        outAmount = _exitCurve(
+            lpMinter,
+            zapData,
+            tokens,
+            singleAssetWithdraw,
+            singleAssetIndex,
+            tokenSwaps,
+            recipient
+        );
+    }
+
+    /// @notice Swaps then deposits `zapData.inputToken` into a BPT, and
     ///         enters into Curvance position.
     /// @param cToken The Curvance cToken address.
     /// @param zapData Zap instruction data to execute the Zap.
@@ -206,7 +265,7 @@ contract ComplexZapper is ReentrancyGuard {
     /// @param tokens The underlying coins of the BPT.
     /// @param recipient Address that should receive Zapped deposit.
     /// @return outAmount The output amount received from Zapping.
-    function balancerIn(
+    function enterBalancer(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -241,29 +300,28 @@ contract ComplexZapper is ReentrancyGuard {
         );
     }
 
-    /// @notice Withdraws a Curvance BPT position, and zaps it into
-    ///         desired token (zapData.outputToken).
-    /// @param balancerVault The Balancer vault address.
-    /// @param balancerPoolId The BPT pool ID.
+    /// @notice Exits a BPT, and zaps it into desired
+    ///         token (zapData.outputToken).
+    /// @param balancerData Struct containing information on BPT redemption
+    ///                       to execute. Containing values:
+    ///                       1. The Balancer vault address.
+    ///                       2. The BPT pool ID.
+    ///                       3. Whether BPT should be unwrapped to a single
+    ///                          token or not. 
+    ///                          false = all tokens.
+    ///                          true = single token.
+    ///                       4. Used if `singleAssetWithdraw` = true,
+    ///                          indicates the coin index inside the Balancer
+    ///                          BPT to withdraw as. 
     /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokens The underlying token addresses of the BPT.
-    /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
-    ///                            token or not. 
-    ///                            false = all tokens.
-    ///                            true = single token.
-    /// @param singleAssetIndex Used if `singleAssetWithdraw` = true,
-    ///                         indicates the coin index inside the Balancer
-    ///                         BPT to withdraw as.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param recipient Address that should receive Zapped withdrawal.
     /// @return outAmount The output amount received from Zapping.
-    function balancerOut(
-        address balancerVault,
-        bytes32 balancerPoolId,
+    function exitBalancer(
+        BPTRedemption calldata balancerData,
         ZapperData calldata zapData,
         address[] calldata tokens,
-        bool singleAssetWithdraw,
-        uint256 singleAssetIndex,
         SwapperLib.Swap[] calldata tokenSwaps,
         address recipient
     ) external nonReentrant returns (uint256 outAmount) {
@@ -275,39 +333,72 @@ contract ComplexZapper is ReentrancyGuard {
             zapData.inputAmount
         );
 
-        // Exit BPT position.
-        BalancerLib.exitBalancer(
-            balancerVault,
-            balancerPoolId,
-            zapData.inputToken,
+        // Exit Balancer lp position.
+        outAmount = _exitBalancer(
+            balancerData.balancerVault,
+            balancerData.balancerPoolId,
+            balancerData.singleAssetWithdraw,
+            balancerData.singleAssetIndex,
+            zapData,
             tokens,
-            zapData.inputAmount,
-            singleAssetWithdraw,
-            singleAssetIndex
+            tokenSwaps,
+            recipient
         );
+    }
 
-        uint256 numTokenSwaps = tokenSwaps.length;
-        // Swap unwrapped token(s) into `zapData.outputToken`.
-        for (uint256 i; i < numTokenSwaps; ) {
-            // Validate target contract is an approved swapper.
-            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
-            }
-
-            // Execute swap(s) into `zapData.outputToken`.
-            unchecked {
-                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
-            }
-        }
-
-        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        // Validate zap output is sufficient.
-        if (outAmount < zapData.minimumOut) {
-            revert ComplexZapper__SlippageError();
-        }
-
-        // Transfer output tokens to `recipient`.
-        _transferToRecipient(zapData.outputToken, recipient, outAmount);
+    /// @notice Withdraws a Curvance BPT position, and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param redemptionData Struct containing information on redemption action
+    ///                       to execute. Containing values:
+    ///                       1. The address of the cToken corresponding to Curve lp
+    ///                          token to be exited.
+    ///                       2. The amount of shares to redeemed.
+    ///                       3. Whether the collateral should be always
+    ///                          reduced from callers collateralPosted.
+    /// @param balancerData Struct containing information on BPT redemption
+    ///                       to execute. Containing values:
+    ///                       1. The Balancer vault address.
+    ///                       2. The BPT pool ID.
+    ///                       3. Whether BPT should be unwrapped to a single
+    ///                          token or not. 
+    ///                          false = all tokens.
+    ///                          true = single token.
+    ///                       4. Used if `singleAssetWithdraw` = true,
+    ///                          indicates the coin index inside the Balancer
+    ///                          BPT to withdraw as. 
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokens The underlying token addresses of the BPT.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function redeemAndExitBalancer(
+        RedemptionData calldata redemptionData,
+        BPTRedemption calldata balancerData,
+        ZapperData calldata zapData,
+        address[] calldata tokens,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) external nonReentrant returns (uint256 outAmount) {
+        // Exit Curvance position.
+        _exitCurvance(
+            redemptionData.cToken,
+            redemptionData.shares,
+            redemptionData.forceRedeemCollateral,
+            zapData.inputToken,
+            zapData.inputAmount
+        );
+    
+        // Exit Balancer lp position.
+        outAmount = _exitBalancer(
+            balancerData.balancerVault,
+            balancerData.balancerPoolId,
+            balancerData.singleAssetWithdraw,
+            balancerData.singleAssetIndex,
+            zapData,
+            tokens,
+            tokenSwaps,
+            recipient
+        );
     }
 
     /// @notice Swaps then deposits `zapData.inputToken` into Velodrome
@@ -319,7 +410,7 @@ contract ComplexZapper is ReentrancyGuard {
     /// @param factory The Velodrome factory address.
     /// @param recipient Address that should receive Zapped deposit.
     /// @return outAmount The output amount received from Zapping.
-    function velodromeIn(
+    function enterVelodrome(
         address cToken,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -354,14 +445,14 @@ contract ComplexZapper is ReentrancyGuard {
         );
     }
 
-    /// @notice Withdraws a Curvance Velodrome sAMM/vAMM position, and zaps it
-    ///         into desired token (zapData.outputToken).
+    /// @notice Exits a Velodrome sAMM/vAMM, and zaps it into desired
+    ///         token (zapData.outputToken).
     /// @param router The Velodrome router address.
     /// @param zapData Zap instruction data to execute the Zap.
     /// @param tokenSwaps Array of swap instruction data to execute the Zap.
     /// @param recipient Address that should receive Zapped withdrawal.
     /// @return outAmount The output amount received from Zapping.
-    function velodromeOut(
+    function exitVelodrome(
         address router,
         ZapperData calldata zapData,
         SwapperLib.Swap[] calldata tokenSwaps,
@@ -375,87 +466,55 @@ contract ComplexZapper is ReentrancyGuard {
             zapData.inputAmount
         );
 
-        // Exit Velodrome sAMM/vAMM position.
-        VelodromeLib.exitVelodrome(
+        // Exit Velodrome lp position.
+        outAmount = _exitVelodrome(
             router,
+            zapData,
+            tokenSwaps,
+            recipient
+        );
+    }
+
+    /// @notice Withdraws a Curvance Velodrome sAMM/vAMM position, and zaps it
+    ///         into desired token (zapData.outputToken).
+    /// @param redemptionData Struct containing information on redemption action
+    ///                       to execute. Containing values:
+    ///                       1. The address of the cToken corresponding to Curve lp
+    ///                          token to be exited.
+    ///                       2. The amount of shares to redeemed.
+    ///                       3. Whether the collateral should be always
+    ///                          reduced from callers collateralPosted.
+    /// @param router The Velodrome router address.
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function redeemAndExitVelodrome(
+        RedemptionData calldata redemptionData,
+        address router,
+        ZapperData calldata zapData,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) external nonReentrant returns (uint256 outAmount) {
+        // Exit Curvance position.
+        _exitCurvance(
+            redemptionData.cToken,
+            redemptionData.shares,
+            redemptionData.forceRedeemCollateral,
             zapData.inputToken,
             zapData.inputAmount
         );
 
-        uint256 numTokenSwaps = tokenSwaps.length;
-        // Swap unwrapped tokens into `zapData.outputToken`.
-        for (uint256 i; i < numTokenSwaps; ) {
-            // Validate target contract is an approved swapper.
-            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
-            }
-
-            // Execute swap(s) into `zapData.outputToken`.
-            unchecked {
-                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
-            }
-        }
-
-        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
-        // Validate zap output is sufficient.
-        if (outAmount < zapData.minimumOut) {
-            revert ComplexZapper__SlippageError();
-        }
-
-        // Transfer output tokens to `recipient`.
-        _transferToRecipient(zapData.outputToken, recipient, outAmount);
+        // Exit Velodrome lp position.
+        outAmount = _exitVelodrome(
+            router,
+            zapData,
+            tokenSwaps,
+            recipient
+        );
     }
 
     /// INTERNAL FUNCTIONS ///
-
-    /// @notice Swap `inputToken` into desired cToken underlying tokens.
-    /// @param inputToken The input token address.
-    /// @param inputAmount The amount of `inputToken` to swap for underlying
-    ///                    tokens.
-    /// @param tokenSwaps Array of swap instruction data
-    /// @param depositInputAsWETH Used when `inputToken` is chain gas token,
-    ///                           indicates depositing gas token into wrapper
-    ///                           contract.
-    function _swapForUnderlyings(
-        address inputToken,
-        uint256 inputAmount,
-        SwapperLib.Swap[] calldata tokenSwaps,
-        bool depositInputAsWETH
-    ) internal {
-        // If the input token is chain gas token, check if it should be
-        // wrapped.
-        if (CommonLib.isETH(inputToken)) {
-            // Validate message has gas token attached.
-            if (inputAmount != msg.value) {
-                revert ComplexZapper__ExecutionError();
-            }
-
-            if (depositInputAsWETH) {
-                IWETH(WETH).deposit{ value: inputAmount }();
-            }
-        } else {
-            SafeTransferLib.safeTransferFrom(
-                inputToken,
-                msg.sender,
-                address(this),
-                inputAmount
-            );
-        }
-
-        uint256 numTokenSwaps = tokenSwaps.length;
-        // Swap `inputToken` into desired cToken underlying tokens.
-        for (uint256 i; i < numTokenSwaps; ) {
-            // Validate target contract is an approved swapper.
-            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
-                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
-            }
-
-            // Execute swap into underlying(s).
-            unchecked {
-                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
-            }
-        }
-    }
 
     /// @notice Routes lp/BPT into Curvance cToken contract.
     /// @param cToken The Curvance cToken address.
@@ -504,6 +563,261 @@ contract ComplexZapper is ReentrancyGuard {
 
         // Bubble up how many cTokens `recipient` received.
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
+    }
+
+    /// @notice Exits a Curvance position.
+    /// @param cToken The address of the cToken to be exited.
+    /// @param shares The amount of shares to redeemed.
+    /// @param forceRedeemCollateral Whether the collateral should be always
+    ///                              reduced from callers collateralPosted.
+    /// @param underlying The expected underlying token of `cToken`.
+    /// @param expectedAssets The amount of assets expected to be redeemed
+    ///                       on exiting Curvance position.
+    function _exitCurvance(
+        address cToken,
+        uint256 shares,
+        bool forceRedeemCollateral,
+        address underlying,
+        uint256 expectedAssets
+    ) internal {
+        if (CTokenPrimitive(cToken).underlying() != underlying) {
+            revert ComplexZapper__ExecutionError();
+        }
+
+        uint256 assets;
+
+        // Transfer Curve lp token to the Zapper.
+        if (forceRedeemCollateral) {
+            assets = CTokenPrimitive(cToken).redeemCollateralFor(
+                shares,
+                address(this),
+                msg.sender
+            );
+        } else {
+            assets = CTokenPrimitive(cToken).redeemFor(
+                shares,
+                address(this),
+                msg.sender
+            );
+        }
+
+        // Validate that output of redemption equals expectation.
+        if (assets != expectedAssets) {
+            revert ComplexZapper__ExecutionError();
+        }
+    }
+
+    /// @notice Withdraws a Curvance Curve lp position, and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param lpMinter The minter address of the Curve lp token.
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokens The underlying token addresses of the Curve lp token.
+    /// @param singleAssetWithdraw Whether lp should be unwrapped to a single
+    ///                            token or not. 
+    ///                            0 = all tokens.
+    ///                            1 = single token; uint256 interface.
+    ///                            2+ = single token; int128 interface.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` != 0, indicates
+    ///                         the coin index inside the Curve lp
+    ///                         to withdraw as.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function _exitCurve(
+        address lpMinter,
+        ZapperData calldata zapData,
+        address[] calldata tokens,
+        uint256 singleAssetWithdraw,
+        uint256 singleAssetIndex,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) internal returns (uint256 outAmount){
+        // Exit Curve lp position.
+        CurveLib.exitCurve(
+            lpMinter,
+            zapData.inputToken,
+            tokens,
+            zapData.inputAmount,
+            singleAssetWithdraw,
+            singleAssetIndex
+        );
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // Swap unwrapped token(s) into `zapData.outputToken`.
+        for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
+            // Execute swap(s) into `zapData.outputToken`.
+            unchecked {
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
+            }
+        }
+
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
+        if (outAmount < zapData.minimumOut) {
+            revert ComplexZapper__SlippageError();
+        }
+
+        // Transfer output tokens to `recipient`.
+        _transferToRecipient(zapData.outputToken, recipient, outAmount);
+    }
+
+    /// @notice Withdraws a Curvance BPT position, and zaps it into
+    ///         desired token (zapData.outputToken).
+    /// @param balancerVault The Balancer vault address.
+    /// @param balancerPoolId The BPT pool ID.
+    /// @param singleAssetWithdraw Whether BPT should be unwrapped to a single
+    ///                            token or not. 
+    ///                            false = all tokens.
+    ///                            true = single token.
+    /// @param singleAssetIndex Used if `singleAssetWithdraw` = true,
+    ///                         indicates the coin index inside the Balancer
+    ///                         BPT to withdraw as.
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokens The underlying token addresses of the BPT.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function _exitBalancer(
+        address balancerVault,
+        bytes32 balancerPoolId,
+        bool singleAssetWithdraw,
+        uint256 singleAssetIndex,
+        ZapperData calldata zapData,
+        address[] calldata tokens,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) internal returns (uint256 outAmount){
+        // Exit BPT position.
+        BalancerLib.exitBalancer(
+            balancerVault,
+            balancerPoolId,
+            zapData.inputToken,
+            tokens,
+            zapData.inputAmount,
+            singleAssetWithdraw,
+            singleAssetIndex
+        );
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // Swap unwrapped token(s) into `zapData.outputToken`.
+        for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
+            // Execute swap(s) into `zapData.outputToken`.
+            unchecked {
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
+            }
+        }
+
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
+        if (outAmount < zapData.minimumOut) {
+            revert ComplexZapper__SlippageError();
+        }
+
+        // Transfer output tokens to `recipient`.
+        _transferToRecipient(zapData.outputToken, recipient, outAmount);
+    }
+
+    /// @notice Withdraws a Curvance Velodrome sAMM/vAMM position, and zaps it
+    ///         into desired token (zapData.outputToken).
+    /// @param router The Velodrome router address.
+    /// @param zapData Zap instruction data to execute the Zap.
+    /// @param tokenSwaps Array of swap instruction data to execute the Zap.
+    /// @param recipient Address that should receive Zapped withdrawal.
+    /// @return outAmount The output amount received from Zapping.
+    function _exitVelodrome(
+        address router,
+        ZapperData calldata zapData,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        address recipient
+    ) internal returns (uint256 outAmount){
+        // Exit Velodrome sAMM/vAMM position.
+        VelodromeLib.exitVelodrome(
+            router,
+            zapData.inputToken,
+            zapData.inputAmount
+        );
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // Swap unwrapped tokens into `zapData.outputToken`.
+        for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
+            // Execute swap(s) into `zapData.outputToken`.
+            unchecked {
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
+            }
+        }
+
+        outAmount = CommonLib.getTokenBalance(zapData.outputToken);
+        // Validate zap output is sufficient.
+        if (outAmount < zapData.minimumOut) {
+            revert ComplexZapper__SlippageError();
+        }
+
+        // Transfer output tokens to `recipient`.
+        _transferToRecipient(zapData.outputToken, recipient, outAmount);
+    }
+
+    /// @notice Swap `inputToken` into desired cToken underlying tokens.
+    /// @param inputToken The input token address.
+    /// @param inputAmount The amount of `inputToken` to swap for underlying
+    ///                    tokens.
+    /// @param tokenSwaps Array of swap instruction data
+    /// @param depositInputAsWETH Used when `inputToken` is chain gas token,
+    ///                           indicates depositing gas token into wrapper
+    ///                           contract.
+    function _swapForUnderlyings(
+        address inputToken,
+        uint256 inputAmount,
+        SwapperLib.Swap[] calldata tokenSwaps,
+        bool depositInputAsWETH
+    ) internal {
+        // If the input token is chain gas token, check if it should be
+        // wrapped.
+        if (CommonLib.isETH(inputToken)) {
+            // Validate message has gas token attached.
+            if (inputAmount != msg.value) {
+                revert ComplexZapper__ExecutionError();
+            }
+
+            if (depositInputAsWETH) {
+                IWETH(WETH).deposit{ value: inputAmount }();
+            }
+        } else {
+            SafeTransferLib.safeTransferFrom(
+                inputToken,
+                msg.sender,
+                address(this),
+                inputAmount
+            );
+        }
+
+        uint256 numTokenSwaps = tokenSwaps.length;
+        // Swap `inputToken` into desired cToken underlying tokens.
+        for (uint256 i; i < numTokenSwaps; ) {
+            // Validate target contract is an approved swapper.
+            if (!centralRegistry.isSwapper(tokenSwaps[i].target)) {
+                revert ComplexZapper__InvalidSwapper(i, tokenSwaps[i].target);
+            }
+
+            // Execute swap into underlying(s).
+            unchecked {
+                SwapperLib.swap(centralRegistry, tokenSwaps[i++]);
+            }
+        }
     }
 
     /// @notice Helper function for efficiently transferring tokens

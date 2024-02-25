@@ -248,7 +248,7 @@ abstract contract LiquidityManager {
     /// @param account The account to determine liquidity for with a
     ///                hypothetical action.
     /// @param action Struct containing information on hypothetical action
-    ///               to execute. Containing Values:
+    ///               to execute. Containing values:
     ///               mTokenModified The mToken to hypothetically redeem/borrow.
     ///               redeemTokens The number of tokens to hypothetically redeem,
     ///                            in `shares`.

@@ -32,7 +32,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
-    function testCurveInWithETH() public {
+    function testEnterCurveWithETH() public {
         uint256 ethAmount = 3 ether;
         vm.deal(user, ethAmount);
 
@@ -41,7 +41,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        complexZapper.curveIn{ value: ethAmount }(
+        complexZapper.enterCurve{ value: ethAmount }(
             address(0),
             ComplexZapper.ZapperData(
                 address(0),
@@ -61,7 +61,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         assertGt(IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user), 0);
     }
 
-    function testCurveInWithWETH() public {
+    function testEnterCurveWithWETH() public {
         uint256 wethAmount = 3 ether;
         deal(_WETH_ADDRESS, user, wethAmount);
 
@@ -71,7 +71,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         tokens[0] = _USDT_ADDRESS;
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
-        complexZapper.curveIn(
+        complexZapper.enterCurve(
             address(0),
             ComplexZapper.ZapperData(
                 _WETH_ADDRESS,
@@ -91,8 +91,8 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         assertGt(IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user), 0);
     }
 
-    function testCurveOut() public {
-        testCurveInWithETH();
+    function testExitCurve() public {
+        testEnterCurveWithETH();
 
         uint256 withdrawAmount = IERC20(_CURVE_TRICRYPTO_LP).balanceOf(user);
 
@@ -102,7 +102,7 @@ contract TestComplexZapperCurveStable is TestBaseMarket {
         tokens[1] = _WBTC_ADDRESS;
         tokens[2] = _WETH_ADDRESS;
         IERC20(_CURVE_TRICRYPTO_LP).approve(address(complexZapper), withdrawAmount);
-        complexZapper.curveOut(
+        complexZapper.exitCurve(
             _CURVE_TRICRYPTO_MINTER,
             ComplexZapper.ZapperData(
                 _CURVE_TRICRYPTO_LP,
