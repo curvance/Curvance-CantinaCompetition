@@ -236,7 +236,7 @@ contract ComplexZapper is ReentrancyGuard {
     ) external nonReentrant returns (uint256 outAmount) {
         // Exit Curvance position.
         _exitCurvance(
-            redemptionData.cToken,
+            CTokenPrimitive(redemptionData.cToken),
             redemptionData.shares,
             redemptionData.forceRedeemCollateral,
             zapData.inputToken,
@@ -381,7 +381,7 @@ contract ComplexZapper is ReentrancyGuard {
     ) external nonReentrant returns (uint256 outAmount) {
         // Exit Curvance position.
         _exitCurvance(
-            redemptionData.cToken,
+            CTokenPrimitive(redemptionData.cToken),
             redemptionData.shares,
             redemptionData.forceRedeemCollateral,
             zapData.inputToken,
@@ -498,7 +498,7 @@ contract ComplexZapper is ReentrancyGuard {
     ) external nonReentrant returns (uint256 outAmount) {
         // Exit Curvance position.
         _exitCurvance(
-            redemptionData.cToken,
+            CTokenPrimitive(redemptionData.cToken),
             redemptionData.shares,
             redemptionData.forceRedeemCollateral,
             zapData.inputToken,
@@ -574,13 +574,13 @@ contract ComplexZapper is ReentrancyGuard {
     /// @param expectedAssets The amount of assets expected to be redeemed
     ///                       on exiting Curvance position.
     function _exitCurvance(
-        address cToken,
+        CTokenPrimitive cToken,
         uint256 shares,
         bool forceRedeemCollateral,
         address underlying,
         uint256 expectedAssets
     ) internal {
-        if (CTokenPrimitive(cToken).underlying() != underlying) {
+        if (cToken.underlying() != underlying) {
             revert ComplexZapper__ExecutionError();
         }
 
@@ -588,13 +588,13 @@ contract ComplexZapper is ReentrancyGuard {
 
         // Transfer Curve lp token to the Zapper.
         if (forceRedeemCollateral) {
-            assets = CTokenPrimitive(cToken).redeemCollateralFor(
+            assets = cToken.redeemCollateralFor(
                 shares,
                 address(this),
                 msg.sender
             );
         } else {
-            assets = CTokenPrimitive(cToken).redeemFor(
+            assets = cToken.redeemFor(
                 shares,
                 address(this),
                 msg.sender

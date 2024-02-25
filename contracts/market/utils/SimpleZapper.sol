@@ -15,6 +15,19 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 
 contract SimpleZapper is ReentrancyGuard {
+    /// TYPES ///
+
+    /// @param cToken The address of the cToken corresponding to Curve lp
+    ///               token to be exited.
+    /// @param shares The amount of shares to redeemed.
+    /// @param forceRedeemCollateral Whether the collateral should be always
+    ///                              reduced from callers collateralPosted.
+    struct RedemptionData {
+        address cToken;
+        uint256 shares;
+        bool forceRedeemCollateral;
+    }
+    
     /// CONSTANTS ///
 
     /// @notice Curvance DAO hub.
@@ -154,6 +167,50 @@ contract SimpleZapper is ReentrancyGuard {
         return _repayDebt(dToken, repayAmount, recipient);
     }
 
+    /// @notice Withdraws a Curvance position, and swaps it into
+    ///         desired token (swapperData.outputToken).
+    /// @param redemptionData Struct containing information on redemption action
+    ///                       to execute. Containing values:
+    ///                       1. The address of the mToken corresponding to
+    ///                          position to be exited.
+    ///                       2. The amount of shares to redeemed.
+    ///                       3. Whether the collateral should be always
+    ///                          reduced from callers collateralPosted.
+    /// @param swapperData Swap instruction data to execute the repayment.
+    /// @param recipient Address that should have its outstanding debt repaid.
+    /// @return The excess amount of dToken underlying that was returned
+    ///         to `recipient`.
+    function redeemAndSwap(
+        RedemptionData calldata redemptionData,
+        SwapperLib.Swap memory swapperData,
+        address recipient
+    ) external nonReentrant returns (uint256) {
+        // Exit Curvance position.
+        _exitCurvance(
+            CTokenPrimitive(redemptionData.cToken),
+            redemptionData.shares,
+            redemptionData.forceRedeemCollateral,
+            swapperData.inputToken,
+            swapperData.inputAmount
+        );
+
+        // Validate target contract is an approved swapper.
+        if (!centralRegistry.isSwapper(swapperData.target)) {
+            revert SimpleZapper__InvalidZapper(swapperData.target);
+        }
+
+        // Execute swap into `swapperData.outputToken`.
+        uint256 outAmount = SwapperLib.swap(centralRegistry, swapperData);
+
+        _transferToRecipient(
+            swapperData.outputToken, 
+            recipient, 
+            outAmount
+        );
+
+        return outAmount;
+    }
+
     /// @notice Deposits cToken underlying into Curvance cToken contract.
     /// @param cToken The Curvance cToken address.
     /// @param recipient Address that should receive Curvance cTokens.
@@ -161,7 +218,7 @@ contract SimpleZapper is ReentrancyGuard {
     function _enterCurvance(
         address cToken,
         address recipient
-    ) private returns (uint256) {
+    ) internal returns (uint256) {
         address cTokenUnderlying = CTokenPrimitive(cToken).underlying();
         uint256 balance = IERC20(cTokenUnderlying).balanceOf(address(this));
 
@@ -181,6 +238,48 @@ contract SimpleZapper is ReentrancyGuard {
 
         // Bubble up how many cTokens `recipient` received.
         return IERC20(cToken).balanceOf(recipient) - priorBalance;
+    }
+
+    /// @notice Exits a Curvance position.
+    /// @param mToken The address of the mToken to be exited.
+    /// @param shares The amount of shares to redeemed.
+    /// @param forceRedeemCollateral Whether the collateral should be always
+    ///                              reduced from callers collateralPosted.
+    /// @param underlying The expected underlying token of `cToken`.
+    /// @param expectedAssets The amount of assets expected to be redeemed
+    ///                       on exiting Curvance position.
+    function _exitCurvance(
+        CTokenPrimitive mToken,
+        uint256 shares,
+        bool forceRedeemCollateral,
+        address underlying,
+        uint256 expectedAssets
+    ) internal {
+        if (mToken.underlying() != underlying) {
+            revert SimpleZapper__ExecutionError();
+        }
+
+        uint256 assets;
+
+        // Transfer underlying tokens to the Zapper.
+        if (forceRedeemCollateral && mToken.isCToken()) {
+            assets = mToken.redeemCollateralFor(
+                shares,
+                address(this),
+                msg.sender
+            );
+        } else {
+            assets = mToken.redeemFor(
+                shares,
+                address(this),
+                msg.sender
+            );
+        }
+
+        // Validate that output of redemption equals expectation.
+        if (assets != expectedAssets) {
+            revert SimpleZapper__ExecutionError();
+        }
     }
 
     /// @notice Repays Curvance lenders dToken underlying owed on behalf
