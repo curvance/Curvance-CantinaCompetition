@@ -182,7 +182,7 @@ contract TestSimpleZapper is TestBaseMarket {
         tokens[0] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         tokens[1] = _STETH_ADDRESS;
         zapperCall.call = abi.encodeWithSelector(
-            ComplexZapper.curveIn.selector,
+            ComplexZapper.enterCurve.selector,
             address(0),
             ComplexZapper.ZapperData(
                 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE,
