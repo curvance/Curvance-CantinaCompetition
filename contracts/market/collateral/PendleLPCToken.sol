@@ -168,7 +168,7 @@ contract PendleLPCToken is CTokenCompounding {
                 uint256 minLPAmount,
                 ApproxParams memory approx,
                 LimitOrderData memory limit
-            ) = abi.decode(data, (SwapperLib.Swap[], uint256, ApproxParams));
+            ) = abi.decode(data, (SwapperLib.Swap[], uint256, ApproxParams, LimitOrderData));
 
             {
                 // Use scoping to avoid stack too deep.

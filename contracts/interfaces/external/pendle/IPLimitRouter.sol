@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "contracts/library/external/pendle/PYIndex.sol";
+import "contracts/libraries/external/pendle/PYIndex.sol";
 
 interface IPLimitOrderType {
     enum OrderType {
