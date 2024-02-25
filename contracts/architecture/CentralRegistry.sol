@@ -703,17 +703,21 @@ contract CentralRegistry is ERC165 {
         address previousDaoAddress = daoAddress;
         daoAddress = newDaoAddress;
 
+        // Validate the DAO address is actually being transferred.
+        if (previousDaoAddress == newDaoAddress) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
         // Delete permission data.
         delete hasDaoPermissions[previousDaoAddress];
         // Add new permission data.
         hasDaoPermissions[newDaoAddress] = true;
+        emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
 
         // Notify timelock controller of a DAO address update.
         if (timelock != address(0)) {
             ITimelock(timelock).updateDaoAddress();
         }
-
-        emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
     }
 
     /// @notice Sets timelock ownership to a new address.
@@ -726,6 +730,11 @@ contract CentralRegistry is ERC165 {
         // Cache old timelock for event emission.
         address previousTimelock = timelock;
         timelock = newTimelock;
+
+        // Validate the timelock address is actually being transferred.
+        if (previousTimelock == newTimelock) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         // Delete permission data.
         delete hasDaoPermissions[previousTimelock];
@@ -748,6 +757,12 @@ contract CentralRegistry is ERC165 {
         // Cache old emergency council for event emission.
         address previousEmergencyCouncil = emergencyCouncil;
         emergencyCouncil = newEmergencyCouncil;
+
+        // Validate the Emergency Council address is actually being
+        // transferred.
+        if (previousEmergencyCouncil == newEmergencyCouncil) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
 
         // Delete permission data.
         delete hasDaoPermissions[previousEmergencyCouncil];
