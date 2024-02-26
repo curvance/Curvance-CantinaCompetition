@@ -8,7 +8,7 @@
     "shrinkLimit":200,
     "corpusDirectory": "output/medusa-corpus",
     "coverageEnabled": true,
-    "deploymentOrder": ["FuzzingSuite"],
+    "targetContracts": ["FuzzingSuite"],
     "constructorArgs": {},
     "deployerAddress": "0x30000",
     "senderAddresses": ["0x10000", "0x20000", "0x30000"],

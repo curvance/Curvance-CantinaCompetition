@@ -890,8 +890,6 @@ contract FuzzMarketManager is FuzzLiquidations {
     /// @custom:property market-36 Liquidating an account should result in all collateral token balances being zeroed out.
     /// @custom:property market-37 Liquidating an account should result in all debtBalanceCached() for all debt tokens being zeroed out.
     function liquidateAccount_should_succeed(uint256 amount) public {
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = address(this);
         amount = _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
@@ -926,9 +924,7 @@ contract FuzzMarketManager is FuzzLiquidations {
     }
 
     /// @custom:property market-38 liquidateAccount shoudl fail if acocunt is not flagged for liquidation
-    function liquidateAccount_should_fail_if_account_not_flagged(
-        uint256 amount
-    ) public {
+    function liquidateAccount_should_fail_if_account_not_flagged() public {
         require(marketManager.seizePaused() != 2);
         require(!marketManager.flaggedForLiquidation(address(this)));
         address account = address(this);
@@ -953,8 +949,6 @@ contract FuzzMarketManager is FuzzLiquidations {
     function liquidateAccount_should_fail_if_self_account(
         uint256 amount
     ) public {
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
         require(marketManager.seizePaused() != 2);
         address account = msg.sender;
         _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
@@ -980,8 +974,6 @@ contract FuzzMarketManager is FuzzLiquidations {
         uint256 amount
     ) public {
         require(marketManager.seizePaused() == 2);
-        uint256 daiPrice = DAI_PRICE;
-        uint256 usdcPrice = USDC_PRICE;
         address account = address(this);
         _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
 
@@ -1123,17 +1115,13 @@ contract FuzzMarketManager is FuzzLiquidations {
         // mint tokens and set the oracle prices of the system
         _setupLiquidatableStates(amount, daiPrice, usdcPrice);
         // ensure that the account can be liquidated
-        (
-            uint256 debt,
-            uint256 collateralLiquidation,
-            uint256 collateralProtocol
-        ) = marketManager.canLiquidate(
-                address(dDAI),
-                address(cUSDC),
-                address(this),
-                amount,
-                false
-            );
+        (uint256 debt, , ) = marketManager.canLiquidate(
+            address(dDAI),
+            address(cUSDC),
+            address(this),
+            amount,
+            false
+        );
 
         (uint256 accountCollateral, , uint256 accountDebt) = marketManager
             .statusOf(address(this));
@@ -1291,7 +1279,7 @@ contract FuzzMarketManager is FuzzLiquidations {
         address account,
         address dtoken,
         address collateralToken
-    ) internal {
+    ) internal view {
         _isSupportedDToken(dtoken);
         require(account != msg.sender);
         require(marketManager.isListed(dtoken));
@@ -1323,11 +1311,11 @@ contract FuzzMarketManager is FuzzLiquidations {
             uint256 collRatio,
             uint256 collReqSoft,
             uint256 collReqHard,
-            uint256 liqBaseIncentive,
-            uint256 liqCurve,
-            uint256 liqFee,
-            uint256 baseCFactor,
-            uint256 cFactorCurve
+            ,
+            ,
+            ,
+            ,
+
         ) = marketManager.tokenData(address(collateralToken));
         require(collRatio > 0);
         uint256 maxValue = amount * collReqSoft;

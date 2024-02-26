@@ -62,11 +62,8 @@ contract FuzzMarketManagerSystem is StatefulBaseMarket {
     ) public {
         _isSupportedDToken(mtoken);
 
-        (
-            bool hasPosition,
-            uint256 balanceOf,
-            uint256 collateralPosted
-        ) = marketManager.tokenDataOf(address(this), mtoken);
+        (bool hasPosition, , uint256 collateralPosted) = marketManager
+            .tokenDataOf(address(this), mtoken);
         require(hasPosition);
         amount = clampBetween(amount, collateralPosted + 1, type(uint256).max);
         (uint256 excessLiquidity, uint256 liquidityDeficit) = marketManager

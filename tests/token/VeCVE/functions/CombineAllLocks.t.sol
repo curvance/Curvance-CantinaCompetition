@@ -15,6 +15,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         cve.approve(address(veCVE), _INITIAL_AMOUNT);
     }
 
+    /* This test is considered out of scope, as it is a result of no epoch delivery, thus commenting this out until blackout period is implemented
     function test_combine_all_locks_underflow() public {
         setUp();
         RewardsData memory emptyRewards = RewardsData(
@@ -55,6 +56,7 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         veCVE.combineAllLocks(true, emptyRewards, "", 0);
     }
+    */
 
     function test_combine_all_locks_to_non_continuous_terminal_one_wad()
         public

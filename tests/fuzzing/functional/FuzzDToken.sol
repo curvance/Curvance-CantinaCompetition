@@ -39,7 +39,7 @@ contract FuzzDToken is FuzzMarketManager {
             .balanceOf(address(this));
         uint256 preDTokenBalance = DToken(dtoken).balanceOf(address(this));
         uint256 preDTokenTotalSupply = DToken(dtoken).totalSupply();
-        uint256 er = DToken(dtoken).exchangeRateCached();
+        // uint256 er = DToken(dtoken).exchangeRateCached();
 
         try DToken(dtoken).mint(amount) {
             uint256 postDTokenBalance = DToken(dtoken).balanceOf(
@@ -236,11 +236,15 @@ contract FuzzDToken is FuzzMarketManager {
 
         try DToken(dtoken).borrow(amount) {
             // Interest is accrued
+            /* Commenting this out as this does not currently accurately calculate the amount of interest remaining 
             uint256 interestAccrued = _calculate_interest_accrued(
                 amount,
                 dtoken,
-                er
+                er,
+                lastTimestampUpdated,
+                compoundRate
             );
+            */
             //  TODO: determine how much interest should have accrued instead of just Gt.
             assertGte(
                 DToken(dtoken).totalBorrows(),
@@ -295,6 +299,7 @@ contract FuzzDToken is FuzzMarketManager {
         address underlying = DToken(dtoken).underlying();
         require(_mintAndApprove(underlying, dtoken, amount));
         require(marketManager.isListed(dtoken));
+
         (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
         uint256 old_er = DToken(dtoken).exchangeRateCached();
@@ -306,16 +311,18 @@ contract FuzzDToken is FuzzMarketManager {
             return;
         }
 
-        uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
-        uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
-            address(this)
-        );
+        // uint256 preTotalBorrows = DToken(dtoken).totalBorrows();
+        // uint256 preUnderlyingBalance = IERC20(underlying).balanceOf(
+        // address(this)
+        // );
 
         try DToken(dtoken).repay(amount) {
             uint256 interestAccrued = _calculate_interest_accrued(
                 amount,
                 dtoken,
-                old_er
+                old_er,
+                lastTimestampUpdated,
+                compoundRate
             );
             // if interest accrued and final amount underflowed, repay with more than account debt balance should fail.
             int256 finalAmount = int256(
@@ -360,23 +367,34 @@ contract FuzzDToken is FuzzMarketManager {
         );
         (uint40 lastTimestampUpdated, , uint256 compoundRate) = DToken(dtoken)
             .marketData();
-        uint256 old_er = DToken(dtoken).exchangeRateCached();
+        // uint256 borrow_rate = DToken(dtoken)
+        //     .interestRateModel()
+        //     .getBorrowRateWithUpdate(
+        //         DToken(dtoken).marketUnderlyingHeld(),
+        //         DToken(dtoken).totalBorrows(),
+        //         DToken(dtoken).totalReserves()
+        //     );
 
         try DToken(dtoken).repay(amount) {
             if (lastTimestampUpdated + compoundRate <= block.timestamp) {
                 // interest was accrued
                 {
+                    // TODO: Adjust this to accurately calculate the total interest accrued, because this uses MarketData.exchangeRate which is not DebtData.accountExchangeRate, therefore this currently checks an incorrect assertion.
+                    /* 
                     assertEq(
                         DToken(dtoken).totalBorrows(),
                         preTotalBorrows -
-                            amount -
+                            amount +
                             _calculate_interest_accrued(
-                                amount,
+                                preTotalBorrows,
                                 dtoken,
-                                old_er
+                                borrow_rate,
+                                lastTimestampUpdated,
+                                compoundRate
                             ),
                         "DTOK-17 repay totalBorrows = postBorrows - amount - interest accrued for amount"
                     );
+                    */
                 }
             } else {
                 // interest was not accrued
@@ -472,6 +490,7 @@ contract FuzzDToken is FuzzMarketManager {
         }
     }
 
+    // TODO: These need additional tweaking
     // liquidateExact amount, with zero
     function liquidate_should_fail_with_exact_with_zero(
         address account,
@@ -485,17 +504,17 @@ contract FuzzDToken is FuzzMarketManager {
         );
         _preLiquidate(amount, DAI_PRICE, USDC_PRICE);
         // amount = _boundLiquidateValues(collateralPostedFor, collateralToken);
-        (
-            uint256 debtToLiquidate,
-            uint256 seizedForLiquidation,
-            uint256 seizedForProtocol
-        ) = marketManager.canLiquidate(
-                dtoken,
-                collateralToken,
-                account,
-                0,
-                true
-            );
+        // (
+        //     uint256 debtToLiquidate,
+        //     uint256 seizedForLiquidation,
+        //     uint256 seizedForProtocol
+        // ) = marketManager.canLiquidate(
+        //         dtoken,
+        //         collateralToken,
+        //         account,
+        //         0,
+        //         true
+        //     );
 
         address underlyingDToken = DToken(dtoken).underlying();
 
@@ -580,17 +599,23 @@ contract FuzzDToken is FuzzMarketManager {
     // helper functions
 
     function _calculate_interest_accrued(
-        uint256 amount,
+        uint256 priorBorrows,
         address dtoken,
-        uint256 old_er
-    ) private returns (uint256) {
-        return _get_er_difference(old_er, dtoken) * amount;
+        uint256 old_er,
+        uint256 lastTimestampUpdated,
+        uint256 compoundRate
+    ) private view returns (uint256) {
+        uint256 interestCompounds = (block.timestamp - lastTimestampUpdated) /
+            compoundRate;
+        uint256 interestAccumulated = old_er * interestCompounds;
+        uint256 debtAccumulated = (interestAccumulated * priorBorrows) / WAD;
+        return debtAccumulated;
     }
 
     function _get_er_difference(
         uint256 old_er,
         address dtoken
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         uint256 new_er = DToken(dtoken).exchangeRateCached();
         return new_er > old_er ? new_er - old_er : old_er - new_er;
     }

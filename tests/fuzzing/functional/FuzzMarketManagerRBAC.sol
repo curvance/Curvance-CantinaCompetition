@@ -42,8 +42,6 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
             // ac-market-1
             assertWithMsg(
                 false,
@@ -118,8 +116,6 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
             assertWithMsg(
                 false,
                 "AC-MARKET-7 setTransferPaused() expected to be successful with correct preconditions"
@@ -155,8 +151,6 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-
             assertWithMsg(
                 false,
                 "AC-MARKET-10 setSeizePaused() expected to be successful with correct preconditions"

@@ -355,7 +355,7 @@ abstract contract LiquidityManager {
         address debtToken,
         address collateralToken
     )
-        public
+        public view
         returns (
             uint256 lfactor,
             uint256 debtTokenPrice,

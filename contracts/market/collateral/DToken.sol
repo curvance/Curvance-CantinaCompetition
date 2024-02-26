@@ -973,11 +973,9 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Calculate new borrows, and the new exchange rate, based on
         // accumulation values above.
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
-        uint256 exchangeRateNew = FixedPointMathLib.mulDiv(
-            interestAccumulated,
-            exchangeRatePrior,
-            WAD
-        ) + exchangeRatePrior;
+        uint256 exchangeRateNew = (interestAccumulated * exchangeRatePrior) /
+            WAD +
+            exchangeRatePrior;
 
         // Update update timestamp, exchange rate, and total outstanding
         // borrows.

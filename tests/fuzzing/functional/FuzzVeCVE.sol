@@ -1311,7 +1311,7 @@ contract FuzzVeCVE is StatefulBaseMarket {
         }
     }
 
-    function _has_epochs_to_claim() private returns (bool) {
+    function _has_epochs_to_claim() private view returns (bool) {
         return cveLocker.epochsToClaim(address(this)) > 0;
     }
 }
