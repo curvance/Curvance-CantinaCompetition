@@ -108,9 +108,7 @@ contract DeployCurvance is
 
         _deployFeeAccumulator(
             centralRegistry,
-            oneBalanceFeeManager,
-            _readConfigUint256(".feeAccumulator.gasForCalldata"),
-            _readConfigUint256(".feeAccumulator.gasForCrosschain")
+            oneBalanceFeeManager
         );
         _setFeeAccumulator(feeAccumulator);
 

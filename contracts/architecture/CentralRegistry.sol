@@ -7,6 +7,7 @@ import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry, ChainData, OmnichainData } from "contracts/interfaces/ICentralRegistry.sol";
+import { ITimelock } from "contracts/interfaces/ITimelock.sol";
 import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { IFeeAccumulator } from "contracts/interfaces/IFeeAccumulator.sol";
 import { IWormhole } from "contracts/interfaces/external/wormhole/IWormhole.sol";
@@ -15,6 +16,38 @@ import { ITokenMessenger } from "contracts/interfaces/external/wormhole/ITokenMe
 import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridge.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
+/// @title Curvance DAO Central Registry.
+/// @notice Manages permissions and protocol contract registration
+///         within the Curvance Protocol.
+/// @dev The Central Registry acts a single source of truth for the Curvance
+///      Protocol. This covers everything from multichain operations, to
+///      contract locations, to protocol fees, to protocol multipliers
+///      associated with various actions.
+///
+///      Permissions inside Curvance has two tiers:
+///      - Standard DAO permissions: This is associated with actions that
+///        reduce risk inside the Curvance system, or need to continually
+///        managed by the DAO elected operating team.
+///      - Elevated DAO permissions: This is associated with actions that
+///        increase risk inside the Curvance system, the most sensitive of
+///        controls. This requires a 7-day delay from the DAO elected
+///        operating team for any action, or the "Emergency Council" made up
+///        of both Curvance Collective members and external stakeholders.
+///     
+///      All values inside Curvance are entered in basis point form. However,
+///      Fees are recorded internally in `WAD` format, or 1e18, rather than 
+///      basis points, or 1e4. This is for greater precision in computations.
+///      As a result, you will see multiplier values stored in 1e4 form,
+///      and fees stored in 1e18 form. 
+///
+///      The Central Registry also manages the delegation system, creating
+///      a new primitive as an alternative to the standard approval system.
+///      Users can "delegate" specific actions or contracts to any address.
+///      Providing that address authority on behalf of the user in the
+///      contract. Approvals can also be mass revoked via the "approval index"
+///      system. By incrementing one's approval index, a user can revoke all
+///      approved address' delegation privileges at the same time.
+///
 contract CentralRegistry is ERC165 {
     /// CONSTANTS ///
 
@@ -197,6 +230,8 @@ contract CentralRegistry is ERC165 {
     event WormholeCoreSet(address newAddress);
     event WormholeRelayerSet(address newAddress);
     event CircleTokenMessengerSet(address newAddress);
+    event WormholeChainIDsSet(uint256[] chainIds, uint16[] wormholeChainIds);
+    event CCTPDomainsSet(uint256[] chainIds, uint32[] cctpDomains);
     event TokenBridgeSet(address newAddress);
     event GelatoSponsorSet(address newAddress);
     event NewChainAdded(uint256 chainId, address operatorAddress);
@@ -345,6 +380,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets a new Oracle Router contract address.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CoreContractSet} event.
     /// @param newOracleRouter The new address of oracleRouter.
     function setOracleRouter(address newOracleRouter) external {
         _checkElevatedPermissions();
@@ -388,6 +424,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets an address of Circle TokenMessenger contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CircleTokenMessengerSet} event.
     /// @param newCircleTokenMessenger The new address of Circle TokenMessenger.
     function setCircleTokenMessenger(
         address newCircleTokenMessenger
@@ -400,6 +437,7 @@ contract CentralRegistry is ERC165 {
 
     /// @notice Sets an address of Wormhole TokenBridge contract.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {TokenBridgeSet} event.
     /// @param newTokenBridge The new address of Wormhole TokenBridge.
     function setTokenBridge(address newTokenBridge) external {
         _checkElevatedPermissions();
@@ -408,7 +446,9 @@ contract CentralRegistry is ERC165 {
         emit TokenBridgeSet(newTokenBridge);
     }
 
-    /// @notice Register wormhole specific chain IDs for evm chain IDs.
+    /// @notice Registers wormhole specific chain IDs for evm chain IDs.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {WormholeChainIDsSet} event.
     /// @param chainIds Array of EVM chain IDs to register.
     /// @param wormholeChainIds Array of Wormhole specific chain IDs.
     function registerWormholeChainIDs(
@@ -421,9 +461,12 @@ contract CentralRegistry is ERC165 {
         for (uint256 i; i < numChainIds; ++i) {
             wormholeChainId[chainIds[i]] = wormholeChainIds[i];
         }
+        emit WormholeChainIDsSet(chainIds, wormholeChainIds);
     }
 
-    /// @notice Register CCTP domains for evm chain IDs.
+    /// @notice Registers CCTP domains for EVM chain IDs.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {CCTPDomainsSet} event.
     /// @param chainIds EVM chain IDs.
     /// @param cctpDomains CCTP domains.
     function registerCCTPDomains(
@@ -437,6 +480,7 @@ contract CentralRegistry is ERC165 {
         for (uint256 i; i < numChainIds; ++i) {
             cctpDomain[chainIds[i]] = cctpDomains[i];
         }
+        emit CCTPDomainsSet(chainIds, cctpDomains);
     }
 
     /// @notice Sets an address of gelato sponsor.
@@ -663,8 +707,19 @@ contract CentralRegistry is ERC165 {
         delete hasDaoPermissions[previousDaoAddress];
         // Add new permission data.
         hasDaoPermissions[newDaoAddress] = true;
-
         emit OwnershipTransferred(previousDaoAddress, newDaoAddress);
+
+        // Notify Timelock Controller of a DAO address update.
+        if (timelock != address(0)) {
+            if (
+                ERC165Checker.supportsInterface(
+                    timelock,
+                    type(ITimelock).interfaceId
+                )
+            ) {
+                ITimelock(timelock).updateDaoAddress();
+            }
+        }
     }
 
     /// @notice Sets timelock ownership to a new address.
@@ -716,6 +771,18 @@ contract CentralRegistry is ERC165 {
 
     /// MULTICHAIN SUPPORT LOGIC
 
+    /// @notice Adds support for a new chain.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Emits a {NewChainAdded} event.
+    /// @param newOmnichainOperator The address that will be the source
+    ///                             address sending messaging to this chain
+    ///                             for validation.
+    /// @param messagingHub Contract address for new chains Messaging Hub.
+    /// @param cveAddress CVE address on the chain.
+    /// @param chainId GETH Chain ID where this address authorized.
+    /// @param sourceAux Auxilliary data when the chain is source.
+    /// @param destinationAux Auxilliary data when the chain is destination.
+    /// @param messagingChainId Messaging Chain ID where this address authorized.
     function addChainSupport(
         address newOmnichainOperator,
         address messagingHub,
@@ -727,15 +794,15 @@ contract CentralRegistry is ERC165 {
     ) external {
         _checkElevatedPermissions();
 
+        // Validate Chain Operator has not been added already.
         if (
             omnichainOperators[newOmnichainOperator][chainId].isAuthorized == 2
         ) {
-            // Chain Operator already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
+        // Validate this "new" chain is not currently supported.
         if (supportedChainData[chainId].isSupported == 2) {
-            // Chain already added
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
@@ -758,13 +825,20 @@ contract CentralRegistry is ERC165 {
         emit NewChainAdded(chainId, newOmnichainOperator);
     }
 
-    /// @notice removes
+    /// @notice Removes support for a chain.
+    /// @dev Callable by an address with DAO Authority or higher.
+    ///      Emits a {RemovedChain} event.
+    /// @param currentOmnichainOperator The current address that is the source
+    ///                                 address sending messaging to this
+    ///                                 chain for validation.
+    /// @param chainId GETH Chain ID where `currentOmnichainOperator` is
+    ///                authorized.
     function removeChainSupport(
         address currentOmnichainOperator,
         uint256 chainId
     ) external {
-        // Lower permissioning on removing chains as it only
-        // mitigates risk to the system
+        // Lower permissioning on removing chains as it will reduce risk to
+        // the system.
         _checkDaoPermissions();
 
         OmnichainData storage operatorToRemove = omnichainOperators[
@@ -783,13 +857,13 @@ contract CentralRegistry is ERC165 {
             _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
         }
 
-        // Remove chain support from protocol
+        // Remove chain support from protocol.
         supportedChainData[chainId].isSupported = 1;
-        // Remove operator support from protocol
+        // Remove operator support from protocol.
         operatorToRemove.isAuthorized = 1;
-        // Decrease supportedChains
+        // Decrease supportedChains.
         supportedChains--;
-        // Remove messagingChainId <> GETH chainId mapping table references
+        // Remove messagingChainId <> GETH chainId mapping table references.
         delete GETHToMessagingChainId[
             messagingToGETHChainId[operatorToRemove.messagingChainId]
         ];
@@ -1008,97 +1082,6 @@ contract CentralRegistry is ERC165 {
         emit RemovedCurvanceContract("Harvestor", currentHarvester);
     }
 
-    /// @notice Adds a new Market Manager and associated fee configurations.
-    /// @dev Only callable on a 7 day delay or by the Emergency Council,
-    ///      can only have a maximum value of 50% interest fee.
-    ///      Cannot be a supported Market Manager contract prior.
-    ///      Emits a {NewCurvanceContract} and {InterestFeeSet} events.
-    /// @param newMarketManager The new Market Manager contract to support
-    ///                         for use in Curvance.
-    /// @param marketInterestFactor The interest factor associated with
-    ///                             the market manager.
-    function addMarketManager(
-        address newMarketManager,
-        uint256 marketInterestFactor
-    ) external {
-        _checkElevatedPermissions();
-
-        // Validate `newMarketManager` is not currently supported.
-        if (isMarketManager[newMarketManager]) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        // Ensure that `newMarketManager` is a market manager.
-        if (
-            !ERC165Checker.supportsInterface(
-                newMarketManager,
-                type(IMarketManager).interfaceId
-            )
-        ) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        /// Interest fee cannot be more than 50%.
-        if (marketInterestFactor > 5000) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        isMarketManager[newMarketManager] = true;
-        // We store supported markets semi redundantly for offchain querying.
-        marketManagers.push(newMarketManager);
-        // Convert interest factor parameter from basis points to `WAD`
-        // for precision calculations.
-        protocolInterestFactor[newMarketManager] = _bpToWad(
-            marketInterestFactor
-        );
-
-        emit NewCurvanceContract("Market Manager", newMarketManager);
-        emit InterestFeeSet(newMarketManager, marketInterestFactor);
-    }
-
-    /// @notice Removes a current market manager from Curvance.
-    /// @dev Only callable on a 7 day delay or by the Emergency Council.
-    ///      Has to be a supported Market Manager contract prior.
-    ///      Emits a {RemovedCurvanceContract} event.
-    /// @param currentMarketManager The supported Market Manager contract
-    ///                             to remove from Curvance.
-    function removeMarketManager(address currentMarketManager) external {
-        _checkElevatedPermissions();
-
-        // Validate `currentMarketManager` is currently supported.
-        if (!isMarketManager[currentMarketManager]) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        delete isMarketManager[currentMarketManager];
-
-        // Cache market list.
-        uint256 numMarkets = marketManagers.length;
-        uint256 marketIndex = numMarkets;
-
-        for (uint256 i; i < numMarkets; ++i) {
-            if (marketManagers[i] == currentMarketManager) {
-                marketIndex = i;
-                break;
-            }
-        }
-
-        // Validate we found the market and remove 1 from numMarkets
-        // so it corresponds to last element index now (starting at index 0).
-        // This is an additional runtime invariant check for extra security.
-        if (marketIndex >= numMarkets--) {
-            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
-        }
-
-        // Copy last `marketManagers` slot to `marketIndex` slot.
-        marketManagers[marketIndex] = marketManagers[numMarkets];
-        // Remove the last element to remove `currentMarketManager`
-        // from marketManagers list.
-        marketManagers.pop();
-
-        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
-    }
-
     /// @notice Adds an Endpoint contract for use in Curvance.
     /// @dev Only callable on a 7 day delay or by the Emergency Council.
     ///      Cannot be a supported Endpoint contract prior.
@@ -1146,10 +1129,108 @@ contract CentralRegistry is ERC165 {
 
     /// PUBLIC FUNCTIONS ///
 
-    /// @inheritdoc ERC165
+    /// @notice Adds a new Market Manager and associated fee configurations.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council,
+    ///      can only have a maximum value of 50% interest fee.
+    ///      Cannot be a supported Market Manager contract prior.
+    ///      Emits a {NewCurvanceContract} and {InterestFeeSet} events.
+    /// @param newMarketManager The new Market Manager contract to support
+    ///                         for use in Curvance.
+    /// @param marketInterestFactor The interest factor associated with
+    ///                             the market manager.
+    function addMarketManager(
+        address newMarketManager,
+        uint256 marketInterestFactor
+    ) public virtual {
+        _checkElevatedPermissions();
+
+        // Validate `newMarketManager` is not currently supported.
+        if (isMarketManager[newMarketManager]) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Ensure that `newMarketManager` is a market manager.
+        if (
+            !ERC165Checker.supportsInterface(
+                newMarketManager,
+                type(IMarketManager).interfaceId
+            )
+        ) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        /// Interest fee cannot be more than 50%.
+        if (marketInterestFactor > 5000) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        isMarketManager[newMarketManager] = true;
+        // We store supported markets semi redundantly for offchain querying.
+        marketManagers.push(newMarketManager);
+        // Convert interest factor parameter from basis points to `WAD`
+        // for precision calculations.
+        protocolInterestFactor[newMarketManager] = _bpToWad(
+            marketInterestFactor
+        );
+
+        emit NewCurvanceContract("Market Manager", newMarketManager);
+        emit InterestFeeSet(newMarketManager, marketInterestFactor);
+    }
+
+    /// @notice Removes a current market manager from Curvance.
+    /// @dev Only callable on a 7 day delay or by the Emergency Council.
+    ///      Has to be a supported Market Manager contract prior.
+    ///      Emits a {RemovedCurvanceContract} event.
+    /// @param currentMarketManager The supported Market Manager contract
+    ///                             to remove from Curvance.
+    function removeMarketManager(
+        address currentMarketManager
+    ) public virtual {
+        _checkElevatedPermissions();
+
+        // Validate `currentMarketManager` is currently supported.
+        if (!isMarketManager[currentMarketManager]) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        delete isMarketManager[currentMarketManager];
+
+        // Cache market list.
+        uint256 numMarkets = marketManagers.length;
+        uint256 marketIndex = numMarkets;
+
+        for (uint256 i; i < numMarkets; ++i) {
+            if (marketManagers[i] == currentMarketManager) {
+                marketIndex = i;
+                break;
+            }
+        }
+
+        // Validate we found the market and remove 1 from numMarkets
+        // so it corresponds to last element index now (starting at index 0).
+        // This is an additional runtime invariant check for extra security.
+        if (marketIndex >= numMarkets--) {
+            _revert(_PARAMETERS_MISCONFIGURED_SELECTOR);
+        }
+
+        // Copy last `marketManagers` slot to `marketIndex` slot.
+        marketManagers[marketIndex] = marketManagers[numMarkets];
+        // Remove the last element to remove `currentMarketManager`
+        // from marketManagers list.
+        marketManagers.pop();
+
+        emit RemovedCurvanceContract("Market Manager", currentMarketManager);
+    }
+
+    /// PUBLIC FUNCTIONS ///
+
+    /// @notice Returns true if this contract implements the interface defined
+    ///         by `interfaceId`.
+    /// @param interfaceId The interface to check for implementation.
+    /// @return Whether `interfaceId` is implemented or not.
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override returns (bool) {
+    ) public view virtual override returns (bool) {
         return
             interfaceId == type(ICentralRegistry).interfaceId ||
             super.supportsInterface(interfaceId);

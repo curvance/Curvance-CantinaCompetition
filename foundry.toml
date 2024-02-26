@@ -17,5 +17,5 @@ fs_permissions = [
 # Sets the concrete solc version to use
 # This overrides the `auto_detect_solc` value
 solc_version = '0.8.17'
-evm_version = 'shanghai'
+evm_version = 'paris'
 auto_detect_solc = false

@@ -50,10 +50,22 @@ interface IMarketManager {
         uint256 amount
     ) external;
 
+    /// @notice Checks if the account should be allowed to redeem `amount`
+    ///         of `mToken` in the given market state.
+    /// @param mToken The market token to verify the redemption for.
+    /// @param account The account which would redeem the tokens.
+    /// @param amount The number of mTokens to exchange
+    ///               for the underlying asset in the market.
+    function canRedeemWithPrune(
+        address mToken,
+        address account,
+        uint256 amount
+    ) external;
+
     /// @notice Checks if the account should be allowed to redeem tokens
     ///         in the given market, and then redeems.
-    /// @dev    This can only be called by the mToken itself 
-    ///         (specifically cTokens, because dTokens are never collateral).
+    /// @dev This can only be called by the mToken itself 
+    ///      (specifically cTokens, because dTokens are never collateral).
     /// @param mToken The market to verify the redeem against.
     /// @param account The account which would redeem the tokens.
     /// @param balance The current mTokens balance of `account`.
@@ -81,9 +93,21 @@ interface IMarketManager {
     ) external;
 
     /// @notice Checks if the account should be allowed to borrow
+    ///         the underlying asset of the given market.
+    /// @dev May emit a {TokenPositionCreated} event.
+    /// @param dToken The debt token to verify the borrow of.
+    /// @param account The account which would borrow the asset.
+    /// @param amount The amount of underlying the account would borrow.
+    function canBorrowWithPrune(
+        address dToken,
+        address account,
+        uint256 amount
+    ) external;
+
+    /// @notice Checks if the account should be allowed to borrow
     ///         the underlying asset of the given market,
     ///         and notifies the market of the borrow.
-    /// @dev    This can only be called by the market itself.
+    /// @dev This can only be called by the market itself.
     /// @param mToken The market to verify the borrow against.
     /// @param account The account which would borrow the asset.
     /// @param amount The amount of underlying the account would borrow.
@@ -135,6 +159,17 @@ interface IMarketManager {
     /// @param from The account which sources the tokens.
     /// @param amount The number of mTokens to transfer.
     function canTransfer(
+        address mToken,
+        address from,
+        uint256 amount
+    ) external;
+
+    /// @notice Checks if the account should be allowed to transfer tokens
+    ///         in the given market.
+    /// @param mToken The market token to verify the transfer of.
+    /// @param from The account which sources the tokens.
+    /// @param amount The number of mTokens to transfer.
+    function canTransferWithPrune(
         address mToken,
         address from,
         uint256 amount

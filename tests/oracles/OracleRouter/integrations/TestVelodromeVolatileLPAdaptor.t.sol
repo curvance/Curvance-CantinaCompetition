@@ -10,7 +10,7 @@ import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestVelodromeVolatileLPAdapter is TestBaseOracleRouter {
+contract TestVelodromeVolatileLPAdaptor is TestBaseOracleRouter {
     address private WETH = 0x4200000000000000000000000000000000000006;
     address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
 

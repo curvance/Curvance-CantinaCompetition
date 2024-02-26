@@ -202,7 +202,22 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         address receiver,
         address owner
     ) external nonReentrant returns (uint256 assets) {
-        assets = _redeem(shares, receiver, owner, true);
+        assets = _redeem(shares, receiver, owner, false, true);
+    }
+
+    /// @notice Caller withdraws assets from the market and burns their shares,
+    ///         on behalf of `owner`.
+    /// @dev Forces collateral to be withdrawn from `owner` collateralPosted.
+    /// @param shares The amount of shares to redeemed.
+    /// @param receiver The account that should receive the assets.
+    /// @param owner The account that will burn their shares to withdraw assets.
+    /// @return assets the amount of assets redeemed by `owner`.
+    function redeemCollateralFor(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) external nonReentrant returns (uint256 assets) {
+        assets = _redeem(shares, receiver, owner, true, true);
     }
 
     /// @notice Returns the underlying balance of the `account`, safely.
@@ -387,7 +402,23 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 assets) {
-        assets = _redeem(shares, receiver, owner, false);
+        assets = _redeem(shares, receiver, owner, false, false);
+    }
+
+    /// @notice Withdraws assets, quoted in `shares` from the market,
+    ///         and burns `owner` shares, on behalf of `owner`.
+    /// @dev Does not force collateral to be withdrawn. 
+    /// @param shares The amount of shares to be redeemed.
+    /// @param receiver The account that should receive the assets.
+    /// @param owner The account that will burn their shares to withdraw
+    ///              assets.
+    /// @return assets The amount of assets redeemed by `owner`.
+    function redeemFor(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public nonReentrant returns (uint256 assets) {
+        assets = _redeem(shares, receiver, owner, true, false);
     }
 
     /// @notice Transfers `amount` tokens from caller to `to`.
@@ -400,7 +431,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed.
-        marketManager.canTransfer(address(this), msg.sender, amount);
+        marketManager.canTransferWithPrune(address(this), msg.sender, amount);
 
         // Cache gaugePool, then update gauge pool values for caller.
         IGaugePool gaugePool = _gaugePool();
@@ -427,7 +458,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         uint256 amount
     ) public override nonReentrant returns (bool) {
         // Fails if transfer not allowed.
-        marketManager.canTransfer(address(this), from, amount);
+        marketManager.canTransferWithPrune(address(this), from, amount);
 
         // Cache gaugePool, then update gauge pool values for `from`.
         IGaugePool gaugePool = _gaugePool();
@@ -903,6 +934,9 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.
+    /// @param delegatedAction Whether the action is delegated and should
+    ///                        use delegation system instead of normal
+    ///                        approval system.
     /// @param forceRedeemCollateral Whether the collateral should be always
     ///                              reduced from `owner`'s collateralPosted.
     /// @return assets The amount of assets received by `receiver`.
@@ -910,6 +944,7 @@ abstract contract CTokenBase is ERC4626, Delegable, ReentrancyGuard {
         uint256 shares,
         address receiver,
         address owner,
+        bool delegatedAction,
         bool forceRedeemCollateral
     ) internal virtual returns (uint256 assets) {}
 }

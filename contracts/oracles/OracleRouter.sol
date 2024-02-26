@@ -13,6 +13,58 @@ import { IOracleAdaptor, PriceReturnData } from "contracts/interfaces/IOracleAda
 /// @title Curvance Dynamic Pessimistic Dual Oracle Router.
 /// @notice Provides a universal interface allowing contracts
 ///         to retrieve secure pricing data based on various price feeds.
+/// @dev The Curvance Oracle Router acts as a unified hub for pricing anything.
+///      The Oracle Router can support up to two oracle adaptors, returning
+///      a maximum of two prices for any asset.
+///
+///      Finalized prices can be returned in USD or
+///      ETH (native chain's gas token). Either the higher or lower of the two
+///      prices can returned, based on what is desired. For Curvance protocol,
+///      the more advantageous of both prices is used. For user collateral
+///      assets, the lower of the two prices is used. For user debt positions,
+///      the higher of the two prices is used.
+///
+///      Curvance specific voucher tokens can also be priced by the Oracle
+///      Router, based on the exchange rate between the voucher token, and
+///      its underlying token.
+///
+///      The Oracle Router also relays feedback based on any issues that
+///      occurred during pricing an asset. This takes the form of three error
+///      codes that are returned on querying a price or prices:
+///      - An error code of 0 corresponds to no error occurred during pricing.
+///      - An error code of 1 corresponds to moderate issues occurring
+///        during pricing, inside Curvance this results in new borrowing
+///        queries being blocked.
+///      - An error code of 2 corresponds to large issues occurring during
+///        pricing, inside Curvance this results in all actions being paused
+///        involving that asset.
+///
+///      "Circuit Breakers" have been introduced, that can be triggered based
+///      on the prices returned to the Oracle Router. If prices diverge
+///      heavily, error codes can be returned. Based on current default
+///      configurations:
+///      - An error code of 1 will be triggered by a 5% or greater price
+///        divergence.
+///      - An error code of 2 will be triggered by a 10% or greater price
+///        divergence.
+///
+///      Oracle Adaptors can be added or removed by the DAO which can change
+///      how an asset is priced. This allows for continually improving the
+///      data quality returned within the system. Oracle Adaptors handle
+///      checks such as price staleness, decimal offsetting, and ecosystem
+///      specific logic. All this is abstracted away from the Oracle Router,
+///      all data is returned in a standardized format of 18 decimals with a
+///      minimum price of 1, and a maximum price of 2^240 - 1. Though,
+///      some oracle adaptors have lower maximums, which will natively
+///      restrict the maximum price returned. Such as Chainlink's uint192
+///      maximum. When using the Oracle Router, verify what oracle adaptors
+///      will be used behind the scenes if you want to impose heavier
+///      restrictions on minimum/maximum price.
+///
+///      The Oracle Router was built to minimize Oracle trust by introducing
+///      a decentralized model, many oracle providers all verified against
+///      each other. "Don't trust, verify."
+///
 contract OracleRouter {
     /// TYPES ///
 

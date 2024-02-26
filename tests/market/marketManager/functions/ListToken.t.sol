@@ -17,7 +17,7 @@ contract listTokenTest is TestBaseMarketManager {
     function test_listToken_fail_whenMTokenIsAlreadyListed() public {
         marketManager.listToken(address(dUSDC));
 
-        vm.expectRevert(MarketManager.MarketManager__TokenAlreadyListed.selector);
+        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
         marketManager.listToken(address(dUSDC));
     }
 

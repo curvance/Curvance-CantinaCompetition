@@ -14,9 +14,7 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
         );
         new FeeAccumulator(
             ICentralRegistry(address(0)),
-            address(oneBalanceFeeManager),
-            0,
-            0
+            address(oneBalanceFeeManager)
         );
     }
 
@@ -30,18 +28,14 @@ contract FeeAccumulatorDeploymentTest is TestBaseFeeAccumulator {
         );
         new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            address(0),
-            0,
-            0
+            address(0)
         );
     }
 
     function test_feeAccumulatorDeployment_success() public {
         feeAccumulator = new FeeAccumulator(
             ICentralRegistry(address(centralRegistry)),
-            address(oneBalanceFeeManager),
-            0,
-            0
+            address(oneBalanceFeeManager)
         );
 
         assertEq(
