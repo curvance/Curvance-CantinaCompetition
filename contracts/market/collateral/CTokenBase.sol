@@ -40,9 +40,9 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 ///      configured based on "sticky" onchain liquidity in the corresponding
 ///      asset. 
 ///
-///      The vaults have the ability to have their compounding, minting,
-///      or redemption functionality paused. Modifying the maximum mint,
-///      deposit, withdrawal, or redemptions possible.
+///      The vaults can have their compounding, minting, or redemption
+///      functionality paused. Modifying the maximum mint, deposit,
+///      withdrawal, or redemptions possible.
 ///     
 ///      "Safe" versions of functions have been added that introduce
 ///      additional reentry and update protection logic to minimize risks

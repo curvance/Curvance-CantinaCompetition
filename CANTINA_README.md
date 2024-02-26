@@ -6,15 +6,15 @@
 
 Curvance is a cross-chain money market for yield bearing assets. Maximize yield while leveraging the full value of your assets. Curvance simplifies DeFi, with a modular system capable of creating complex strategies for users in a single click.
 
-Curvance operates as a hybrid model between a yield optimizer and a cross-margin money market. This model has various characteristics atypical for incumbant money markets such as:
+Curvance operates as a hybrid model between a yield optimizer and a cross-margin money market. This model has various characteristics atypical for incumbent money markets such as:
 - Collateral deposits and debt deposits receive two different types of tokens, collateral tokens (cTokens) and debt tokens (dTokens). 
 - Rehypothecation has been removed. This allows for the support of long-tail assets which, if borrowable, could introduce systemic risk to DeFi.
-- "Collateral Posting", by introducing a hybrid model, users can yield farm an unlimited amount of assets, but in order to leverage the corresponding money market, the collateral must be "posted", similar to a perpetual exchange. Collateral posting has restrictions on the total amount of exogenous risk allowed to be introduced into the system.
-- Dynamic Interest Rates with interest rate decay, vertex slope can be adjusted upward or downward based on utilization similiar to kashi, however, a new continuous negative decay rate is applied every cycle when interest rates slope is elevated.
+- "Collateral Posting", by introducing a hybrid model, users can yield farm an unlimited amount of assets, but, to leverage the corresponding money market, the collateral must be "posted", like a perpetual exchange. Collateral posting has restrictions on the total amount of exogenous risk allowed to be introduced into the system.
+- Dynamic Interest Rates with interest rate decay, vertex slope can be adjusted upward or downward based on utilization similar to kashi, however, a new continuous negative decay rate is applied every cycle when interest rates slope is elevated.
 - Dynamic liquidation engine allows for more nuanced position management inside the system. Introduces a sliding scale of liquidation between light soft liquidations and aggressive hard liquidations.
 - Bad debt socialization, when a user's debt is greater than their collateral assets, the entire user's account can be liquidated with lenders paying any collateral shortfall.
 - Crosschain gauge system, introducing of gauge system allowing reward streaming to collateral depositors and lenders. With the ability to configure by token and no limit on the number of different token rewards streamed.
-- Delegated actions, ability to delegate user actions to any address, allowing for support for things like limit orders, dca, take profit, crosschain borrowing, crosschain lending. Some of these are built already in this repo, others are not.
+- Delegated actions, ability to delegate user actions to any address, allowing for support for things like limit orders, DCA, take profit, crosschain borrowing, crosschain lending. Some of these are built already in this repo, others are not.
 
 [Documentation Link](https://docs.curvance.com/)
 
@@ -34,19 +34,19 @@ Curvance also employs a 20-minute minimum duration of posting of cToken collater
 
 Additionally, a new "Dynamic Liquidation Engine" or DLE allows for more nuanced position management inside the system. The DLE facilitates aggressive asset support and elevated collateralization ratios paired with reduced base liquidation penalties. In periods of low volatility, users will experience soft liquidations. But, when volatility is elevated, users may experience more aggressive or complete liquidation of positions.
 
-Bad debt is minimized via a "Bad Debt Socialization" system. When a user's debt is greater than their collateral assets,  the entire user's account can be liquidated with lenders paying any collateral shortfall.
+Bad debt is minimized via a "Bad Debt Socialization" system. When a user's debt is greater than their collateral assets, the entire user's account can be liquidated with lenders paying any collateral shortfall.
 
 #### Collateral Tokens
 
 Curvance's cTokens are ERC4626 compliant. However, they follow their own design flow modifying underlying mechanisms such as totalAssets following a vesting mechanism in compounding vaults but a direct conversion in basic or "primitive" vaults.
 
-The "cToken" employs two different methods of engaging with the Curvance protocol. Users can deposit an unlimited amount of assets,  which may or may not benefit from some form of auto compounded yield.
+The "cToken" employs two different methods of engaging with the Curvance protocol. Users can deposit an unlimited amount of assets, which may or may not benefit from some form of auto compounded yield.
 
 Users can at any time, choose to "post" their cTokens as collateral inside the Curvance Protocol, unlocking their ability to borrow against these assets. Posting collateral carries restrictions, not all assets inside Curvance can be collateralized, and if they can, they have a "Collateral Cap" which restricts the total amount of exogeneous risk introduced by each asset into the system. Rehypothecation of collateral assets has also been removed from the system, reducing the likelihood of introducing systematic risk to the broad DeFi landscape.
 
 These caps can be updated as needed by the DAO and should be configured based on "sticky" onchain liquidity in the corresponding asset. 
 
-The vaults have the ability to have their compounding, minting, or redemption functionality paused. Modifying the maximum mint, deposit, withdrawal, or redemptions possible.
+The vaults can have their compounding, minting, or redemption functionality paused. Modifying the maximum mint, deposit, withdrawal, or redemptions possible.
      
 "Safe" versions of functions have been added that introduce additional reentry and update protection logic to minimize risks when integrating Curvance into external protocols.
 
@@ -63,7 +63,7 @@ Users who have active positions inside a dToken are referred to as accounts. For
 
 ### Crosschain Technology
 
-Curvance was built from the ground up with crosschain in mind. Similiar to many other protocols, the native token, CVE is multichain. However, so is everything else. Things such as gauge emissions, fee distributions, voting escrow system, borrowing, lending, are built to scale to many different chains. At this time, all listed functions are built excluding crosschain lending routing in the current codebase.
+Curvance was built from the ground up with crosschain in mind. Similar to many other protocols, the native token, CVE is multichain. However, so is everything else. Things such as gauge emissions, fee distributions, voting escrow system, borrowing, lending, are built to scale to many different chains. Currently, all listed functions are built excluding crosschain lending routing in the current codebase.
 
 Curvance has two core contracts to manage crosschain actions:
 
@@ -75,14 +75,14 @@ The Protocol Messaging Hub acts as a unified hub for sending messages crosschain
 
 The Fee Accumulator acts as a unified hub for collecting and transforming fees collected and their preparation for delivery to Curvance DAO users. Currently, fees can be swapped via offchain solver integrations such as 1Inch. An alternative model of permissionless dutch auctions such as the work seen by Uniswap/Euler could be used. However, A/B testing may provide greater insight into the superior model.
 
-Fees can be marked for OTC which will allow the Curvance DAO to purchase them, at fair market value. The Fee accumulator also works  in collaboration with the Protocol Messaging Hub to manage system information and fees. Epoch fee distributions are distributed once a single chain has recorded fees accumulated and tokens locked across
+Fees can be marked for OTC which will allow the Curvance DAO to purchase them, at fair market value. The Fee accumulator also works in collaboration with the Protocol Messaging Hub to manage system information and fees. Epoch fee distributions are distributed once a single chain has recorded fees accumulated and tokens locked across
 all supported chains inside the Curvance Protocol system.
 
 These fees are distributed pro-rata based on the under of locked veCVE tokens on each chain, see "CVELocker.sol" for more information on this.
 
 #### CVE Locker
 
-The CVELocker acts a unified interface for distributing rewards to Curvance DAO users. This system works in collaboration with the VeCVE smart contract. Rewards are distributed biweekly and pile up for each user, allowing them to claim rewards whenever they want. Rewards can be routed directly into other tokens. CVE can be directly routed to, other tokens can be routed into through the delegation system.
+The CVELocker acts a unified interface for distributing rewards to Curvance DAO users. This system works in collaboration with the VeCVE smart contract. Rewards are distributed biweekly and pile up for each user, allowing them to claim rewards whenever they want. Rewards can be routed directly into other tokens. CVE can be directly routed to; other tokens can be routed into through the delegation system.
 
 Rewards are distributed pro-rata to each chain's CVE locker every two weeks. Fees are moved to some unified chain (can change) along with information corresponding to the number of veCVE locked on a chain. This means, for example, if 10 million reward tokens are to be distributed during an epoch that had 100 million veCVE locked, every user would receive 0.1 reward tokens for each veCVE they had locked during that period. This creates a direct incentive for chains to provide exogenous rewards to Curvance DAO users to move their locks over to their chain, increases the rewards to be distributed on that chain.
 
@@ -116,7 +116,7 @@ These changes include:
   This is talked about in greater detail inside "CVELocker.sol", system fees are distributed pro-rata across all chains rather than isolated chain fee distributions.
 
 - Multichain locks:
-  A voting escrow lock can be moved from any chain to any chain inside the Curvance Protocol system. The nature of multichain fees  allows for chains themselves to participate in incentive markets in attracting Curvance DAO members to migrate their locks on to their chain, attracting more fees, and as a result, volume (in theory).
+  A voting escrow lock can be moved from any chain to any chain inside the Curvance Protocol system. The nature of multichain fees allows for chains themselves to participate in incentive markets in attracting Curvance DAO members to migrate their locks on to their chain, attracting more fees, and as a result, volume (in theory).
 
 - Early Expiry optionality:
   Voting escrow locks introduce duration risk to participants, some of which may want to opt out of due to exogenous circumstances. Because of this, veCVE introducing the option to expire a voting escrow lock early, in exchange, a heavy penalty to the lock's CVE deposit is slashed and sent to the DAO. Providing Curvance DAO additional resources to develop and improve Curvance protocol.
@@ -131,7 +131,7 @@ These changes include:
 ### Gauge System
 #### Gauge Pool
 
-A Curvance Gauge Pool manages rewards associated with a particular Market Manager. Tokens are not actually "deposited" inside the Gauge Pool, but rather information is documented. This creates an incredibly efficient method of measuring and distributing rewards as no secondary deposit/withdrawal execution is required by users  utilizing Curvance Protocol.
+A Curvance Gauge Pool manages rewards associated with a particular Market Manager. Tokens are not actually "deposited" inside the Gauge Pool, but rather information is documented. This creates an incredibly efficient method of measuring and distributing rewards as no secondary deposit/withdrawal execution is required by users utilizing Curvance Protocol.
 
 A Gauge Pool is built to support an infinite number of rewards in any supported asset. The base level of CVE gauge emissions are distributed through a markets corresponding gauge pool. CVE emissions can be claimed directly, or locked in a 1 year voting escrow position for an additional reward boost. This mechanism was built to better align the duration exposure between Curvance users and the Curvance DAO. The Curvance DAO has a long time horizon, and users who align with that time horizon should be rewarded more greatly than users with a short time horizon, which has a duration mismatch between parties. Additional reward tokens can be streamed to users through our "Partner Gauges" these act as additional reward layers on top of the base CVE reward system. This allows protocols or chains to directly incentivize their ecosystem without building any additional technology on top. The partner gauge system works for any token without writing any additional code.
 
@@ -142,12 +142,12 @@ The introduction of the ability to incentivize lenders creates an opportunity no
 
 ### Enshrined Actions
 
-Supplemental tooling has been built to enshrine flexible actions inside Curvance. Things such as zapping and native leverage are supported through protocol zappers and the positon folding contract.
+Supplemental tooling has been built to enshrine flexible actions inside Curvance. Things such as zapping and native leverage are supported through protocol zappers and the position folding contract.
 
 
 ### Blast Native Contracts
 
-Supplemental contracts have been built for deployment on the L2 Blast. These contracts are developed in order to manage native yield for the chain and will not be deployed on any other chains. Blast Native mToken (c & d tokens) contracts will not be deployed as is, and are intended to be overridden for asset specific implementations.
+Supplemental contracts have been built for deployment on the L2 Blast. These contracts are developed to manage native yield for the chain and will not be deployed on any other chains. Blast Native mToken (c & d tokens) contracts will not be deployed as is, and are intended to be overridden for asset specific implementations.
 
 
 ## Contest Specific Information
@@ -163,10 +163,46 @@ Two solady contracts developed by Vectorized have been included in the audit as 
 
 ### Areas considered out of scope:
 
-**Issues related to swapperlib zapper calls lack of arbitrary calldata validation will be considered out of scope**, the plan is to consolidate swapper and zapper actions being combined into swapper only actions, with dedicated integrations coded for zapping actions.
+**Issues related to swapperlib zapper calls lack of arbitrary calldata validation will be considered out of scope**, the plan is to consolidate swapper and zapper actions being combined into swapper only actions, with dedicated integrations coded for zapping actions. Secondarily, two versions of swapperlib.swap will be written, swapSafe and swapUnsafe. SwapSafe will be used by third party integrations such as fee accumulator, and have additional slippage checks. SwapUnsafe will be used by user integrations such as zapper contracts where the caller is delivering the calldata themselves, and will set their own slippage. As a result, **issues related to compromising of third party systems allowing unlimited slippage are considered out of scope**.
 
 Locked token data actions are intended to be moved over to Wormhole's CCQ prior to mainnet deployment. At this time, **payload/MessageType configuration + calldata encoding/decoding are not production ready, these issues will be considered out of scope.** This refers to aforementioned code in FeeAccumulator, ProtocolMessagingHub, OneBalanceFeeManager (likely to be depreciated), FeeTokenBridgingHub. All other issues inside these contracts will be considered in scope.
 
-**Issues related to redstone core oracle not working due to msg.data not be attached through contract calls will be considered out of scope.** Alternative contract versions will be made for mTokens and Market Manager with parameters for pull oracles such as Pyth and Redstone Core.
+**Issues related to Redstone Core oracle adaptor not working due to msg.data not be attached through contract calls will be considered out of scope.** Alternative contract versions will be made for mTokens and Market Manager with extra parameters slots for pull oracles such as Pyth and Redstone Core.
 
 **Issues related to _sendFeeToken() in FeeTokenBridgingHub potentially being configured to send to Polygon** via CCTP bridge preventing receiveWormhomeMessages() from being called and blocking OneBalance Fees will be considered out of scope.
+
+**Temporary failure of VeCVE's combineAllLocks where an epoch has not been delivered is considered out of scope.** A 12 hour blackout period will be added before and after the start of an epoch, and if somehow epochs have not been delivered in 12 hours, state changing actions such as combineAllLocks will be blocked similar to if the VeCVE contract were shutdown. This will honor the runtime invariant check and will be added along with the payload/MessageType + calldata encoding/decoding consolidation outlined above.
+
+### Technical rollout strategy
+
+Curvance will be deployed in waves with initial support on a minimum of 6 chains day one. The initial launch will be done with CVE out of circulation, with the gauge system off. This will be done by setting the genesisEpoch exactly 8 weeks from the start of the initial launch ("The Beta"). Once beta concludes CVE initial distribution recipients will have a few days to choose to lock their tokens to participate in the first epoch of rewards. Epochs will take place every 2 weeks with the fee accumulator/protocol messaging hub/CTokenCompounding functions managed by Gelato Network. These function calls will be funded by USDC deposited into OneBalance on Polygon PoS, either via OneBalanceFeeManager (or by Curvance DAO if this contract is depreciated). Gelato will trigger gauge emission data porting on the conclusion of each Snapshot Gauge Voting proposal, with Fee Accumulator and CTokenCompounding calls driven by fees accumulated/owned by the corresponding contracts. The primary distribution of USDC for CVE Locker rewards will be via Circle's CCTP via Wormhole's automatic relayer. The alternative of using Wormhole's native bridge is may be used but will be implemented on a case-by-case basis for each chain.   
+
+### Attack Vectors
+
+Curvance's main attack vectors are mainly around crosschain action staleness, Money Market invariant manipulation, VeCVE points system, and Gauge System edge cases.
+
+- Are there bugs/exploits available to whether fee are transferred but lock data is not transferred somehow (1 message fails, other succeeds).
+- Are there bugs if multiple epochs of rewards/information (gauge emissions) have not been delivered.
+- Does a user allowing many epochs to pile up create opportunities for them to exploit their reward allocation to CVE locker.
+- Is there a way for users to manipulate their userNextClaimIndex invariant to claim an epoch or epochs multiple times from the CVE Locker.
+- Is there a way to manipulate totalBorrows/debtBalanceCached in dToken to drain a market.
+- Is there a way to manipulate _totalAssets in cTokenBase (and other cToken contracts) to drain a vault.
+- What happens if a sequencer for a network goes down and a crosschain message cannot be delivered.
+- Does starting Curvance and having user deposits before the genesis epoch create issues for depositors.
+- Is there a way to manipulate price feeds in any of the oracle adaptors and bypass the circuit breaker logic, or to use circuit breaker logic to your advantage with some DOS.
+- Is there a way to bypass the 20 minute minimum on redemption/loan repayment, opening Curvance up to flashloans or other single block attack vectors.
+- Can the dynamic interest rate model be meaningfully exploited by depositing or withdrawing funds aggressively around period updates.
+- Can veCVE points/unlock workflow be manipulated/exploited through various actions either at once, or over several years.
+- Is there a way to bypass the swapperlib calldata validation and potentially inject malicious code on an approved swapper contract.
+- Can the activePosition invariant be broken inside MarketManager with the native opening/closing logic.
+- Are any external dependencies improperly implemented? Are we opening ourselves up to any multisystem exploit (e.g. they manipulate something inside an external protocol, allowing theft of Curvance user assets due to improper accounting on our end).
+- Can liquidateAccount be used to avoid debt obligations, or worse, steal Curvance collateral or debt assets.
+- Is there a meaningful way to bypass collateral caps on assets inside a Curvance Market, not via governance changes grandfathering in users, but directly bypassing invariant checks.
+
+### Tests
+
+Attached in this repo you will find just over 1,000 tests in categories such as unit tests/integration tests/stateless fuzzing tests. Additionally, you will also find a substantial stateful fuzzing testing harness with just over 200 invariants tests. This was built in collaboration with Trail of Bits and covers VeCVE and most of the Curvance Money Markets. You can also find an attached readme in the fuzzing suite folder covering running the harness locally or in the cloud. Other tests can be ran simply via forge tests. Additional information on running the test suite can be found in the repo readme. 
+
+### Proof of Concepts
+
+As part of the test suite inside Curvance, you will find many testing base contracts that set up Curvance and test various functionality. These are perfect to utilize when you want to work on a proof on concept for a bug. Feel free to mess around with test suite and to modify the testing deployments for whichever scenarios you would like to explore.
