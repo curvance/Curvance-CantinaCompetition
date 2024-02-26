@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+/// @title Curvance Delegation Plugin
 /// @notice Facilitates delegated actions on behalf of a user inside Curvance.
 /// @dev `Delegable` allows Curvance to be a modular system that plugins can
 ///      be built on top of. By delegating authority to a secondary address 

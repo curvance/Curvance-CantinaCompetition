@@ -33,10 +33,10 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 ///        for being "early". The goal is a continuous system that is just 
 ///        as attractive in year 15 as it is on Day 1.
 ///
-///      - Offchain Voting: by moving from an onchain voting mechanism we
-///        minimize expenses to users and can aggregate votes across all
-///        chains at the same time, via calling getVotes() on each chain
-///        for a user.
+///      - Offchain Voting:
+///        By moving from an onchain voting mechanism we minimize expenses
+///        to users and can aggregate votes across all chains at the same
+///        time, via calling getVotes() on each chain for a user.
 ///
 ///      - Continuous Lock mode:
 ///        A mode that every lock can be set to that eliminates the need to

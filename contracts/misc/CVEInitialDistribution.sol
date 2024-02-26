@@ -29,7 +29,8 @@ contract CVEInitialDistribution is ReentrancyGuard {
 
     /// @notice Distribution merkle root to validate claims.
     bytes32 public merkleRoot;
-    /// @notice Distribution claim state; 1 = unpaused; 2 = paused.
+    /// @notice Distribution claim state;
+    /// @dev 1 = unpaused; 2 = paused.
     uint256 public isPaused = 2;
     /// @notice Time by which users must submit a claim by.
     uint256 public endClaimTimestamp;

@@ -6,12 +6,8 @@ import { IBlastCentralRegistry } from "contracts/interfaces/blast/IBlastCentralR
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 import { IBlast } from "contracts/interfaces/external/blast/IBlast.sol";
 
-/// @notice Facilitates delegated actions on behalf of a user inside Curvance.
-/// @dev `Delegable` allows Curvance to be a modular system that plugins can
-///      be built on top of. By delegating authority to a secondary address 
-///      users can utilize potential third-party features such as limit
-///      orders, crosschain actions, reward auto compounding,
-///      chained (multiple) actions, etc.
+/// @title Blast Yield Delegable
+/// @notice Delegates gas refunds to Curvance DAO Central Registry on Blast.
 abstract contract BlastYieldDelegable {
 
     error BlastYieldDelegable__InvalidCentralRegistry();

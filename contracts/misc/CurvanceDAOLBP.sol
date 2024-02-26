@@ -21,13 +21,13 @@ contract CurvanceDAOLBP {
 
     /// CONSTANTS ///
 
+    /// @notice The duration of the LBP.
+    uint256 public constant SALE_PERIOD = 3 days;
+
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
     /// @notice CVE contract address.
     address public immutable cve;
-
-    /// @notice The duration of the LBP.
-    uint256 public constant SALE_PERIOD = 3 days;
 
     /// STORAGE ///
 
