@@ -14,9 +14,7 @@ contract FeeAccumulatorDeployer is DeployConfiguration {
 
     function _deployFeeAccumulator(
         address centralRegistry,
-        address oneBalanceFeeManager,
-        uint256 gasForCalldata,
-        uint256 gasForCrosschain
+        address oneBalanceFeeManager
     ) internal {
         require(centralRegistry != address(0), "Set the centralRegistry!");
         require(
@@ -27,9 +25,7 @@ contract FeeAccumulatorDeployer is DeployConfiguration {
         feeAccumulator = address(
             new FeeAccumulator(
                 ICentralRegistry(centralRegistry),
-                oneBalanceFeeManager,
-                gasForCalldata,
-                gasForCrosschain
+                oneBalanceFeeManager
             )
         );
 

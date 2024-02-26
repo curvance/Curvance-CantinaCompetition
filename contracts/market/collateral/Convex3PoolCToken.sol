@@ -32,7 +32,7 @@ contract Convex3PoolCToken is CTokenCompounding {
     /// CONSTANTS ///
 
     /// @dev This address is for Ethereum mainnet so make sure to update
-    ///      it if Curve/Convex is being supported on another chain
+    ///      it if Curve/Convex is being supported on another chain.
     address private constant _CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
 
     /// STORAGE ///
