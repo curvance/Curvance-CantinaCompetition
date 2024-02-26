@@ -12,6 +12,10 @@ Main dependencies:
 - [Prettier Plugin Solidity](https://github.com/prettier-solidity/prettier-plugin-solidity): code formatter
   - Confirm you have the `solidity` plugin by Juan Blanco in VSCode -- Search settings in VSCode for `Solidity: Formatter`, should be set to `prettier`
 
+## Code Disclaimer
+
+While this code is now open source we **highly** recommend that viewers do not deploy this code on mainnet as it is actively being developed with multiple code refactors being done over the next few weeks, in parallel with audits. A finalized version of Curvance will be fully open sourced when it is "production ready".
+
 ## Setup
 
 1. Copy `.env.sample` and fill it out with your own information
