@@ -15,8 +15,7 @@ contract BlastCentralRegistry is CentralRegistry {
     /// CONSTANT ///
 
     /// @notice The address is managing WETH yield, also the token itself.
-    /// @dev Will change when deploying to mainnet.
-    IWETH public constant WETH = IWETH(0x4200000000000000000000000000000000000023);
+    IWETH public constant WETH = IWETH(0x4300000000000000000000000000000000000004);
 
     /// STORAGE ///
 
@@ -53,20 +52,21 @@ contract BlastCentralRegistry is CentralRegistry {
         nativeYieldManager = nativeYieldManager_;
         // Provide base dao permissioning to `nativeYieldManager`,
         // so that it can register native yield rewards in the gauge system.
-        hasDaoPermissions[daoAddress] = true;
+        hasDaoPermissions[nativeYieldManager] = true;
 
         IBlast yieldConfiguration = IBlast(0x4300000000000000000000000000000000000002);
 
         // Set gas fees yield to claimable and then pass Governor
         // permissioning to native yield manager.
-        yieldConfiguration.configureClaimableYield();
+        yieldConfiguration.configureClaimableGas();
         yieldConfiguration.configureGovernor(daoAddress);
     }
 
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Withdraws all native yield fees from non-MToken addresses.
-    /// @param nonMTokens Array of non-MTokens addresses to withdraw native from.
+    /// @param nonMTokens Array of non-MTokens addresses to withdraw native
+    ///                   from.
     function withdrawNativeYield(address[] calldata nonMTokens) external {
         // Match permissioning check to normal withdrawReserves().
         _checkDaoPermissions();
@@ -77,7 +77,9 @@ contract BlastCentralRegistry is CentralRegistry {
         }
 
         // Cache Yield Manager storage value.
-        IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(nativeYieldManager);
+        IBlastNativeYieldManager yieldManager =IBlastNativeYieldManager(
+            nativeYieldManager
+        );
         address nonMToken;
 
         for (uint256 i; i < nonMTokensLength; ) {

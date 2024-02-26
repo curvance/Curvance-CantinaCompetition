@@ -14,28 +14,108 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
 
+/// @title Curvance Voting Escrow CVE token.
+/// @notice A system for managing the larger Curvance Voting Escrow System
+///         within Curvance Protocol.
+/// @dev The veCVE token uses concepts of voting escrow common in Defi,
+///      with several transformative changes.
+///
+///      These changes include:
+///      - Single choice lock duration (1 year):
+///        This change was made to allow for a unified point system that can
+///        be managed across an infinite number of chains, as well as
+///        standardizing the rewards received by DAO participants.
+///
+///      - Removal of inflationary rewards:
+///        A popular system to incentivize people to lock tokens is
+///        inflationary rewards, these have been removed to standardize
+///        the incentives with users with creating disproportionate rewards
+///        for being "early". The goal is a continuous system that is just 
+///        as attractive in year 15 as it is on Day 1.
+///
+///      - Offchain Voting: by moving from an onchain voting mechanism we
+///        minimize expenses to users and can aggregate votes across all
+///        chains at the same time, via calling getVotes() on each chain
+///        for a user.
+///
+///      - Continuous Lock mode:
+///        A mode that every lock can be set to that eliminates the need to
+///        continually relock voting escrow positions, minimizing friction
+///        for users. Also comes with a bonus to system fees and DAO voting
+///        power to give a boost to users who have opted for longer term
+///        duration risk. Continuous lock mode can be turned on or off at any
+///        time. When shutting off continuous lock mode, a lock becomes a
+///        natural 1 year duration lock.
+///
+///      - Multichain fees:
+///        This is talked about in greater detail inside "CVELocker.sol",
+///        system fees are distributed pro-rata across all chains rather
+///        than isolated chain fee distributions.
+///
+///      - Multichain locks:
+///        A voting escrow lock can be moved from any chain to any chain
+///        inside the Curvance Protocol system. The nature of multichain fees
+///        allows for chains themselves to participate in incentive markets
+///        in attracting Curvance DAO members to migrate their locks on to
+///        their chain, attracting more fees, and as a result,
+///        volume (in theory).
+///
+///      - Early Expiry optionality:
+///        Voting escrow locks introduce duration risk to participants,
+///        some of which may want to opt out of due to exogenous
+///        circumstances. Because of this, veCVE introducing the option to
+///        expire a voting escrow lock early, in exchange, a heavy penalty
+///        to the lock's CVE deposit is slashed and sent to the DAO.
+///        Providing Curvance DAO additional resources to develop and improve
+///        Curvance protocol.
+///
+///      - Combining Locks:
+///        Users also have the option to combine all their locks into a single
+///        fresh lock. This allows for consolidation, and improvement in
+///        future transaction execution quality (lower gas costs) when
+///        managing their voting escrow position(s). Combine locks can
+///        theoretically temporarily be blocked is an epoch has rolled over
+///        and has not been delivered to the chain due to runtime invariant
+///        checks, this does not introduce any exploitable attack vector.
+///
+///      - Point system (yay points):
+///        Rather than directly looking at votes or a user's veCVE balance,
+///        a points system is introduced to eliminate the need for a "kicking"
+///        system. A user's points are maintained inside a points checkpoint
+///        value, and a dynamic mapping that monitors at what epoch
+///        a user's points will unlock due to voting escrow lock expiry.
+///        Theoretically this checkpoint value can become out of sync with
+///        chainwide system if a user lets their rewards pile up. This can
+///        result in a user's checkpointed points becoming too high when
+///        examined directly, but does not introduce any exploitable vector
+///        since the user's checkpoint will be updated as they step through
+///        each reward epoch. 
+///      
 contract VeCVE is ERC20, ReentrancyGuard {
     /// TYPES ///
 
+    /// @notice Stores data for a voting escrow CVE position.
+    /// @param amount The amount of underlying CVE associated with the lock.
+    /// @param unlockTime The unix timestamp when the associated lock will
+    ///                   unlock.
     struct Lock {
-        /// @notice The amount of underlying CVE associated with the lock.
         uint216 amount;
-        /// @notice The unix timestamp when the associated lock will unlock.
         uint40 unlockTime;
     }
 
     /// CONSTANTS ///
 
-    /// @notice Timestamp `unlockTime` will be set to when a lock
-    //          is on continuous lock (CL) mode.
+    /// @notice The unix timestamp `unlockTime` will be set to when a lock
+    //          is set on continuous lock (CL) mode.
     uint40 public constant CONTINUOUS_LOCK_VALUE = type(uint40).max;
-    /// @notice Protocol epoch length.
+    /// @notice The length of one voting escrow epoch, in weeks.
     uint256 public constant EPOCH_DURATION = 2 weeks;
-    /// @notice in # of epochs.
+    /// @notice The length of a fresh voting escrow CVE position, in epochs.
     uint256 public constant LOCK_DURATION_EPOCHS = 26;
-    /// @notice in # of seconds.
+    /// @notice The length of a fresh voting escrow CVE position, in seconds.
     uint256 public constant LOCK_DURATION = 52 weeks;
-    /// @notice Point multiplier for a continuous lock. 2 = 200%.
+    /// @notice Point multiplier for a continuous lock.
+    /// @dev 2 = 200%.
     uint256 public constant CL_POINT_MULTIPLIER = 2;
 
     /// @dev `bytes4(keccak256(bytes("VeCVE__Unauthorized()")))`
@@ -53,27 +133,45 @@ contract VeCVE is ERC20, ReentrancyGuard {
     uint256 public immutable genesisEpoch;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-    /// @notice token name metadata.
+
+    /// @notice veCVE name metadata.
     bytes32 private immutable _name;
-    /// @notice token symbol metadata.
+    /// @notice veCVE symbol metadata.
     bytes32 private immutable _symbol;
 
     /// STORAGE ///
 
-    /// @notice Token Points on this chain.
-    uint256 public chainPoints;
-    ///  @notice 1 = active; 2 = shutdown.
+    /// @notice Whether the veCVE system is shutdown or not.
+    /// @dev 1 = active; 2 = shutdown.
     uint256 public isShutdown = 1;
+    /// @notice The amount of "points" on this chain, used for determining
+    ///         CVELocker rewards. 1:1 with voting escrow positions by
+    ///         default. But, are elevated (multiplied by CL_POINT_MULTIPLIER)
+    ///         when locks are put on CL mode.
+    uint256 public chainPoints;
 
-    /// @notice User => Array of VeCVE locks.
-    mapping(address => Lock[]) public userLocks;
-    /// @notice User => Token Points.
-    mapping(address => uint256) public userPoints;
-    /// @notice User => Epoch # => Tokens unlocked.
-    mapping(address => mapping(uint256 => uint256)) public userUnlocksByEpoch;
-    /// @notice Epoch # => Token unlocks on this chain.
+    /// @notice Whether the chain has token points unlocking during an epoch.
+    ///         Every non-continuous voting escrow position will have a
+    ///         corresponding unlock documented.
+    /// @dev Epoch # => Token unlocks on this chain.
     mapping(uint256 => uint256) public chainUnlocksByEpoch;
 
+    /// @notice Array mapping containing all voting escrow lock positions
+    ///         of a user.
+    /// @dev User => Array of VeCVE locks.
+    mapping(address => Lock[]) public userLocks;
+    /// @notice The amount of "points" of a user, used for determining
+    ///         CVELocker rewards. 1:1 with voting escrow positions by
+    ///         default. But, are elevated (multiplied by CL_POINT_MULTIPLIER)
+    ///         when locks are put on CL mode.
+    /// @dev User => Token Points.
+    mapping(address => uint256) public userPoints;
+    /// @notice Whether a user has token points unlocking during an epoch.
+    ///         Every non-continuous voting escrow position will have a
+    ///         corresponding unlock documented.
+    /// @dev User => Epoch # => Tokens unlocked.
+    mapping(address => mapping(uint256 => uint256)) public userUnlocksByEpoch;
+    
     /// EVENTS ///
 
     event Locked(address indexed user, uint256 amount);
@@ -594,11 +692,25 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 amount = lock.amount;
 
         // If the locker is shutdown, do not allow them to relock,
-        // we'd want them to exit locked positions.
+        // we will want them to exit locked positions. Decrease points only
+        // if necessary. Likely point adjustments do not matter after a
+        // locker's shutdown but best to avoid invariant errors in all forms.
         if (isShutdown == 2) {
             relock = false;
-            // Update their points to reflect the removed lock
-            _updateDataFromEarlyUnlock(msg.sender, amount, lock.unlockTime);
+            uint256 unlockTime = lock.unlockTime;
+            // This check could also be on `nextEpochToDeliver`, the global
+            // variable. But, we check user's value directly here incase
+            // somehow they broke post condition _claimRewards
+            // nextEpochToDeliver == userNextClaimIndex invariant.
+            // Next claim is the current epoch + 1 so we check <= instead of
+            // < for whether unlock epoch has been processed or not.
+            if (
+                cveLocker.userNextClaimIndex(msg.sender) <=
+                currentEpoch(unlockTime)
+                ) {
+                // Update their points to reflect the removed lock.
+                _updateDataFromEarlyUnlock(msg.sender, amount, unlockTime);
+            }
         }
 
         if (relock) {
@@ -618,10 +730,11 @@ contract VeCVE is ERC20, ReentrancyGuard {
                 _incrementTokenUnlocks(msg.sender, freshLockEpoch(), amount);
             }
         } else {
+            // Burn the user's veCVE, then remove their lock.
             _burn(msg.sender, amount);
             _removeLock(locks, lockIndex);
 
-            // Transfer the user the unlocked CVE
+            // Transfer the user the unlocked CVE.
             SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
             emit Unlocked(msg.sender, amount);
@@ -1151,9 +1264,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 lastLockIndex = user.length - 1;
 
         if (lockIndex != lastLockIndex) {
-            Lock memory lock = user[lockIndex];
             user[lockIndex] = user[lastLockIndex];
-            user[lastLockIndex] = lock;
         }
 
         user.pop();
@@ -1164,12 +1275,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param user The address of the user.
     /// @param points The number of points to add.
     function _incrementPoints(address user, uint256 points) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints + points;
-            userPoints[user] = userPoints[user] + points;
-        }
+        chainPoints = chainPoints + points;
+        userPoints[user] = userPoints[user] + points;
     }
 
     /// @notice Reduce token points.
@@ -1177,12 +1284,8 @@ contract VeCVE is ERC20, ReentrancyGuard {
     /// @param user The address of the user.
     /// @param points The number of points to reduce.
     function _reducePoints(address user, uint256 points) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints - points;
-            userPoints[user] = userPoints[user] - points;
-        }
+        chainPoints = chainPoints - points;
+        userPoints[user] = userPoints[user] - points;
     }
 
     /// @notice Increment token unlocks.
@@ -1196,14 +1299,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 epoch,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] +
-                points;
-        }
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] +
+            points;
     }
 
     /// @notice Reduce token unlocks.
@@ -1217,14 +1316,10 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 epoch,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] -
-                points;
-        }
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] -
+            points;
     }
 
     /// @notice Update token unlock data from an extended lock that
@@ -1244,20 +1339,16 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 previousPoints,
         uint256 points
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainUnlocksByEpoch[previousEpoch] =
-                chainUnlocksByEpoch[previousEpoch] -
-                previousPoints;
-            userUnlocksByEpoch[user][previousEpoch] =
-                userUnlocksByEpoch[user][previousEpoch] -
-                previousPoints;
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] +
-                points;
-        }
+        chainUnlocksByEpoch[previousEpoch] =
+            chainUnlocksByEpoch[previousEpoch] -
+            previousPoints;
+        userUnlocksByEpoch[user][previousEpoch] =
+            userUnlocksByEpoch[user][previousEpoch] -
+            previousPoints;
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] +
+            points;
     }
 
     /// @notice Update token data from continuous lock on.
@@ -1273,16 +1364,12 @@ contract VeCVE is ERC20, ReentrancyGuard {
         uint256 points,
         uint256 unlocks
     ) internal {
-        // We know theres never more than 420m
-        // so this should never over/underflow.
-        unchecked {
-            chainPoints = chainPoints + points;
-            chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - unlocks;
-            userPoints[user] = userPoints[user] + points;
-            userUnlocksByEpoch[user][epoch] =
-                userUnlocksByEpoch[user][epoch] -
-                unlocks;
-        }
+        chainPoints = chainPoints + points;
+        chainUnlocksByEpoch[epoch] = chainUnlocksByEpoch[epoch] - unlocks;
+        userPoints[user] = userPoints[user] + points;
+        userUnlocksByEpoch[user][epoch] =
+            userUnlocksByEpoch[user][epoch] -
+            unlocks;
     }
 
     /// @notice Update token data from an early expired lock.

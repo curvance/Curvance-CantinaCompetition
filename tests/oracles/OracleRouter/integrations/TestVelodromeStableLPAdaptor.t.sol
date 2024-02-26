@@ -10,7 +10,7 @@ import { VelodromeLib } from "contracts/libraries/VelodromeLib.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { TestBaseOracleRouter } from "../TestBaseOracleRouter.sol";
 
-contract TestVelodromeStableLPAdapter is TestBaseOracleRouter {
+contract TestVelodromeStableLPAdaptor is TestBaseOracleRouter {
     address private DAI = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
     address private USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
 

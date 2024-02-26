@@ -594,7 +594,10 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
     ///                     leverage action.
     /// @param account The account to leverage an active Curvance position
     ///                for.
-    function _leverage(LeverageStruct memory leverageData, address account) internal {
+    function _leverage(
+        LeverageStruct memory leverageData,
+        address account
+    ) internal {
         DToken borrowToken = leverageData.borrowToken;
         uint256 borrowAmount = leverageData.borrowAmount;
         uint256 maxBorrowAmount = queryAmountToBorrowForLeverageMax(
@@ -624,7 +627,10 @@ contract PositionFolding is IPositionFolding, Delegable, ERC165, ReentrancyGuard
     ///                       deleverage action.
     /// @param account The account to deleverage an active Curvance position
     ///                for.
-    function _deleverage(DeleverageStruct memory deleverageData, address account) internal {
+    function _deleverage(
+        DeleverageStruct memory deleverageData,
+        address account
+    ) internal {
         deleverageData.collateralToken.withdrawByPositionFolding(
             account,
             deleverageData.collateralAmount,

@@ -26,6 +26,7 @@ contract TransferDaoOwnershipTest is TestBaseMarket {
         vm.expectEmit(true, true, true, true);
         emit OwnershipTransferred(address(this), newDaoAddress);
         centralRegistry.transferDaoOwnership(newDaoAddress);
+        
         assertEq(centralRegistry.daoAddress(), newDaoAddress);
         assertTrue(centralRegistry.hasDaoPermissions(newDaoAddress));
         assertFalse(centralRegistry.hasDaoPermissions(address(this)));

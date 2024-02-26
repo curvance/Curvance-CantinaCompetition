@@ -13,6 +13,33 @@ import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
+/// @title Curvance Voting Escrow CVE Reward Locker.
+/// @notice A system for managing the Voting Escrow Reward System within
+///         Curvance Protocol.
+/// @dev The CVELocker acts a unified interface for distributing rewards to
+///      Curvance DAO users. This system works in collaboration with the VeCVE
+///      smart contract. Rewards are distributed biweekly and pile up for each
+///      user, allowing them to claim rewards whenever they want. Rewards can
+///      be routed directly into other tokens. CVE can be directly routed to,
+///      other tokens can be routed into through the delegation system.
+///
+///      Rewards are distributed pro-rata to each chain's CVE locker every
+///      two weeks. Fees are moved to some unified chain (can change) along
+///      with information corresponding to the number of veCVE locked on a
+///      chain. This means, for example, if 10 million reward tokens are to
+///      be distributed during an epoch that had 100 million veCVE locked,
+///      every user would receive 0.1 reward tokens for each veCVE they had
+///      locked during that period. This creates a direct incentive for chains
+///      to provide exogenous rewards to Curvance DAO users to move their
+///      locks over to their chain, increases the rewards to be distributed
+///      on that chain.
+///
+///      Currently rewards/fees are distributed as USDC and are moved through
+///      either Circle's CCTP or Wormhole's automatic relayer, other solutions
+///      may also be integrated to facilitate a wider range of chain support.
+///      Such as routing a distributed reward token into a chain specific
+///      stablecoin after a Wormhole message is delivered.
+///      
 contract CVELocker is Delegable, ReentrancyGuard {
     /// CONSTANTS ///
 
@@ -198,6 +225,47 @@ contract CVELocker is Delegable, ReentrancyGuard {
         }
 
         return false;
+    }
+
+    /// @notice Calculates a hypothetical CVE locker rewards claim by `user`.
+    ///         Returns 0 if there are no rewards to claim.
+    /// @param user The user who should have their hypothetical rewards
+    ///             calculated.
+    /// @return The amount of `rewardToken` that `user` would receive if they
+    ///         tried claiming their rewards right now.
+    function hypotheticalRewardsClaim(
+        address user
+    ) external view returns (uint256) {
+        uint256 epochs = epochsToClaim(user);
+        if (epochs == 0) {
+            return 0;
+        }
+
+        uint256 startEpoch = userNextClaimIndex[user];
+        uint256 startPoints = veCVE.userPoints(user);
+        uint256 rewards;
+        uint256 pointsOffset;
+
+        for (uint256 i; i < epochs; ++i) {
+            pointsOffset = veCVE.userUnlocksByEpoch(user, startEpoch + i);
+            // If they have tokens unlocking this epoch we need to offset
+            // their cached points.
+            if (pointsOffset > 0) {
+                // Offset points by how many points would unlock this epoch.
+                startPoints -= pointsOffset;
+            }
+
+            // If all points have unlocked we can stop early.
+            if (startPoints == 0) {
+                break;
+            }
+
+            // Increment points for this epoch.
+            rewards += startPoints * epochRewardsPerCVE[startEpoch + i];
+        }
+
+        // Removes the `WAD` precision offset for proper reward value.
+        return rewards / WAD;
     }
 
     /// CLAIM INDEX FUNCTIONS ///

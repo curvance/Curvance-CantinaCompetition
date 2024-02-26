@@ -2,9 +2,11 @@
 pragma solidity ^0.8.17;
 
 import { WAD, WAD_SQUARED } from "contracts/libraries/Constants.sol";
+import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
+import { IInterestRateModel } from "contracts/interfaces/market/IInterestRateModel.sol";
 
 /// @title Curvance Dynamic Interest Rate Model.
 /// @notice Manages borrow and supply interest rates for Curvance debt tokens.
@@ -65,7 +67,7 @@ import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 ///         applying a positive curve value to the adjustment. This adjustment
 ///         is also subjected to the decay multiplier.
 ///
-contract DynamicInterestRateModel {
+contract DynamicInterestRateModel is ERC165 {
     /// TYPES ///
 
     /// @notice Stores configuration data for current Dynamic Interest
@@ -108,8 +110,6 @@ contract DynamicInterestRateModel {
 
     /// CONSTANTS ///
 
-    /// @notice For external contract's to call for validation.
-    bool public constant IS_INTEREST_RATE_MODEL = true;
     /// @notice Rate at which interest is compounded, in seconds.
     /// @dev 10 minutes = 600 seconds.
     uint256 public constant INTEREST_COMPOUND_RATE = 10 minutes;
@@ -521,6 +521,15 @@ contract DynamicInterestRateModel {
         return uint64(_currentRates >> _BITPOS_UPDATE_TIMESTAMP);
     }
 
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override returns (bool) {
+        return
+            interfaceId == type(IInterestRateModel).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Calculates the interest rate for `util` market utilization.
@@ -547,8 +556,6 @@ contract DynamicInterestRateModel {
             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
             WAD_SQUARED;
     }
-
-    /// INTERNAL FUNCTIONS ///
 
     /// @notice Updates the parameters of the dynamic interest rate model
     ///         used in the market.

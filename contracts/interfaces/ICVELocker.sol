@@ -36,6 +36,10 @@ interface ICVELocker {
     ///      but can lag behind if crosschain systems are strained.
     function nextEpochToDeliver() external view returns (uint256);
 
+    /// @notice The next epoch index to claim for a user.
+    /// @dev User => Reward Next Claim Index.
+    function userNextClaimIndex(address user) external view returns (uint256);
+
     /// @notice Updates `user`'s claim index.
     /// @dev Updates the claim index of a user.
     ///      Can only be called by the VeCVE contract.

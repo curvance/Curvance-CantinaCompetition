@@ -12,6 +12,9 @@ contract StakedGMXCToken is CTokenCompounding {
     /// @notice The address of WETH on this chain.
     IERC20 public immutable WETH;
 
+    /// @notice Chain ID for Arbitrum Mainnet where this should be deployed.
+    uint256 internal constant _ARBITRUM_CHAIN_ID = 42161;
+
     /// STORAGE ///
 
     /// @notice The address of the GMX reward router that distributes WETH
@@ -39,7 +42,7 @@ contract StakedGMXCToken is CTokenCompounding {
         address rewardRouter_,
         address weth_
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
-        if (block.chainid != 42161) {
+        if (block.chainid != _ARBITRUM_CHAIN_ID) {
             revert StakedGMXCToken__ChainIsNotSupported();
         }
         if (weth_ == address(0)) {
@@ -115,11 +118,11 @@ contract StakedGMXCToken is CTokenCompounding {
                 }
 
                 yield = SwapperLib.swap(centralRegistry, swapData);
-            }
 
-            // Make sure swap was routed into GMX.
-            if (yield == 0) {
-                revert StakedGMXCToken__SlippageError();
+                // Make sure swap was routed into GMX.
+                if (yield == 0) {
+                    revert StakedGMXCToken__SlippageError();
+                }
             }
 
             // Deposit new assets into Staked GMX contract to continue

@@ -10,8 +10,7 @@ abstract contract BaseWrappedAggregator is IChainlink {
     /// ERRORS ///
 
     error BaseWrappedAggregator__UintToIntError();
-    error BaseWrappedAggregator__intToUIntError();
-
+    
     /// EXTERNAL FUNCTIONS ///
 
     /// @notice Returns the current phase's aggregator address.
@@ -139,14 +138,5 @@ abstract contract BaseWrappedAggregator is IChainlink {
             revert BaseWrappedAggregator__UintToIntError();
         }
         return int256(value);
-    }
-
-    /// @notice Converts a signed int256 into an unsigned uint256.
-    /// @param value The int256 value to convert to uint256.
-    function _toUInt256(int256 value) internal pure returns (uint256) {
-        if (value < 0) {
-            revert BaseWrappedAggregator__intToUIntError();
-        }
-        return uint256(value);
     }
 }

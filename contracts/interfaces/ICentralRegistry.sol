@@ -11,7 +11,7 @@ import { ITokenBridge } from "contracts/interfaces/external/wormhole/ITokenBridg
 /// @param isAuthorized Whether the contract is supported or not.
 ///                     2 = yes
 ///                     0 or 1 = no
-/// @param messagingChainId messaging chainId where this address authorized.
+/// @param messagingChainId Messaging Chain ID where this address authorized.
 /// @param cveAddress CVE address on the chain.
 struct OmnichainData {
     uint256 isAuthorized;

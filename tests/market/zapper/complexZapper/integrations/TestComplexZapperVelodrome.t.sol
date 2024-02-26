@@ -45,12 +45,12 @@ contract TestComplexZapperVelodrome is TestBaseMarket {
         assertEq(address(complexZapper.marketManager()), address(marketManager));
     }
 
-    function testVelodromeIn() public {
+    function testEnterVelodrome() public {
         uint256 ethAmount = 3 ether;
         vm.deal(user, ethAmount);
 
         vm.startPrank(user);
-        complexZapper.velodromeIn{ value: ethAmount }(
+        complexZapper.enterVelodrome{ value: ethAmount }(
             address(0),
             ComplexZapper.ZapperData(
                 address(0),
@@ -70,14 +70,14 @@ contract TestComplexZapperVelodrome is TestBaseMarket {
         assertGt(IERC20(_VELODROME_WETH_USDC).balanceOf(user), 0);
     }
 
-    function testVelodromeOut() public {
-        testVelodromeIn();
+    function testExitVelodrome() public {
+        testEnterVelodrome();
 
         uint256 withdrawAmount = IERC20(_VELODROME_WETH_USDC).balanceOf(user);
 
         vm.startPrank(user);
         IERC20(_VELODROME_WETH_USDC).approve(address(complexZapper), withdrawAmount);
-        complexZapper.velodromeOut(
+        complexZapper.exitVelodrome(
             _VELODROME_ROUTER,
             ComplexZapper.ZapperData(
                 _VELODROME_WETH_USDC,
