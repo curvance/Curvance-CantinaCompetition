@@ -146,8 +146,6 @@ contract DynamicInterestRateModel {
     uint256 internal constant _SECONDS_PER_YEAR = 31_536_000;
     /// @notice Mask of `vertexMultiplier` in `_currentRates`.
     uint256 internal constant _BITMASK_VERTEX_MULTIPLIER = (1 << 192) - 1;
-    /// @notice Mask of `nextUpdateTimestamp` in `_currentRates`.
-    uint256 internal constant _BITMASK_UPDATE_TIMESTAMP = (1 << 64) - 1;
     /// @notice The bit position of `nextUpdateTimestamp` in `_currentRates`.
     uint256 internal constant _BITPOS_UPDATE_TIMESTAMP = 192;
 
@@ -303,14 +301,14 @@ contract DynamicInterestRateModel {
         // Pull current interest rate.
         if (belowVertex) {
             unchecked {
-                borrowRate = getBaseInterestRate(util);
+                borrowRate = _getBaseInterestRate(util);
             }
         } else {
             /// We know this will not underflow or overflow,
             /// because of Interest Rate Model configurations.
             unchecked {
-                borrowRate = (getVertexInterestRate(util - vertexPoint) +
-                    getBaseInterestRate(vertexPoint));
+                borrowRate = (_getVertexInterestRate(util - vertexPoint) +
+                    _getBaseInterestRate(vertexPoint));
             }
         }
 
@@ -447,12 +445,12 @@ contract DynamicInterestRateModel {
         // Query base interest rate directly since vertex multiplier is not
         // applied.
         if (util <= vertexPoint) {
-            return getBaseInterestRate(util);
+            return _getBaseInterestRate(util);
         }
 
         if (vertexMultiplier() == WAD && util < config.increaseThreshold) {
-            return (getVertexInterestRate(util - vertexPoint) +
-                getBaseInterestRate(vertexPoint));
+            return (_getVertexInterestRate(util - vertexPoint) +
+                _getBaseInterestRate(vertexPoint));
         }
 
         uint256 vertexInterestRate = ratesConfig.vertexInterestRate;
@@ -476,15 +474,15 @@ contract DynamicInterestRateModel {
 
         if (util <= vertexPoint) {
             unchecked {
-                return getBaseInterestRate(util);
+                return _getBaseInterestRate(util);
             }
         }
 
         /// We know this will not underflow or overflow,
         /// because of Interest Rate Model configurations.
         unchecked {
-            return (getVertexInterestRate(util - vertexPoint) +
-                getBaseInterestRate(vertexPoint));
+            return (_getVertexInterestRate(util - vertexPoint) +
+                _getBaseInterestRate(vertexPoint));
         }
     }
 
@@ -526,7 +524,7 @@ contract DynamicInterestRateModel {
     /// @notice Calculates the interest rate for `util` market utilization.
     /// @param util The utilization rate of the market.
     /// @return Returns the calculated interest rate, in `WAD`.
-    function getBaseInterestRate(
+    function _getBaseInterestRate(
         uint256 util
     ) internal view returns (uint256) {
         return (util * ratesConfig.baseInterestRate) / WAD;
@@ -538,7 +536,7 @@ contract DynamicInterestRateModel {
     /// @param util The utilization rate of the market above
     ///            `vertexStartingPoint`.
     /// @return Returns the calculated interest rate, in `WAD`.
-    function getVertexInterestRate(
+    function _getVertexInterestRate(
         uint256 util
     ) internal view returns (uint256) {
         // We divide by 1e36 (WAD_SQUARED) since we need to divide by WAD
@@ -547,8 +545,6 @@ contract DynamicInterestRateModel {
             (util * ratesConfig.vertexInterestRate * vertexMultiplier()) /
             WAD_SQUARED;
     }
-
-    /// INTERNAL FUNCTIONS ///
 
     /// @notice Updates the parameters of the dynamic interest rate model
     ///         used in the market.

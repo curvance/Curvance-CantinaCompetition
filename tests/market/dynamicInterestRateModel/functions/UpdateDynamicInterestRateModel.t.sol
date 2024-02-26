@@ -1,13 +1,33 @@
 pragma solidity ^0.8.17;
 
-import { WAD } from "contracts/libraries/Constants.sol";
 import { TestBaseDynamicInterestRateModel } from "../TestBaseDynamicInterestRateModel.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
-import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 
 contract UpdateDynamicInterestRateModelTest is
     TestBaseDynamicInterestRateModel
 {
+    function test_updateDynamicInterestRateModel_fail_whenCallerIsNotAuthorized()
+        public
+    {
+        vm.prank(address(1));
+
+        vm.expectRevert(
+            DynamicInterestRateModel
+                .DynamicInterestRateModel__Unauthorized
+                .selector
+        );
+        interestRateModel.updateDynamicInterestRateModel(
+            1500,
+            1500,
+            5500,
+            10 hours,
+            5500,
+            150000000,
+            150,
+            true
+        );
+    }
+
     function test_updateDynamicInterestRateModel_fail_whenAdjustmentVelocityExceedsMaximum()
         public
     {

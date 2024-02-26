@@ -1,6 +1,5 @@
 pragma solidity ^0.8.17;
 
-import { WAD } from "contracts/libraries/Constants.sol";
 import { TestBaseDynamicInterestRateModel } from "../TestBaseDynamicInterestRateModel.sol";
 import { DynamicInterestRateModel } from "contracts/market/DynamicInterestRateModel.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
