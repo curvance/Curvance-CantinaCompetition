@@ -173,6 +173,10 @@ Locked token data actions are intended to be moved over to Wormhole's CCQ prior 
 
 **Temporary failure of VeCVE's combineAllLocks where an epoch has not been delivered is considered out of scope.** A 12 hour blackout period will be added before and after the start of an epoch, and if somehow epochs have not been delivered in 12 hours, state changing actions such as combineAllLocks will be blocked similar to if the VeCVE contract were shutdown. This will honor the runtime invariant check and will be added along with the payload/MessageType + calldata encoding/decoding consolidation outlined above.
 
+Contract sizing of Market Manager and VeCVE currently require the optimizer to be deployed due to contract size above the Spurious Dragon fork restriction. Each contract will likely be consolidated and potentially downsized prior to launch. So, any **issues around potential failure of deployment due to contract size for Market Manager or VeCVE will be considered out of scope.**
+
+There is inherent trust for particular integration contract owners, i.e. if Chainlink multisig rugs, that oracle adaptor could become malicious. So we're looking directly at unprivileged ways to exploit integrations. **Potential issues related to complete compromising of an infrastructual partner are considered out of scope.**
+
 ### Technical rollout strategy
 
 Curvance will be deployed in waves with initial support on a minimum of 6 chains day one. The initial launch will be done with CVE out of circulation, with the gauge system off. This will be done by setting the genesisEpoch exactly 8 weeks from the start of the initial launch ("The Beta"). Once beta concludes CVE initial distribution recipients will have a few days to choose to lock their tokens to participate in the first epoch of rewards. Epochs will take place every 2 weeks with the fee accumulator/protocol messaging hub/CTokenCompounding functions managed by Gelato Network. These function calls will be funded by USDC deposited into OneBalance on Polygon PoS, either via OneBalanceFeeManager (or by Curvance DAO if this contract is depreciated). Gelato will trigger gauge emission data porting on the conclusion of each Snapshot Gauge Voting proposal, with Fee Accumulator and CTokenCompounding calls driven by fees accumulated/owned by the corresponding contracts. The primary distribution of USDC for CVE Locker rewards will be via Circle's CCTP via Wormhole's automatic relayer. The alternative of using Wormhole's native bridge is may be used but will be implemented on a case-by-case basis for each chain.   
@@ -198,6 +202,16 @@ Curvance's main attack vectors are mainly around crosschain action staleness, Mo
 - Are any external dependencies improperly implemented? Are we opening ourselves up to any multisystem exploit (e.g. they manipulate something inside an external protocol, allowing theft of Curvance user assets due to improper accounting on our end).
 - Can liquidateAccount be used to avoid debt obligations, or worse, steal Curvance collateral or debt assets.
 - Is there a meaningful way to bypass collateral caps on assets inside a Curvance Market, not via governance changes grandfathering in users, but directly bypassing invariant checks.
+- Can the dual-bridge system be exploited to cause corruption of state across the multi-chain?
+- Can the reward accounting ever fail to satisfy a user's legimitate withdrawal?
+- Is the CToken underlying ever not 100% liquid?
+- Is there a way to liquidate more than expected of a certain user?
+- Is all arithmetic always rounding in directions to benefit the protocol?
+- Are there economical attacks on the liquidation curve that could make liquidation unattractive for liquidators to spur bad debt?
+- Are there cross-contract reentrancy attacks on the CVELocker / VeCVE pair ?
+- Are there locations where market listing checks / market pause / health checks / access checks are forgotten?
+- Are there contracts which through reasonable use could suffer from stuck funds?
+- Could cross chain messaging fail due to misaccuracies in bridging fees?
 
 ### Tests
 
