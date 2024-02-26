@@ -13,6 +13,8 @@ contract CombineAllLocksTest is TestBaseVeCVE {
 
         deal(address(cve), address(this), _INITIAL_AMOUNT);
         cve.approve(address(veCVE), _INITIAL_AMOUNT);
+
+        veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
     }
 
     /* This test is considered out of scope, as it is a result of no epoch delivery, thus commenting this out until blackout period is implemented
