@@ -277,7 +277,7 @@ contract SimpleZapper is ReentrancyGuard {
         }
 
         // Validate that output of redemption is sufficient.
-        if (assets >= expectedAssets) {
+        if (assets < expectedAssets) {
             revert SimpleZapper__ExecutionError();
         }
     }

@@ -602,7 +602,7 @@ contract ComplexZapper is ReentrancyGuard {
         }
 
         // Validate that output of redemption is sufficient.
-        if (assets >= expectedAssets) {
+        if (assets < expectedAssets) {
             revert ComplexZapper__ExecutionError();
         }
     }

@@ -16,7 +16,8 @@ Curvance operates as a hybrid model between a yield optimizer and a cross-margin
 - Crosschain gauge system, introducing of gauge system allowing native token reward streaming to collateral depositors and lenders.
 - Delegated actions, ability to delegate user actions to any address, allowing for support for things like limit orders, dca, take profit, crosschain borrowing, crosschain lending. Some of these are built already in this repo, others are not.
 
-[Documentation Link](https://docs.curvance.com/):
+[Documentation Link](https://docs.curvance.com/)
+
 
 ### Money Market System
 
@@ -59,6 +60,7 @@ Users who have active positions inside a dToken are referred to as accounts. For
 
 "Safe" versions of functions have been added that introduce additional reentry and update protection logic to minimize risks when integrating Curvance into external protocols.
 
+
 ### Crosschain Technology
 
 Curvance was built from the ground up with crosschain in mind. Similiar to many other protocols, the native token, CVE is multichain. However, so is everything else. Things such as gauge emissions, fee distributions, voting escrow system, borrowing, lending, are built to scale to many different chains. At this time, all listed functions are built excluding crosschain lending routing in the current codebase.
@@ -85,6 +87,7 @@ The CVELocker acts a unified interface for distributing rewards to Curvance DAO 
 Rewards are distributed pro-rata to each chain's CVE locker every two weeks. Fees are moved to some unified chain (can change) along with information corresponding to the number of veCVE locked on a chain. This means, for example, if 10 million reward tokens are to be distributed during an epoch that had 100 million veCVE locked, every user would receive 0.1 reward tokens for each veCVE they had locked during that period. This creates a direct incentive for chains to provide exogenous rewards to Curvance DAO users to move their locks over to their chain, increases the rewards to be distributed on that chain.
 
 Currently rewards/fees are distributed as USDC and are moved through either Circle's CCTP or Wormhole's automatic relayer, other solutions may also be integrated to facilitate a wider range of chain support. Such as routing a distributed reward token into a chain specific stablecoin after a Wormhole message is delivered.
+
 
 ### Tokens
 
@@ -124,6 +127,7 @@ These changes include:
 - Point system (yay points):
   Rather than directly looking at votes or a user's veCVE balance, a points system is introduced to eliminate the need for a "kicking" system. A user's points are maintained inside a points checkpoint value, and a dynamic mapping that monitors at what epoch a user's points will unlock due to voting escrow lock expiry. Theoretically this checkpoint value can become out of sync with chainwide system if a user lets their rewards pile up. This can result in a user's checkpointed points becoming too high when examined directly, but does not introduce any exploitable vector since the user's checkpoint will be updated as they step through each reward epoch. 
 
+
 ### Gauge System
 #### Gauge Pool
 
@@ -135,13 +139,16 @@ Gauge rewards, and by extension the Partner Gauges, can distribute rewards to co
 
 The introduction of the ability to incentivize lenders creates an opportunity not only for ecosystem to create attractive terms to lend their ecosystem tokens. But to allow Curvance collateral depositors the ability to incentivize external parties to permissionlessly lend to them. This could, in theory, reduce the interest rate that borrowers pay by attractive additional lenders to their market of course, potentially minimizing their net expenses borrowing inside a particular market.
 
+
 ### Enshrined Actions
 
 Supplemental tooling has been built to enshrine flexible actions inside Curvance. Things such as zapping and native leverage are supported through protocol zappers and the positon folding contract.
 
+
 ### Blast Native Contracts
 
 Supplemental contracts have been built for deployment on the L2 Blast. These contracts are developed in order to manage native yield for the chain and will not be deployed on any other chains. Blast Native mToken (c & d tokens) contracts will not be deployed as is, and are intended to be overridden for asset specific implementations.
+
 
 ## Contest Specific Information
 ### Areas in scope
@@ -152,6 +159,7 @@ The "contracts" folder contains all the smart contracts you will be auditing, ex
 - interfaces/external
 
 Two solady contracts developed by Vectorized have been included in the audit as we are huge advocates for highly optimized versions of common contract formats and would like to see these fully audited. This means the partial FixedPointMathLib contract, and ERC4626 contracts inside the library folder are intentionally included, and are considered in scope.
+
 
 ### Areas considered out of scope:
 
