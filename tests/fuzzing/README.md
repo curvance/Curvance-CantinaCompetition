@@ -1,5 +1,9 @@
 # Invariants being Tested
 
+Due to a recent rebase (on Feb 26th) with changes to the MarketManager, inlcuding the removal of the `closePosition` function, some invariants are failing because the preconditions need to be adjusted to account for the automatic pruning of the position. 
+
+There are also incoming changes that need to be made to soft liquidations (liquidating through the DToken contract), and interest accrual that needs another adjustment to pull the internal individual account exchange rate, as opposed to the global one. 
+
 ## Stateful Deployment Tests
 
 | ID      | Description                                                             | Status |
@@ -101,7 +105,7 @@
 
 ## Market Manager - Functional Invariants
 
-                                                                                               | ID        | Property                                                                                                                     | Result |
+| ID        | Property                                                                                                                     | Result |
 |-----------|-----------------------------------------------------------------------------------------------------------------------------|--------|
 | MARKET-1  | Once a new token is listed, isListed(mtoken) should return true.                                                             | Passed |
 | MARKET-2  | A token already added to the MarketManager cannot be added again.                                                            | Passed |
