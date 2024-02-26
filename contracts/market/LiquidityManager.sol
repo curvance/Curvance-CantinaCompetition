@@ -450,6 +450,30 @@ abstract contract LiquidityManager {
         }
     }
 
+    function LiquidationStatusOf(
+        address account,
+        address debtToken,
+        address collateralToken
+    )
+        public view
+        returns (
+            uint256 lfactor,
+            uint256 debtTokenPrice,
+            uint256 collateralTokenPrice
+        )
+    {
+        LiqData memory result = _LiquidationStatusOf(
+            account,
+            debtToken,
+            collateralToken
+        );
+        return (
+            result.lFactor,
+            result.debtTokenPrice,
+            result.collateralTokenPrice
+        );
+    }
+
     /// @notice Determine whether `account` can be liquidated,
     ///         by calculating their lFactor, based on their
     ///         collateral versus outstanding debt.
@@ -732,7 +756,8 @@ abstract contract LiquidityManager {
         ) * WAD;
 
         return (
-            softSumPrior + (assetValue / tokenData[snapshot.asset].collReqSoft),
+            softSumPrior +
+                (assetValue / tokenData[snapshot.asset].collReqSoft),
             hardSumPrior + (assetValue / tokenData[snapshot.asset].collReqHard)
         );
     }

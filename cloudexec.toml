@@ -4,7 +4,7 @@
 [input]
 directory = "."
 timeout = "96h"
-jobName = "echidna market-manager-rebase-0123 10000000"
+jobName = "echidna"
 
 [commands]
 setup = '''
@@ -17,25 +17,32 @@ if ! command -v slither >/dev/null 2>&1; then
   solc-select use 0.8.17
 fi
 
-if ! command -v echidna >/dev/null 2>&1; then
-  echo "Downloading echidna..."
-  curl -fsSL -o /tmp/echidna.zip https://github.com/crytic/echidna/releases/download/v2.2.2/echidna-2.2.2-x86_64-linux.tar.gz
-  echo "Extracting echidna..."
-  unzip /tmp/echidna.zip -d /tmp
-  tar -xzf /tmp/echidna.tar.gz -C /tmp
-  echo "Installing echidna..."
-  mv /tmp/echidna /usr/local/bin
-  rm /tmp/echidna.tar.gz
-fi
+echo "Downloading echidna..."
+curl -Lo /tmp/echidna.zip \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer API_READ_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/crytic/echidna/actions/artifacts/1224643945/zip
+echo "Extracting echidna..."
+unzip /tmp/echidna.zip -d /tmp
+tar -xzf /tmp/echidna.tar.gz -C /tmp
+echo "Installing echidna..."
+mv -f /tmp/echidna /usr/local/bin
+rm /tmp/echidna.tar.gz
+echo "Installed echidna!"
 
-if ! command -v medusa >/dev/null 2>&1; then
-  echo "Downloading medusa..."
-  sudo apt-get update; sudo apt-get install -y unzip
-  curl -fsSL https://github.com/crytic/medusa/releases/download/v0.1.0/medusa-linux-x64.zip -o medusa.zip
-  unzip medusa.zip
-  chmod +x medusa
-  sudo mv medusa /usr/local/bin
-fi
+echo "Downloading medusa..."
+curl -Lo /tmp/medusa.zip \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer API_READ_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/crytic/medusa/actions/artifacts/1240540805/zip
+unzip /tmp/medusa.zip -d /tmp
+tar -xzf /tmp/medusa.tar.gz -C /tmp
+echo "Installing medusa..." 
+chmod +x /tmp/medusa
+sudo mv -f /tmp/medusa /usr/local/bin
+echo "Installed medusa!" 
 
 if ! command -v forge >/dev/null 2>&1; then
   echo "Installing foundry..." 

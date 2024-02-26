@@ -36,7 +36,9 @@ contract CanLiquidateTest is TestBaseMarketManager {
         marketManager.listToken(address(dUSDC));
         marketManager.listToken(address(cBALRETH));
 
-        vm.expectRevert(MarketManager.MarketManager__InvalidParameter.selector);
+        vm.expectRevert(
+            MarketManager.MarketManager__InvalidParameter.selector
+        );
         marketManager.canLiquidate(
             address(dUSDC),
             address(cBALRETH),
@@ -230,8 +232,17 @@ contract CanLiquidateTest is TestBaseMarketManager {
                 false
             );
 
-        (, , , , , , , uint256 baseCFactor, uint256 cFactorCurve) = marketManager
-            .tokenData(address(cBALRETH));
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            uint256 baseCFactor,
+            uint256 cFactorCurve
+        ) = marketManager.tokenData(address(cBALRETH));
 
         uint256 cFactor = baseCFactor + ((cFactorCurve * 1e18) / WAD);
         uint256 debtAmount = (cFactor * dUSDC.debtBalanceCached(user1)) / WAD;

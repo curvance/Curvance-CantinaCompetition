@@ -10,16 +10,12 @@ import { FuzzMarketManagerStateChecks } from "tests/fuzzing/functional/FuzzMarke
 import { FuzzDToken } from "tests/fuzzing/functional/FuzzDToken.sol";
 import { FuzzDTokenSystem } from "tests/fuzzing/system/FuzzDTokenSystem.sol";
 
-//
 contract FuzzingSuite is
     FuzzDToken,
+    TestStatefulDeployments,
     FuzzDTokenSystem,
-    FuzzMarketManager,
     FuzzMarketManagerSystem,
     FuzzMarketManagerRBAC,
     FuzzMarketManagerStateChecks,
-    FuzzVeCVE,
-    TestStatefulDeployments
-{
-
-}
+    FuzzVeCVE
+{}
