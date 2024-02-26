@@ -70,7 +70,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         veCVE.earlyExpireLock(0, rewardsData, "", 0);
     }
 
-    function test_getUnlockPenatly_expiredLock() public {
+    function test_getUnlockPenalty_expiredLock() public {
         centralRegistry.setEarlyUnlockPenaltyMultiplier(3000);
         (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
