@@ -14,6 +14,48 @@ import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
 
+/// @title Curvance Gauge Pool.
+/// @notice A market specific system for distributing rewards to Curvance
+///        market users inside the Curvance Protocol.
+/// @dev A Curvance Gauge Pool manages rewards associated with a particular
+///      Market Manager. Tokens are not actually "deposited" inside the
+///      Gauge Pool, but rather information is documented. This creates an
+///      incredibly efficient method of measuring and distributing rewards
+///      as no secondary deposit/withdrawal execution is required by users
+///      utilizing Curvance Protocol.
+///
+///      A Gauge Pool is built to support an infinite number of rewards in
+///      any supported asset. The base level of CVE gauge emissions are
+///      distributed through a markets corresponding gauge pool. CVE emissions
+///      can be claimed directly, or locked in a 1 year voting escrow position
+///      for an additional reward boost. This mechanism was built to better
+///      align the duration exposure between Curvance users and the Curvance
+///      DAO. The Curvance DAO has a long time horizon, and users who align
+///      with that time horizon should be rewarded more greatly than users
+///      with a short time horizon, which has a duration mismatch between
+///      parties. Additional reward tokens can be streamed to users through
+///      our "Partner Gauges" these act as additional reward layers on top of
+///      the base CVE reward system. This allows protocols or chains to
+///      directly incentivize their ecosystem without building any additional
+///      technology on top. The partner gauge system works for any token
+///      without writing any additional code.
+///
+///      Gauge rewards, and by extension the Partner Gauges, can distribute
+///      rewards to collateral depositors, or lenders, in a market.
+///      Borrowers intentionally do not have the ability to receive rewards
+///      as this could create looped delta hedged strategies that do not
+///      add value to the Curvance Protocol to receive essentially risk free
+///      rewards.
+///
+///      The introduction of the ability to incentivize lenders creates an
+///      opportunity not only for ecosystem to create attractive terms to
+///      lend their ecosystem tokens. But to allow Curvance collateral
+///      depositors the ability to incentivize external parties to
+///      permissionlessly lend to them. This could, in theory, reduce the
+///      interest rate that borrowers pay by attractive additional lenders to
+///      their market of course, potentially minimizing their net expenses
+///      borrowing inside a particular market.
+///
 contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     /// TYPES ///
 
@@ -28,23 +70,39 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     address public marketManager;
     /// @notice Timestamp when the first first deposit occurred.
     uint256 public firstDeposit;
-    /// @notice cToken => total supply.
-    mapping(address => uint256) public totalSupply;
-    /// @notice  cToken => user => balance.
-    mapping(address => mapping(address => uint256)) public balanceOf;
-    /// @notice  cToken => lastRewardTimestamp.
-    mapping(address => uint256) public poolLastRewardTimestamp;
-    /// @notice  Reward tokens attached to this Gauge Pool.
+    /// @notice An array contain a list of all reward tokens attached
+    ///         to this Gauge Pool.
+    /// @dev Reward tokens attached to this Gauge Pool.
     address[] public rewardTokens;
-    /// @notice  epoch => rewardToken => rewardPerSec.
-    mapping(uint256 => mapping(address => uint256)) private _epochRewardPerSec;
-    /// @notice  cToken => rewardToken => accRewardPerShare.
+
+    /// @notice The total supply of a token deposited.
+    /// @dev mToken => total supply.
+    mapping(address => uint256) public totalSupply;
+    /// @notice The total balance of a token deposited by a user.
+    /// @dev mToken => user => balance.
+    mapping(address => mapping(address => uint256)) public balanceOf;
+    /// @notice The timestamp of the last time rewards were updated
+    ///         for a particular token.
+    /// @dev mToken => lastRewardTimestamp.
+    mapping(address => uint256) public poolLastRewardTimestamp;
+    /// @notice The amount of reward token accumulated per share
+    ///         for a token.
+    /// @notice mToken => rewardToken => accRewardPerShare.
     mapping(address => mapping(address => uint256))
         public poolAccRewardPerShare;
-    /// @notice  cToken => user => rewardToken => info.
+    /// @notice Information corresponding to rewards pending/debt pending
+    ///         for a reward token, for a particular user, for a particular
+    ///         deposited token.
+    /// @dev mToken => user => rewardToken => info.
     mapping(address => mapping(address => mapping(address => UserRewardInfo)))
         public userDebtInfo;
-
+    
+    /// @notice The amount of rewards streamed per second, of a particular
+    ///         reward token, during an epoch, for a specific token.
+    /// @dev mToken => epoch => rewardToken => rewardPerSec.
+    mapping(address => mapping(uint256 => mapping(address => uint256)))
+        internal _epochRewardPerSec;
+    
     /// EVENTS ///
 
     event AddExtraReward(address newReward);
@@ -136,13 +194,15 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         return rewardTokens.length;
     }
 
-    /// @notice Used to update gauge pool rewards for `rewardToken`, 
+    /// @notice Used to update gauge pool rewards for `rewardToken`,
     ///         during `epoch` with `newRewardPerSec`.
     /// @dev This is only be used for updating partner gauge rewards.
+    /// @param token The token to set rewards for.
     /// @param epoch The epoch to set rewards for, should be the next epoch.
     /// @param rewardToken The address of reward token to be updated.
     /// @param newRewardPerSec The `rewardToken` reward rate, in seconds.
     function setRewardPerSec(
+        address token,
         uint256 epoch,
         address rewardToken,
         uint256 newRewardPerSec
@@ -159,8 +219,10 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidEpoch();
         }
 
-        uint256 prevRewardPerSec = _epochRewardPerSec[epoch][rewardToken];
-        _epochRewardPerSec[epoch][rewardToken] = newRewardPerSec;
+        uint256 prevRewardPerSec = _epochRewardPerSec[token][epoch][
+            rewardToken
+        ];
+        _epochRewardPerSec[token][epoch][rewardToken] = newRewardPerSec;
 
         if (prevRewardPerSec > newRewardPerSec) {
             SafeTransferLib.safeTransfer(
@@ -189,13 +251,9 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
     ) public view returns (uint256) {
         if (rewardToken == cve) {
             return _epochInfo[epoch].poolWeights[token];
-        } else {
-            return
-                (EPOCH_WINDOW *
-                    _epochRewardPerSec[epoch][rewardToken] *
-                    _epochInfo[epoch].poolWeights[token]) /
-                _epochInfo[epoch].totalWeights;
         }
+
+        return (EPOCH_WINDOW * _epochRewardPerSec[token][epoch][rewardToken]);
     }
 
     /// @notice Returns pending reward of user.
@@ -282,7 +340,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        // Make sure the token is listed inside this market, 
+        // Make sure the token is listed inside this market,
         // and that the token is executing the deposit call.
         if (
             msg.sender != token ||
@@ -349,7 +407,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             revert GaugeErrors.InvalidAmount();
         }
 
-        // Make sure the token is listed inside this market, 
+        // Make sure the token is listed inside this market,
         // and that the token is executing the withdraw call.
         if (
             msg.sender != token ||
@@ -391,7 +449,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
             address rewardToken = rewardTokens[i++];
             uint256 rewards = userDebtInfo[token][msg.sender][rewardToken]
                 .rewardPending;
-            // If the caller has rewards, send them, 
+            // If the caller has rewards, send them,
             // and prevent transaction reversion.
             if (rewards > 0) {
                 hasRewards = true;
@@ -429,7 +487,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
-        // If gauge emissions have not started yet, 
+        // If gauge emissions have not started yet,
         // theres nothing to claimAndExtendLock.
         if (block.timestamp < startTime) {
             revert GaugeErrors.NotStarted();
@@ -493,7 +551,7 @@ contract GaugePool is GaugeController, ERC165, ReentrancyGuard {
         bytes memory params,
         uint256 aux
     ) external nonReentrant {
-        // If gauge emissions have not started yet, 
+        // If gauge emissions have not started yet,
         // theres nothing to claimAndLock.
         if (block.timestamp < startTime) {
             revert GaugeErrors.NotStarted();

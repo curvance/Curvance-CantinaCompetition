@@ -16,7 +16,6 @@ struct RewardsData {
 }
 
 interface ICVELocker {
-
     /// @notice Returns the reward token for the CVE locker.
     function rewardToken() external view returns (address);
 
@@ -36,6 +35,10 @@ interface ICVELocker {
     /// @dev This should be as close to currentEpoch() + 1 as possible,
     ///      but can lag behind if crosschain systems are strained.
     function nextEpochToDeliver() external view returns (uint256);
+
+    /// @notice The next epoch index to claim for a user.
+    /// @dev User => Reward Next Claim Index.
+    function userNextClaimIndex(address user) external view returns (uint256);
 
     /// @notice Updates `user`'s claim index.
     /// @dev Updates the claim index of a user.
@@ -95,6 +98,10 @@ interface ICVELocker {
     /// @param user The address of the user to check for reward claims.
     /// @return A value indicating if the user has any rewards to claim.
     function epochsToClaim(address user) external view returns (uint256);
+
+    /// @notice Whether the CVE Locker is shut down or not.
+    /// @dev 2 = yes; 1 = no.
+    function isShutdown() external view returns (uint256);
 
     /// @notice Shuts down the CVELocker and prevents future reward
     /// distributions.

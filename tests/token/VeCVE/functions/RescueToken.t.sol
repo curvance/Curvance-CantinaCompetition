@@ -60,7 +60,7 @@ contract RescueTokenTest is TestBaseVeCVE {
         assertEq(usdc.balanceOf(address(this)), holding + amount);
     }
 
-    function test_resuceToken_native() public {
+    function test_rescueToken_native() public {
         uint256 holding = address(this).balance;
         uint256 amount = 1e18;
         vm.deal(address(veCVE), amount);
@@ -72,7 +72,7 @@ contract RescueTokenTest is TestBaseVeCVE {
         assertEq(address(this).balance, holding + amount);
     }
 
-    function test_resuceToken_nativeAmountZero() public {
+    function test_rescueToken_nativeAmountZero() public {
         uint256 holding = address(this).balance;
         uint256 amount = 1e18;
         vm.deal(address(veCVE), amount);

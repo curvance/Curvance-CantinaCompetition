@@ -13,10 +13,12 @@ contract TransferDaoOwnershipTest is TestBaseMarket {
     );
 
     function test_transferDaoOwnership_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
+        vm.prank(address(0));
+
+        vm.expectRevert(
+            CentralRegistry.CentralRegistry__Unauthorized.selector
+        );
         centralRegistry.transferDaoOwnership(newDaoAddress);
-        vm.stopPrank();
     }
 
     function test_transferDaoOwnership_success() public {
@@ -24,6 +26,7 @@ contract TransferDaoOwnershipTest is TestBaseMarket {
         vm.expectEmit(true, true, true, true);
         emit OwnershipTransferred(address(this), newDaoAddress);
         centralRegistry.transferDaoOwnership(newDaoAddress);
+        
         assertEq(centralRegistry.daoAddress(), newDaoAddress);
         assertTrue(centralRegistry.hasDaoPermissions(newDaoAddress));
         assertFalse(centralRegistry.hasDaoPermissions(address(this)));

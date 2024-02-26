@@ -12,10 +12,11 @@ import { SafeTransferLib } from "contracts/libraries/external/SafeTransferLib.so
 import { ERC165 } from "contracts/libraries/external/ERC165.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
-import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
-import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
+import { IMarketManager } from "contracts/interfaces/market/IMarketManager.sol";
+import { IInterestRateModel } from "contracts/interfaces/market/IInterestRateModel.sol";
+import { IPositionFolding } from "contracts/interfaces/market/IPositionFolding.sol";
 import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.sol";
 
 /// @title Curvance's Debt Token Contract.
@@ -87,7 +88,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @notice Interest rate reserve factor.
     uint256 public interestFactor;
     /// @notice Current Interest Rate Model.
-    DynamicInterestRateModel public interestRateModel;
+    IInterestRateModel public interestRateModel;
     /// @notice Information corresponding to borrow exchange rate.
     MarketData public marketData;
 
@@ -183,7 +184,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         marketData.lastTimestampUpdated = uint40(block.timestamp);
         marketData.exchangeRate = uint216(WAD);
 
-        _setInterestRateModel(DynamicInterestRateModel(interestRateModel_));
+        _setInterestRateModel(IInterestRateModel(interestRateModel_));
 
         // Assign the interest factor for interest generated
         // inside this market.
@@ -349,7 +350,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
 
         // Fail if terminal position is not allowed with no additional
         // adjustment.
-        marketManager.canBorrow(address(this), account, 0);
+        marketManager.canBorrowWithPrune(address(this), account, 0);
     }
 
     /// @notice Repays underlying tokens to lenders, freeing up their
@@ -478,6 +479,39 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         _redeem(
             msg.sender,
             msg.sender,
+            tokens,
+            (exchangeRateCached() * tokens) / WAD
+        );
+    }
+
+    /// @notice Used by a delegated user to redeem dTokens in exchange for
+    ///         the underlying asset, on behalf of `account`.
+    /// @dev Updates pending interest before executing the redemption.
+    ///      NOTE: Be careful who you approve here!
+    ///      Not only can they take borrowed funds, but, they can delay
+    ///      repayment through repeated borrows preventing withdrawal.
+    /// @param account The account who will have their dTokens redeemed.
+    /// @param recipient The account who will receive the underlying assets.
+    /// @param tokens The number of dTokens to redeem for underlying tokens.
+    function redeemFor(
+        address account,
+        address recipient,
+        uint256 tokens
+    ) external nonReentrant {
+        if (!_checkIsDelegate(account, msg.sender)) {
+            _revert(_UNAUTHORIZED_SELECTOR);
+        }
+
+        // Update pending interest.
+        accrueInterest();
+
+        // Validate that `tokens` can be redeemed and maintain collateral
+        // requirements.
+        marketManager.canRedeem(address(this), account, tokens);
+
+        _redeem(
+            account,
+            recipient,
             tokens,
             (exchangeRateCached() * tokens) / WAD
         );
@@ -706,7 +740,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Update pending interest.
         accrueInterest();
 
-        _setInterestRateModel(DynamicInterestRateModel(newInterestRateModel));
+        _setInterestRateModel(IInterestRateModel(newInterestRateModel));
     }
 
     /// @notice Accrues pending interest and updates the interest factor.
@@ -858,10 +892,10 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @return The current balance index of `account`.
     function debtBalanceCached(address account) public view returns (uint256) {
         // Cache borrow data to save gas.
-        DebtData storage userDebtData = _debtOf[account];
+        DebtData storage accountDebt = _debtOf[account];
 
-        // If debtBalance = 0, then borrowIndex is also 0.
-        if (userDebtData.principal == 0) {
+        // If theres no principal owed, can return immediately.
+        if (accountDebt.principal == 0) {
             return 0;
         }
 
@@ -870,8 +904,8 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // ((Account's principal * DToken's exchange rate) /
         // Account's exchange rate).
         return
-            (userDebtData.principal * marketData.exchangeRate) /
-            userDebtData.accountExchangeRate;
+            (accountDebt.principal * marketData.exchangeRate) /
+            accountDebt.accountExchangeRate;
     }
 
     /// @notice Returns the decimals of the dToken.
@@ -964,7 +998,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         );
 
         // Calculate the interest compound cycles to update,
-        // in `interestCompounds`.
+        // in `interestCompounds`. Rounds down natively.
         uint256 interestCompounds = (block.timestamp -
             cachedData.lastTimestampUpdated) / cachedData.compoundRate;
         // Calculate the interest and debt accumulated.
@@ -973,10 +1007,8 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Calculate new borrows, and the new exchange rate, based on
         // accumulation values above.
         uint256 totalBorrowsNew = debtAccumulated + borrowsPrior;
-        uint256 exchangeRateNew = (interestAccumulated * exchangeRatePrior) /
-            WAD +
-            exchangeRatePrior;
-
+        uint256 exchangeRateNew = ((interestAccumulated * exchangeRatePrior) /
+            WAD) + exchangeRatePrior;
         // Update update timestamp, exchange rate, and total outstanding
         // borrows.
         marketData.lastTimestampUpdated = uint40(
@@ -1014,10 +1046,17 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @param newInterestRateModel The new interest rate model for this
     ///                             dToken to use.
     function _setInterestRateModel(
-        DynamicInterestRateModel newInterestRateModel
+        IInterestRateModel newInterestRateModel
     ) internal {
         // Ensure we are switching to an actual Interest Rate Model.
-        newInterestRateModel.IS_INTEREST_RATE_MODEL();
+        if (
+            !ERC165Checker.supportsInterface(
+                address(newInterestRateModel),
+                type(IInterestRateModel).interfaceId
+            )
+        ) {
+            revert DToken__ValidationFailed();
+        }
 
         // Cache the current interest rate model to save gas.
         address oldInterestRateModel = address(interestRateModel);

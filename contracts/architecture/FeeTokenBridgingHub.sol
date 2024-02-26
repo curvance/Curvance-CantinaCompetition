@@ -56,9 +56,9 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost and token fee for executing crosschain
     ///         wormhole deposit and messaging.
-    /// @param dstChainId Destination chain ID.
+    /// @param dstChainId GETH destination chain ID.
     /// @param transferToken Whether deliver token or not.
-    /// @return Total gas cost.
+    /// @return Total gas cost to send a message to `dstChainId`.
     function quoteWormholeFee(
         uint256 dstChainId,
         bool transferToken
@@ -69,7 +69,7 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
     /// INTERNAL FUNCTIONS ///
 
     /// @notice Sends fee tokens to the receiver on `dstChainId`.
-    /// @param dstChainId Wormhole specific destination chain ID.
+    /// @param dstChainId GETH destination chain ID.
     /// @param to The address of receiver on `dstChainId`.
     /// @param amount The amount of token to transfer.
     function _sendFeeToken(
@@ -79,7 +79,7 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
     ) internal {
         uint256 wormholeFee = _quoteWormholeFee(dstChainId, true);
 
-        // Validate that we have sufficient fees to send crosschain
+        // Validate that we have sufficient fees to send crosschain.
         if (address(this).balance < wormholeFee) {
             revert FeeTokenBridgingHub__InsufficientGasToken();
         }
@@ -112,6 +112,14 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
         }
     }
 
+    /// @notice Sends fee tokens to the receiver on `dstChainId`.
+    /// @param circleTokenMessenger Token Messenger contract to submit
+    ///                             transfer message to.
+    /// @param dstChainId GETH destination chain ID.
+    /// @param to The address of receiver on `dstChainId`.
+    /// @param amount The amount of token to transfer.
+    /// @param wormholeFee Total gas cost to attach send a CCTP message
+    ///                    to `dstChainId`.
     function _transferFeeTokenViaCCTP(
         ITokenMessenger circleTokenMessenger,
         uint256 dstChainId,
@@ -161,6 +169,13 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
         );
     }
 
+    /// @notice Sends fee tokens to the receiver on `dstChainId`.
+    /// @param token The address of the token to transfer via Wormhole.
+    /// @param dstChainId GETH destination chain ID.
+    /// @param to The address of receiver on `dstChainId`.
+    /// @param amount The amount of token to transfer.
+    /// @param wormholeFee Total gas cost to attach send a Wormhole message
+    ///                    to `dstChainId`.
     function _transferTokenViaWormhole(
         address token,
         uint256 dstChainId,
@@ -204,7 +219,7 @@ contract FeeTokenBridgingHub is ReentrancyGuard {
 
     /// @notice Quotes gas cost and token fee for executing crosschain
     ///         wormhole deposit and messaging.
-    /// @param dstChainId Destination chain ID.
+    /// @param dstChainId GETH destination chain ID.
     /// @param transferToken Whether deliver token or not.
     /// @return nativeFee Total gas cost.
     function _quoteWormholeFee(

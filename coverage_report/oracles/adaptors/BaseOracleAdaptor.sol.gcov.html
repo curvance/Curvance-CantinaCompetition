@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">3</td>
@@ -123,7 +123,7 @@
 <a name="61"><span class="lineNum">      61 </span>            :     /// @param price The price to check against overflow.</a>
 <a name="62"><span class="lineNum">      62 </span>            :     /// @return Whether `price` will overflow on conversion to uint240.</a>
 <a name="63"><span class="lineNum">      63 </span>            :     function _checkOracleOverflow(uint256 price) internal pure returns (bool) {</a>
-<a name="64"><span class="lineNum">      64 </span><span class="lineCov">        894 :         return price &gt; type(uint240).max;</span></a>
+<a name="64"><span class="lineNum">      64 </span><span class="lineCov">        926 :         return price &gt; type(uint240).max;</span></a>
 <a name="65"><span class="lineNum">      65 </span>            :     }</a>
 <a name="66"><span class="lineNum">      66 </span>            : </a>
 <a name="67"><span class="lineNum">      67 </span>            :     /// @notice Checks whether the caller has sufficient permissioning.</a>
@@ -135,7 +135,7 @@
 <a name="73"><span class="lineNum">      73 </span>            : </a>
 <a name="74"><span class="lineNum">      74 </span>            :     /// @notice Checks whether the caller has sufficient permissioning.</a>
 <a name="75"><span class="lineNum">      75 </span>            :     function _checkElevatedPermissions() internal view {</a>
-<a name="76"><span class="lineNum">      76 </span><span class="lineCov">      17815 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
+<a name="76"><span class="lineNum">      76 </span><span class="lineCov">      18130 :         if (!centralRegistry.hasElevatedPermissions(msg.sender)) {</span></a>
 <a name="77"><span class="lineNum">      77 </span><span class="lineCov">          1 :             revert BaseOracleAdaptor__Unauthorized();</span></a>
 <a name="78"><span class="lineNum">      78 </span>            :         }</a>
 <a name="79"><span class="lineNum">      79 </span>            :     }</a>

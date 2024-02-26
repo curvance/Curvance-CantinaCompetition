@@ -9,6 +9,11 @@ import { IGMXEventUtils } from "contracts/interfaces/external/gmx/IGMXEventUtils
 import { IGMXExchangeRouter } from "contracts/interfaces/external/gmx/IGMXExchangeRouter.sol";
 
 contract GMCToken is CTokenCompounding {
+    /// CONSTANTS ///
+
+    /// @notice Chain ID for Arbitrum Mainnet where this should be deployed.
+    uint256 internal constant _ARBITRUM_CHAIN_ID = 42161;
+    
     /// STORAGE ///
 
     /// @notice The address of GMX Deposit Vault.
@@ -62,7 +67,7 @@ contract GMCToken is CTokenCompounding {
         address gmxDepositHandler_
     ) CTokenCompounding(centralRegistry_, asset_, marketManager_) {
         // Make sure we are deploying this to Arbitrum.
-        if (block.chainid != 42161) {
+        if (block.chainid != _ARBITRUM_CHAIN_ID) {
             revert GMCToken__ChainIsNotSupported();
         }
 

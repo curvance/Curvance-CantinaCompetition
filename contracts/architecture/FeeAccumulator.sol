@@ -15,11 +15,41 @@ import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHu
 import { EpochRolloverData } from "contracts/interfaces/IFeeAccumulator.sol";
 import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegistry.sol";
 
+/// @title Curvance Fee Accumulator.
+/// @notice A system for managing fee collected through Curvance DAO
+///         operations within Curvance Protocol.
+/// @dev The Fee Accumulator acts as a unified hub for collecting and
+///      transforming fees collected and their preparation for delivery
+///      to Curvance DAO users. Currently, fees can be swapped via offchain
+///      solver integrations such as 1Inch. An alternative model of
+///      permissionless dutch auctions such as the work seen by Uniswap/Euler
+///      could be used. However, A/B testing may provide greater insight into
+///      the superior model.
+///
+///      Fees can be marked for OTC which will allow the Curvance DAO to
+///      purchase them, at fair market value. The Fee accumulator also works
+///      in collaboration with the Protocol Messaging Hub to manage system
+///      information and fees. Epoch fee distributions are distributed once a
+///      single chain has recorded fees accumulated and tokens locked across
+///      all supported chains inside the Curvance Protocol system.
+///
+///      These fees are distributed pro-rata based on the under of locked
+///      veCVE tokens on each chain, see "CVELocker.sol" for more information
+///      on this.
+///
+///      Native gas tokens are stored inside the contract to pay for all
+///      crosschain actions. Locked token data actions are intended to be
+///      moved over to Wormhole's CCQ prior to mainnet deployment.
+///      At this time, payload/MessageType configuration + encoding/decoding
+///      are not production ready.
+///
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
-    /// @param isRewardToken 2 = yes; 0 or 1 = no.
-    /// @param forOTC 2 = yes; 0 or 1 = no.
+    /// @param isRewardToken Whether an address is the reward token or not.
+    ///                      2 = yes; 0 or 1 = no.
+    /// @param forOTC Whether a token should be held back for DAO OTC or not.
+    ///               2 = yes; 0 or 1 = no.
     struct RewardToken {
         uint256 isRewardToken;
         uint256 forOTC;
@@ -37,8 +67,7 @@ contract FeeAccumulator is ReentrancyGuard {
     address public immutable feeToken;
     /// @notice Curvance DAO hub.
     ICentralRegistry public immutable centralRegistry;
-
-    /// @notice Address of OneBalanceFeeManager contract
+    /// @notice Address of OneBalanceFeeManager contract.
     address public immutable oneBalanceFeeManager;
 
     /// @notice Fee token decimal unit.
@@ -46,9 +75,8 @@ contract FeeAccumulator is ReentrancyGuard {
 
     /// STORAGE ///
 
+    /// @notice Cached Protocol Messaging Hub address.
     address internal _messagingHubStored;
-    uint256 internal _gasForCalldata;
-    uint256 internal _gasForCrosschain;
 
     LockData[] public crossChainLockData;
     /// @notice We store token data semi redundantly to save gas
@@ -112,9 +140,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
     constructor(
         ICentralRegistry centralRegistry_,
-        address oneBalanceFeeManager_,
-        uint256 gasForCalldata_,
-        uint256 gasForCrosschain_
+        address oneBalanceFeeManager_
     ) {
         if (
             !ERC165Checker.supportsInterface(
@@ -132,9 +158,6 @@ contract FeeAccumulator is ReentrancyGuard {
         feeToken = centralRegistry.feeToken();
         oneBalanceFeeManager = oneBalanceFeeManager_;
         _feeTokenUnit = 10 ** IERC20(feeToken).decimals();
-        _gasForCalldata = gasForCalldata_;
-        _gasForCrosschain = gasForCrosschain_;
-
         // We document this incase we ever need to update messaging hub
         // and want to revoke.
         _messagingHubStored = centralRegistry.protocolMessagingHub();
@@ -333,7 +356,7 @@ contract FeeAccumulator is ReentrancyGuard {
             centralRegistry.protocolMessagingHub()
         );
 
-        (uint256 gas, ) = messagingHub.quoteWormholeFee(dstChainId, false);
+        uint256 gas = messagingHub.quoteWormholeFee(dstChainId, false);
 
         messagingHub.sendWormholeMessages{ value: gas }(
             dstChainId,
@@ -391,6 +414,9 @@ contract FeeAccumulator is ReentrancyGuard {
         );
     }
 
+    /// @notice Records a Curvance reward epoch, if all chains have been
+    ///         recorded executes system wide reporting and distribution
+    ///         to all chains within the Curvance Protocol system.
     function executeEpochFeeRouter(uint256 chainId) external {
         ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
         uint256 epoch = locker.nextEpochToDeliver();
@@ -438,7 +464,7 @@ contract FeeAccumulator is ReentrancyGuard {
                     uint256(lockData.chainId)
                 );
 
-                (gas, ) = messagingHub.quoteWormholeFee(
+                gas = messagingHub.quoteWormholeFee(
                     uint256(lockData.chainId),
                     false
                 );
@@ -511,16 +537,6 @@ contract FeeAccumulator is ReentrancyGuard {
         rewardTokenInfo[token].forOTC = state ? 2 : 1;
     }
 
-    function setGasParameters(
-        uint256 gasForCalldata,
-        uint256 gasForCrosschain
-    ) external {
-        _checkDaoPermissions();
-
-        _gasForCalldata = gasForCalldata;
-        _gasForCrosschain = gasForCrosschain;
-    }
-
     /// @notice Moves fee token approval to new messaging hub.
     /// @dev Removes prior messaging hub approval for maximum safety.
     function notifyUpdatedMessagingHub() external {
@@ -547,7 +563,8 @@ contract FeeAccumulator is ReentrancyGuard {
     /// @notice Adds multiple reward tokens to the contract for Gelato Network
     ///         to read.
     /// @dev Does not fail on duplicate token, merely skips it and continues.
-    /// @param newTokens Array of token addresses to be added as reward tokens.
+    /// @param newTokens Array of token addresses to be added as reward
+    ///                  tokens.
     function addRewardTokens(address[] calldata newTokens) external {
         _checkDaoPermissions();
 
@@ -562,14 +579,15 @@ contract FeeAccumulator is ReentrancyGuard {
                 continue;
             }
 
-            // Add reward token data to both rewardTokenInfo & rewardTokenData.
+            // Add reward token data to both rewardTokenInfo
+            // and rewardTokenData.
             _addRewardToken(newTokens[i]);
         }
     }
 
     /// @notice Removes a reward token from the contract data that
     ///         Gelato Network reads.
-    /// @dev    Will revert on unsupported token address.
+    /// @dev Will revert on unsupported token address.
     /// @param rewardTokenToRemove The address of the token to be removed.
     function removeRewardToken(address rewardTokenToRemove) external {
         _checkDaoPermissions();
@@ -587,7 +605,7 @@ contract FeeAccumulator is ReentrancyGuard {
 
         for (uint256 i; i < numTokens; ) {
             if (currentTokens[i] == rewardTokenToRemove) {
-                // We found the token so break out of loop.
+                // We found the token so break out of the loop.
                 tokenIndex = i;
                 break;
             }
@@ -596,32 +614,22 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
-        // subtract 1 from numTokens so we properly have the end index.
+        // Subtract 1 from numTokens so we properly have the end index.
         if (tokenIndex == numTokens--) {
-            // we were unable to find the token in the array,
+            // We were unable to find the token in the array,
             // so something is wrong and we need to revert.
             revert FeeAccumulator__RemovalTokenDoesNotExist();
         }
 
-        // copy last item in list to location of item to be removed.
+        // Copy last item in list to location of item to be removed.
         address[] storage currentList = rewardTokens;
-        // copy the last token index slot to tokenIndex.
+        // Copy the last token index slot to tokenIndex.
         currentList[tokenIndex] = currentList[numTokens];
-        // remove the last element
+        // Remove the last element.
         currentList.pop();
 
         // Now delete the reward token support flag from mapping.
         tokenToRemove.isRewardToken = 1;
-    }
-
-    /// @notice Record rewards for epoch.
-    function recordEpochRewards(uint256 amount) external {
-        // Make sure the caller recording epoch rewards is the Messaging Hub.
-        if (msg.sender != _messagingHubStored) {
-            revert FeeAccumulator__Unauthorized();
-        }
-
-        ICVELocker(centralRegistry.cveLocker()).recordEpochRewards(amount);
     }
 
     /// @notice Retrieves the balances of all reward tokens currently held by
@@ -728,6 +736,15 @@ contract FeeAccumulator is ReentrancyGuard {
         });
     }
 
+    /// @notice Executes a Curvance reward epoch, by recording rewards on this
+    ///         chain and then distributing information and rewards to all
+    ///         other chains within the system.
+    /// @param chainData Struct containing chain data to cache execution
+    ///                  instructions.
+    /// @param numChains The number of chains to distribute rewards to.
+    /// @param epoch The epoch to distribute rewards for.
+    /// @return The rewards this epoch for having 1 CVE locked as veCVE,
+    ///         in reward tokens in `WAD` form.
     function _executeEpochFeeRouter(
         ChainData memory chainData,
         uint256 numChains,
@@ -795,11 +812,23 @@ contract FeeAccumulator is ReentrancyGuard {
         uint256 epochRewardsPerCVE = (feeTokenBalance * WAD) /
             totalLockedTokens;
 
-        address locker = centralRegistry.cveLocker();
+        ICVELocker locker = ICVELocker(centralRegistry.cveLocker());
 
+        // If the locker is shutdown, transfer fees to DAO
+        // instead of recording epoch rewards.
+        if (locker.isShutdown() == 2) {
+            SafeTransferLib.safeTransfer(
+                feeToken,
+                centralRegistry.daoAddress(),
+                feeTokenBalanceForChain
+            );
+            return epochRewardsPerCVE;
+        }
+
+        // Transfer fees to locker and record newest epoch rewards.
         SafeTransferLib.safeTransfer(
             feeToken,
-            locker,
+            address(locker),
             feeTokenBalanceForChain
         );
         ICVELocker(locker).recordEpochRewards(epochRewardsPerCVE);

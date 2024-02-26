@@ -17,7 +17,7 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
         0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
     string private ARB_TICKER = "ARB/USD";
 
-    Api3Adaptor public adapter;
+    Api3Adaptor public adaptor;
 
     function setUp() public override {
         _fork("ETH_NODE_URI_ARBITRUM", 174096479);
@@ -32,13 +32,13 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
         );
         centralRegistry.setOracleRouter(address(oracleRouter));
 
-        adapter = new Api3Adaptor(ICentralRegistry(address(centralRegistry)));
-        adapter.addAsset(ARB, ARB_TICKER, DAPI_PROXY_ARB_USD, 0, true);
+        adaptor = new Api3Adaptor(ICentralRegistry(address(centralRegistry)));
+        adaptor.addAsset(ARB, ARB_TICKER, DAPI_PROXY_ARB_USD, 0, true);
 
         oracleRouter.addApprovedAdaptor(address(chainlinkAdaptor));
 
-        oracleRouter.addApprovedAdaptor(address(adapter));
-        oracleRouter.addAssetPriceFeed(ARB, address(adapter));
+        oracleRouter.addApprovedAdaptor(address(adaptor));
+        oracleRouter.addAssetPriceFeed(ARB, address(adaptor));
     }
 
     function testReturnsCorrectPrice() public {
@@ -53,20 +53,20 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
 
     function testRevertGetPrice__AssetIsNotSupported() public {
         vm.expectRevert(Api3Adaptor.Api3Adaptor__AssetIsNotSupported.selector);
-        adapter.getPrice(USDC, true, false);
+        adaptor.getPrice(USDC, true, false);
     }
 
     function testRevertAfterAssetRemove() public {
         testReturnsCorrectPrice();
 
-        adapter.removeAsset(ARB);
+        adaptor.removeAsset(ARB);
         vm.expectRevert(OracleRouter.OracleRouter__NotSupported.selector);
         oracleRouter.getPrice(ARB, true, false);
     }
 
     function testRevertAddAsset__InvalidHeartbeat() public {
         vm.expectRevert(Api3Adaptor.Api3Adaptor__InvalidHeartbeat.selector);
-        adapter.addAsset(
+        adaptor.addAsset(
             ARB,
             ARB_TICKER,
             DAPI_PROXY_ARB_USD,
@@ -77,16 +77,16 @@ contract TestApi3Adaptor is TestBaseOracleRouter {
 
     function testRevertAddAsset__DAPINameHashError() public {
         vm.expectRevert(Api3Adaptor.Api3Adaptor__DAPINameHashError.selector);
-        adapter.addAsset(ARB, "ARB/USDC", DAPI_PROXY_ARB_USD, 0, true);
+        adaptor.addAsset(ARB, "ARB/USDC", DAPI_PROXY_ARB_USD, 0, true);
     }
 
     function testCanAddSameAsset() public {
-        adapter.addAsset(ARB, ARB_TICKER, DAPI_PROXY_ARB_USD, 0, false);
+        adaptor.addAsset(ARB, ARB_TICKER, DAPI_PROXY_ARB_USD, 0, false);
     }
 
     function testRevertRemoveAsset__AssetIsNotSupported() public {
         vm.expectRevert(Api3Adaptor.Api3Adaptor__AssetIsNotSupported.selector);
-        adapter.removeAsset(address(0));
+        adaptor.removeAsset(address(0));
     }
 
     function testRevertGetPriceInETH__NotSupported() public {

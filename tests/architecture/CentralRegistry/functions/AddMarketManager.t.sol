@@ -24,10 +24,12 @@ contract AddMarketManagerTest is TestBaseMarket {
     }
 
     function test_addMarketManager_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
-        vm.expectRevert(CentralRegistry.CentralRegistry__Unauthorized.selector);
+        vm.prank(address(0));
+
+        vm.expectRevert(
+            CentralRegistry.CentralRegistry__Unauthorized.selector
+        );
         centralRegistry.addMarketManager(newMarket, 5000);
-        vm.stopPrank();
     }
 
     function test_addMarketManager_fail_whenMarketAlreadyAdded() public {

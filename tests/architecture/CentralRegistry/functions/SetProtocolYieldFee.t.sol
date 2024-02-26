@@ -6,12 +6,12 @@ import { CentralRegistry } from "contracts/architecture/CentralRegistry.sol";
 
 contract SetProtocolYieldFeeTest is TestBaseMarket {
     function test_setProtocolYieldFee_fail_whenUnauthorized() public {
-        vm.startPrank(address(0));
+        vm.prank(address(0));
+
         vm.expectRevert(
             CentralRegistry.CentralRegistry__Unauthorized.selector
         );
         centralRegistry.setProtocolYieldFee(100);
-        vm.stopPrank();
     }
 
     function test_setProtocolYieldFee_fail_whenParametersMisconfigured()

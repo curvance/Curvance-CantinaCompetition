@@ -123,6 +123,8 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // Update gauge pool values for `owner`.
         _gaugePool().withdraw(address(this), owner, shares);
+        // We don't need to precheck approval since position folding will
+        // always call based on msg.sender, so there is no trust system.
         // Process withdraw on behalf of `owner`.
         _processWithdraw(
             msg.sender,
@@ -151,7 +153,7 @@ abstract contract CTokenCompounding is CTokenBase {
         );
 
         // Checks whether callback or slippage has broken invariants.
-        marketManager.canRedeem(address(this), owner, 0);
+        marketManager.canRedeemWithPrune(address(this), owner, 0);
     }
 
     /// @notice Returns the current cToken yield status information.
@@ -342,6 +344,8 @@ abstract contract CTokenCompounding is CTokenBase {
 
     /// @notice Withdraws `assets` to `receiver` from the market and burns
     ///         `owner` shares.
+    /// @dev Withdraw calls do not support the delegation system intentionally
+    ///      to minimize code attack surface.
     /// @param assets The amount of the underlying asset to withdraw.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
@@ -368,6 +372,17 @@ abstract contract CTokenCompounding is CTokenBase {
 
         // No need to check for rounding error, previewWithdraw rounds up.
         shares = _previewWithdraw(assets, ta);
+
+        // Validate caller is allowed to withdraw `shares` on behalf of
+        // `owner`.
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+
+            if (allowed != type(uint256).max) {
+                _spendAllowance(owner, msg.sender, allowed - shares);
+            }
+        }
+        
         // Validate that `owner` can redeem `shares`.
         marketManager.canRedeemWithCollateralRemoval(
             address(this),
@@ -393,10 +408,16 @@ abstract contract CTokenCompounding is CTokenBase {
 
     /// @notice Redeems assets to `receiver` from the market and burns
     ///         `owner` `shares`.
+    /// @dev Redemption calls support the delegation system, allowing 
+    ///      an alternative approval system in parallel with the native
+    ///      erc20 system.
     /// @param shares The amount of shares to burn to withdraw assets.
     /// @param receiver The account that should receive the assets.
     /// @param owner The account that will burn their shares to withdraw
     ///              assets.
+    /// @param delegatedAction Whether the action is delegated and should
+    ///                        use delegation system instead of normal
+    ///                        approval system.
     /// @param forceRedeemCollateral Whether the collateral should be always
     ///                              reduced from `owner`'s collateralPosted.
     /// @return assets The amount of assets received by `receiver`.
@@ -404,8 +425,25 @@ abstract contract CTokenCompounding is CTokenBase {
         uint256 shares,
         address receiver,
         address owner,
+        bool delegatedAction,
         bool forceRedeemCollateral
     ) internal override returns (uint256 assets) {
+        // Validate caller is allowed to withdraw `shares` on behalf of
+        // `owner`. Or whether the caller has delegated approval or not.
+        if (delegatedAction) {
+            if (!_checkIsDelegate(owner, msg.sender)) {
+                _revert(_UNAUTHORIZED_SELECTOR);
+            }
+        } else {
+            if (msg.sender != owner) {
+                uint256 allowed = allowance(owner, msg.sender);
+
+                if (allowed != type(uint256).max) {
+                    _spendAllowance(owner, msg.sender, allowed - shares);
+                }
+            }
+        }
+        
         // Check whether `shares` is above max allowed redemption.
         if (shares > maxRedeem(owner)) {
             // revert with "CTokenCompounding__RedeemMoreThanMax".
@@ -521,16 +559,6 @@ abstract contract CTokenCompounding is CTokenBase {
         uint256 ta,
         uint256 pending
     ) internal virtual {
-        // Validate caller is allowed to withdraw `shares` on behalf of
-        // `owner`.
-        if (msg.sender != owner) {
-            uint256 allowed = allowance(owner, by);
-
-            if (allowed != type(uint256).max) {
-                _spendAllowance(owner, by, allowed - shares);
-            }
-        }
-
         // Burn `owner` `shares`.
         _burn(owner, shares);
         // Document removal of `assets` from `ta` due to withdrawal.

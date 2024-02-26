@@ -96,7 +96,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
         AdaptorData memory data = adaptorData[asset];
         // Get LP to underlying asset ratio conversion.
         uint256 lpRate = IPMarket(asset).getLpToAssetRate(data.twapDuration);
-        
+
         (uint256 price, uint256 errorCode) = IOracleRouter(
             centralRegistry.oracleRouter()
         ).getPrice(data.quoteAsset, inUSD, getLower);
@@ -127,10 +127,7 @@ contract PendleLPTokenAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the Pendle lp token to add pricing
     ///              support for.
     /// @param data The adaptor data needed to add `asset`.
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external {
+    function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
         // Make sure pt and market match.

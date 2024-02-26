@@ -148,7 +148,12 @@ contract TestPartnerGaugePool is TestBaseMarket {
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
             vm.expectRevert(GaugeErrors.InvalidEpoch.selector);
-            gaugePool.setRewardPerSec(0, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                0,
+                partnerRewardTokens[i],
+                300
+            );
         }
     }
 
@@ -166,8 +171,18 @@ contract TestPartnerGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 300);
-            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 200);
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                1,
+                partnerRewardTokens[i],
+                300
+            );
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                1,
+                partnerRewardTokens[i],
+                200
+            );
         }
     }
 
@@ -185,7 +200,18 @@ contract TestPartnerGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                1,
+                partnerRewardTokens[i],
+                100
+            );
+            gaugePool.setRewardPerSec(
+                tokens[1],
+                1,
+                partnerRewardTokens[i],
+                200
+            );
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
@@ -521,7 +547,18 @@ contract TestPartnerGaugePool is TestBaseMarket {
         cve.mintGaugeEmissions(address(gaugePool), 300 * 2 weeks);
 
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            gaugePool.setRewardPerSec(1, partnerRewardTokens[i], 300);
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                1,
+                partnerRewardTokens[i],
+                100
+            );
+            gaugePool.setRewardPerSec(
+                tokens[1],
+                1,
+                partnerRewardTokens[i],
+                200
+            );
         }
 
         vm.warp(gaugePool.startTime() + 1 * 2 weeks);
@@ -566,7 +603,18 @@ contract TestPartnerGaugePool is TestBaseMarket {
 
         // set next epoch reward per second
         for (uint256 i = 0; i < CHILD_GAUGE_COUNT; i++) {
-            gaugePool.setRewardPerSec(2, partnerRewardTokens[i], 400);
+            gaugePool.setRewardPerSec(
+                tokens[0],
+                2,
+                partnerRewardTokens[i],
+                200
+            );
+            gaugePool.setRewardPerSec(
+                tokens[1],
+                2,
+                partnerRewardTokens[i],
+                200
+            );
         }
 
         // set gauge weights

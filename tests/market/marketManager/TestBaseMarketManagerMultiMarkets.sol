@@ -179,7 +179,8 @@ contract TestBaseMarketManagerMultiMarkets is TestBaseMarket {
         uint256 _amount,
         bool _exact
     )
-        internal view
+        internal
+        view
         returns (
             uint256 liqAmount,
             uint256 liquidatedTokens,

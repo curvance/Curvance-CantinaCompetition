@@ -25,6 +25,18 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         cve.approve(address(veCVE), 100e18);
 
         veCVE.createLock(30e18, false, rewardsData, "", 0);
+        veCVE.createLock(30e18, true, rewardsData, "", 0);
+    }
+
+    function test_bridgeVeCVELock_fail_whenVeCVEIsShutdown(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.shutdown();
+
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
+        veCVE.bridgeVeCVELock(0, 42161, true, rewardsData, "", 0);
     }
 
     function test_bridgeVeCVELock_fail_whenLockIndexExceeds(
@@ -33,7 +45,19 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.bridgeVeCVELock(1, 42161, true, rewardsData, "", 0);
+        veCVE.bridgeVeCVELock(2, 42161, true, rewardsData, "", 0);
+    }
+
+    function test_bridgeVeCVELock_fail_whenLockIsExpired(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
+        vm.warp(unlockTime);
+
+        vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
+        veCVE.bridgeVeCVELock(0, 42161, true, rewardsData, "", 0);
     }
 
     function test_bridgeVeCVELock_fail_whenNativeTokenIsNotEnoughToCoverFee(
@@ -82,8 +106,17 @@ contract BridgeVeCVELockTest is TestBaseVeCVE {
             0
         );
 
-        assertEq(veCVE.balanceOf(address(this)), 0);
+        assertEq(veCVE.balanceOf(address(this)), 30e18);
         assertEq(cve.balanceOf(address(this)), cveBalance);
-        assertEq(cve.totalSupply(), cveTotalSupply - veCVEBalance);
+        assertEq(cve.totalSupply(), cveTotalSupply - veCVEBalance + 30e18);
+
+        veCVE.bridgeVeCVELock{ value: messageFee }(
+            0,
+            42161,
+            true,
+            rewardsData,
+            "",
+            0
+        );
     }
 }

@@ -238,7 +238,7 @@ contract TestPositionFolding is TestBaseMarket {
         tokens[1] = _WETH_ADDRESS;
         leverageData.zapperCall.target = address(complexZapper);
         leverageData.zapperCall.call = abi.encodeWithSelector(
-            ComplexZapper.balancerIn.selector,
+            ComplexZapper.enterBalancer.selector,
             address(0),
             ComplexZapper.ZapperData(
                 _WETH_ADDRESS,
@@ -294,9 +294,13 @@ contract TestPositionFolding is TestBaseMarket {
         tokens[1] = _WETH_ADDRESS;
         deleverageData.zapperCall.target = address(complexZapper);
         deleverageData.zapperCall.call = abi.encodeWithSelector(
-            ComplexZapper.balancerOut.selector,
-            _BALANCER_VAULT,
-            _BAL_WETH_RETH_POOLID,
+            ComplexZapper.exitBalancer.selector,
+            ComplexZapper.BPTRedemption(
+                _BALANCER_VAULT,
+                _BAL_WETH_RETH_POOLID,
+                true,
+                1
+            ),
             ComplexZapper.ZapperData(
                 address(balRETH),
                 deleverageData.zapperCall.inputAmount,
@@ -305,8 +309,6 @@ contract TestPositionFolding is TestBaseMarket {
                 false
             ),
             tokens,
-            true,
-            1,
             new SwapperLib.Swap[](0),
             address(positionFolding)
         );

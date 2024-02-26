@@ -128,10 +128,7 @@ contract PendlePrincipalTokenAdaptor is BaseOracleAdaptor {
     /// @param asset The address of the Pendle principal token to add pricing
     ///              support for.
     /// @param data The adaptor data needed to add `asset`.
-    function addAsset(
-        address asset,
-        AdaptorData memory data
-    ) external {
+    function addAsset(address asset, AdaptorData memory data) external {
         _checkElevatedPermissions();
 
         // Make sure pt and market match.

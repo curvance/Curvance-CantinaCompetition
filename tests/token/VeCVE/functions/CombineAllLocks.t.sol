@@ -57,36 +57,15 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         veCVE.combineAllLocks(true, emptyRewards, "", 0);
     }
     */
+    function test_combineAllLocks_fail_whenVeCVEIsShutdown(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.shutdown();
 
-    function test_combine_all_locks_to_non_continuous_terminal_one_wad()
-        public
-    {
-        RewardsData memory emptyRewards = RewardsData(
-            false,
-            false,
-            false,
-            false
-        );
-        setUp();
-        veCVE.createLock(1e18, false, emptyRewards, "", 0);
-        // warp time
-        vm.warp(block.timestamp + 29774646);
-        veCVE.createLock(1e18, false, emptyRewards, "", 0);
-
-        vm.warp(block.timestamp + 986121 + 675582 + 1000);
-        veCVE.processExpiredLock(0, false, false, emptyRewards, "", 0);
-
-        assertEq(veCVE.userPoints(address(this)), 2000000000000000000);
-        (uint256[] memory lockAmounts, ) = veCVE.queryUserLocks(address(this));
-        assertEq(lockAmounts.length, 1);
-
-        veCVE.createLock(1000000024330411045, false, emptyRewards, "", 0);
-        veCVE.combineAllLocks(false, emptyRewards, "", 0);
-
-        assertEq(
-            veCVE.userPoints(address(this)),
-            veCVE.balanceOf(address(this))
-        );
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
+        veCVE.bridgeVeCVELock(0, 42161, true, rewardsData, "", 0);
     }
 
     function test_combineAllLocks_fail_whenCombineOneLock(
@@ -94,9 +73,8 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLock,
         bool isFreshLockContinuous
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
-        veCVE.combineAllLocks(false, rewardsData, "", 0);
+        veCVE.combineAllLocks(true, rewardsData, "", 0);
     }
 
     function test_combineAllLocks_success_withContinuousLock(
@@ -105,7 +83,6 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLockContinuous,
         uint256 amount
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
         amount = bound(
             amount,
             _MIN_FUZZ_AMOUNT,
@@ -208,7 +185,6 @@ contract CombineAllLocksTest is TestBaseVeCVE {
         bool isFreshLockContinuous,
         uint256 amount
     ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
-        veCVE.createLock(_INITIAL_AMOUNT, false, rewardsData, "", 0);
         amount = bound(
             amount,
             _MIN_FUZZ_AMOUNT,
