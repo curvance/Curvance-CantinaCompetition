@@ -165,7 +165,7 @@ Two solady contracts developed by Vectorized have been included in the audit as 
 
 **Issues related to swapperlib zapper calls lack of arbitrary calldata validation will be considered out of scope**, the plan is to consolidate swapper and zapper actions being combined into swapper only actions, with dedicated integrations coded for zapping actions.
 
-Locked token data actions are intended to be moved over to Wormhole's CCQ prior to mainnet deployment. At this time, **payload/MessageType configuration + encoding/decoding are not production ready.** This refers to aforementioned code in FeeAccumulator, ProtocolMessagingHub, OneBalanceFeeManager (likely to be depreciated), FeeTokenBridgingHub. All other issues inside these contracts will be considered in scope.
+Locked token data actions are intended to be moved over to Wormhole's CCQ prior to mainnet deployment. At this time, **payload/MessageType configuration + calldata encoding/decoding are not production ready, these issues will be considered out of scope.** This refers to aforementioned code in FeeAccumulator, ProtocolMessagingHub, OneBalanceFeeManager (likely to be depreciated), FeeTokenBridgingHub. All other issues inside these contracts will be considered in scope.
 
 **Issues related to redstone core oracle not working due to msg.data not be attached through contract calls will be considered out of scope.** Alternative contract versions will be made for mTokens and Market Manager with parameters for pull oracles such as Pyth and Redstone Core.
 
