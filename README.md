@@ -13,12 +13,14 @@ Main dependencies:
   - Confirm you have the `solidity` plugin by Juan Blanco in VSCode -- Search settings in VSCode for `Solidity: Formatter`, should be set to `prettier`
 
 ## Setup
+
 1. Copy `.env.sample` and fill it out with your own information
 2. Ensure you have `forge` installed, A guide can be found [here](https://book.getfoundry.sh/getting-started/installation)
 3. Happy building, all dependencies are gitmodule linked & remapping can be found in `remappings.txt` which should be picked up automatically
 
 ## Internal code guidelines
 ### Smart contract order
+
 1. Types at the top of the contract
 2. Constants
 3. Storage
@@ -31,12 +33,15 @@ Main dependencies:
 10. Private as the end of the contract
 
 ### A/B state variables
+
 Instead of booleans, we use 0, 1, 2 (0 for false, 1/2 for true) in hotpath areas to minimize runtime gas costs such as our Reentryguard implementation.
 
 ### Precompiled selectors
+
 In instances of 3 or more calls to a specific custom error, uint256 selectors are pre calculated and stored as documented constants with direct reversion to minimize runtime gas costs, while also decreasing smart contract size.
 
 ### Permissioned function validation
+
 Rather than modifiers we utilize internal functions with direct action control checks as we'd prefer an extra JUMP call than having to inline many instances of permissioning checks, this is to decrease smart contract size.
 
 For adding new risk to the system (e.g. adding a new asset), elevated permissioning is required, while removing risk from the system (pausing a market function) has standard dao permissioning.
@@ -46,6 +51,7 @@ For adding new risk to the system (e.g. adding a new asset), elevated permission
 
 ## Foundry tips
 ### Build & compile
+
 Compile all contracts
 
 ```sh
@@ -53,6 +59,7 @@ forge build
 ```
 
 ### Run tests
+
 Compile all smart contracts & run all tests in /tests
 - To run a specific test use `--match-contract`
 - For more details like  console logs add `-vv`
@@ -69,6 +76,7 @@ forge coverage
 ```
 
 ### Execute script
+
 Execute a specific script using forge
 
 ```sh

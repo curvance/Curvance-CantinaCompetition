@@ -40,6 +40,7 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 ///      "Safe" versions of functions have been added that introduce
 ///      additional reentry and update protection logic to minimize risks
 ///      when integrating Curvance into external protocols.
+///
 contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// TYPES ///
 

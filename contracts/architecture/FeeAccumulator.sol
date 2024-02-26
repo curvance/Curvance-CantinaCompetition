@@ -791,9 +791,17 @@ contract FeeAccumulator is ReentrancyGuard {
         for (uint256 i; i < numChains; ) {
             chainId = crossChainLockData[i].chainId;
             chainData = centralRegistry.supportedChainData(chainId);
+            // WAD is used here redundantly, this is intentional, to match
+            // the precision when calculating epochRewardsPerCVE below.
+            // On the surface this looks like precision loss, but if we do
+            // not take these extra steps its possible that
+            // feeTokenBalanceForChain ends up too high relative to what
+            // epochRewardsPerCVE expects in aggregate, making the last
+            // individual or individuals unable to claim their rewards.
             feeTokenBalanceForChain =
-                (feeTokenBalance * crossChainLockData[i].lockAmount) /
-                totalLockedTokens;
+                (((feeTokenBalance * WAD) / totalLockedTokens) * 
+                crossChainLockData[i].lockAmount) /
+                WAD;
 
             messagingHub.sendFees(
                 chainId,
@@ -806,9 +814,16 @@ contract FeeAccumulator is ReentrancyGuard {
             }
         }
 
+        // WAD is used here redundantly, this is intentional, to match
+        // the precision when calculating epochRewardsPerCVE below.
+        // On the surface this looks like precision loss, but if we do
+        // not take these extra steps its possible that
+        // feeTokenBalanceForChain ends up too high relative to what
+        // epochRewardsPerCVE expects in aggregate, making the last
+        // individual or individuals unable to claim their rewards.
         feeTokenBalanceForChain =
-            (feeTokenBalance * lockedTokens) /
-            totalLockedTokens;
+        (((feeTokenBalance * WAD) / totalLockedTokens) * lockedTokens) /
+            WAD;
         uint256 epochRewardsPerCVE = (feeTokenBalance * WAD) /
             totalLockedTokens;
 

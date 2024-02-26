@@ -9,17 +9,17 @@ import { IBlast } from "contracts/interfaces/external/blast/IBlast.sol";
 import { IERC20Rebasing } from "contracts/interfaces/external/blast/IERC20Rebasing.sol";
 import { IWETH } from "contracts/interfaces/IWETH.sol";
 
-contract BlastCTokenCompounding is CTokenCompounding {
+abstract contract BlastCTokenCompounding is CTokenCompounding {
 
     /// CONSTANTS ///
 
-    
-    /// @notice The address of Curvance's native Yield Manager.
-    address public immutable nativeYieldManager;
     /// @notice The address managing ETH/Gas yield.
     IBlast public constant CHAIN_YIELD_MANAGER = IBlast(0x4300000000000000000000000000000000000002);
     /// @notice The address managing WETH yield, also the token itself.
     IERC20Rebasing public constant WETH_YIELD_MANAGER = IERC20Rebasing(0x4300000000000000000000000000000000000004);
+
+    /// @notice The address of Curvance's native Yield Manager.
+    address public immutable nativeYieldManager;
 
     receive() external payable {}
 

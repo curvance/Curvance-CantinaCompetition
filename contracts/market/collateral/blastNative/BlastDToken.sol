@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import { DToken, ICentralRegistry } from "contracts/market/collateral/DToken.sol";
 import { BlastYieldDelegable } from "contracts/libraries/BlastYieldDelegable.sol";
 
-contract BlastDToken is DToken, BlastYieldDelegable {
+abstract contract BlastDToken is DToken, BlastYieldDelegable {
 
     /// CONSTRUCTOR ///
 

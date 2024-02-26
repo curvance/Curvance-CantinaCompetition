@@ -39,7 +39,7 @@ contract BorrowZapper is FeeTokenBridgingHub {
         uint256 borrowAmount,
         SwapperLib.Swap memory swapData,
         uint256 dstChainId
-    ) external payable {
+    ) external payable nonReentrant {
         uint256 balancePrior = IERC20(feeToken).balanceOf(address(this));
 
         // Borrow on behalf of caller.
