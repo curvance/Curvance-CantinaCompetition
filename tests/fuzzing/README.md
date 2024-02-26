@@ -324,6 +324,9 @@ This should include:
 
 ## Running the Fuzzers
 
+1. Download the corpus.zip file, temporarily linked [here](https://drive.google.com/file/d/1UQ5W6jXYDL9orqF0Pxy0TM1on7sujIrC/view)
+2. Unzip this into the root `curvance/` directory
+
 ### Echidna
 
 There are two flavours of the config provided in this code. See below for their differences
