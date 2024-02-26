@@ -188,7 +188,12 @@ contract CurvanceDAOLBP {
         userCommitted[msg.sender] = 0;
 
         uint256 price = currentPrice();
-        amount = (payAmount * WAD) / price;
+        uint256 adjustedPayAmount = _adjustDecimals(
+            payAmount,
+            paymentTokenDecimals,
+            18
+        );
+        amount = (adjustedPayAmount * WAD) / price;
 
         SafeTransferLib.safeTransfer(cve, msg.sender, amount);
 
