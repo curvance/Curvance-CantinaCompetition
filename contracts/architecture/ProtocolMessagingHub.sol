@@ -14,6 +14,21 @@ import { ICVELocker } from "contracts/interfaces/ICVELocker.sol";
 import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
+/// @title Curvance Protocol Messaging Hub.
+/// @notice A system for sending messages across the Curvance Protocol from
+///         chain to chain.
+/// @dev The Protocol Messaging Hub acts as a unified hub for sending messages
+///      crosschain. Various actions can be taken such as managing Gauge
+///      Emissions offchain -> onchain porting, veCVE token locking data,
+///      moving protocol fees, bridging CVE, moving a veCVE lock crosschain,
+///      etc.
+///      
+///      Native gas tokens are stored inside the contract to pay for all
+///      crosschain actions. Locked token data actions are intended to be
+///      moved over to Wormhole's CCQ prior to mainnet deployment.
+///      At this time, payload/MessageType configuration + encoding/decoding
+///      are not production ready.
+///
 contract ProtocolMessagingHub is FeeTokenBridgingHub {
     /// CONSTANTS ///
 

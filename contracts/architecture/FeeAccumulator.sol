@@ -37,6 +37,12 @@ import { ICentralRegistry, ChainData } from "contracts/interfaces/ICentralRegist
 ///      veCVE tokens on each chain, see "CVELocker.sol" for more information
 ///      on this.
 ///
+///      Native gas tokens are stored inside the contract to pay for all
+///      crosschain actions. Locked token data actions are intended to be
+///      moved over to Wormhole's CCQ prior to mainnet deployment.
+///      At this time, payload/MessageType configuration + encoding/decoding
+///      are not production ready.
+///
 contract FeeAccumulator is ReentrancyGuard {
     /// TYPES ///
 
