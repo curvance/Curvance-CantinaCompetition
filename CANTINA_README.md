@@ -13,7 +13,7 @@ Curvance operates as a hybrid model between a yield optimizer and a cross-margin
 - Dynamic Interest Rates with interest rate decay, vertex slope can be adjusted upward or downward based on utilization similiar to kashi, however, a new continuous negative decay rate is applied every cycle when interest rates slope is elevated.
 - Dynamic liquidation engine allows for more nuanced position management inside the system. Introduces a sliding scale of liquidation between light soft liquidations and aggressive hard liquidations.
 - Bad debt socialization, when a user's debt is greater than their collateral assets, the entire user's account can be liquidated with lenders paying any collateral shortfall.
-- Crosschain gauge system, introducing of gauge system allowing native token reward streaming to collateral depositors and lenders.
+- Crosschain gauge system, introducing of gauge system allowing reward streaming to collateral depositors and lenders. With the ability to configure by token and no limit on the number of different token rewards streamed.
 - Delegated actions, ability to delegate user actions to any address, allowing for support for things like limit orders, dca, take profit, crosschain borrowing, crosschain lending. Some of these are built already in this repo, others are not.
 
 [Documentation Link](https://docs.curvance.com/)
