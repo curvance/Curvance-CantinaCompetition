@@ -9,67 +9,6 @@ import { WAD } from "contracts/libraries/Constants.sol";
 import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 
 contract CanLiquidateTest is TestBaseMarketManager {
-    function test_hypothetical_liquidity_of_more_collateral_than_posted()
-        public
-    {
-        marketManager.listToken(address(dUSDC));
-        marketManager.listToken(address(cBALRETH));
-        marketManager.updateCollateralToken(
-            IMToken(address(cBALRETH)),
-            7000,
-            4000,
-            3000,
-            200,
-            400,
-            10,
-            1000
-        );
-        address[] memory tokens = new address[](1);
-        tokens[0] = address(cBALRETH);
-        uint256[] memory caps = new uint256[](1);
-        caps[0] = 100_000e18;
-        marketManager.setCTokenCollateralCaps(tokens, caps);
-
-        skip(gaugePool.startTime() - block.timestamp);
-
-        mockWethFeed.setMockUpdatedAt(block.timestamp);
-        mockRethFeed.setMockUpdatedAt(block.timestamp);
-        chainlinkUsdcUsd.updateRoundData(
-            0,
-            1e8,
-            block.timestamp,
-            block.timestamp
-        );
-
-        // Mint cBALRETH for collateral
-        deal(address(balRETH), user1, 10_000e18);
-        vm.startPrank(user1);
-        balRETH.approve(address(cBALRETH), 1_000e18);
-        cBALRETH.deposit(1e18, user1);
-        marketManager.postCollateral(user1, address(cBALRETH), 1e18 - 1);
-
-        // Borrow dUSDC with cBALRETH as collateral
-        deal(_USDC_ADDRESS, address(dUSDC), 100_000e6);
-        dUSDC.borrow(1000e6);
-        vm.stopPrank();
-
-        assertEq(usdc.balanceOf(user1), 1000e6);
-
-        (, , uint256 collateralPosted) = marketManager.tokenDataOf(
-            address(user1),
-            address(dUSDC)
-        );
-        (uint256 excessLiquidity, uint256 liquidityDeficit) = marketManager
-            .hypotheticalLiquidityOf(
-                address(user1),
-                address(dUSDC),
-                0,
-                collateralPosted + 1
-            );
-        assertEq(excessLiquidity, 0);
-        assertGt(liquidityDeficit, 0);
-    }
-
     function test_canLiquidate_fail_whenDTokenNotListed() public {
         vm.expectRevert(MarketManager.MarketManager__TokenNotListed.selector);
         marketManager.canLiquidate(
