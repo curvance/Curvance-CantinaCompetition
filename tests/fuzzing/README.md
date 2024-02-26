@@ -1,5 +1,21 @@
 # Invariants being Tested
 
+## Failed Invariants
+
+This testing suite helped find the following failed invariants during this review. Note that official Trail of Bits's writeup is in the report, which is currently business confidential and shared directly with Curvance. 
+
+- VECVE-4 - Combining all continuous locks into a single continuous lock should result in identical user points before and after the operation.
+- VECVE-10 - Combining non-continuous locks into continuous lock terminals should result in increased post combine user points compared to the pre combine user points.
+- VECVE-18 - Combining some prior continuous locks to a non continuous terminal should result in the veCVE balance of a user equaling the user points. 
+- VECVE-55 - Processing expired locks with relock should not change the number of locks a user has.
+- VECVE-56 - Combining locks should not be possible when the system is shut down.
+- DTOK-11 - A user attempting to repay too much should error gracefully.
+- MARKET-7 - Calling updateCollateralToken where price returns PriceError should fail with PriceError.
+- MARKET-35 - Liquidating an entire account should succeed with the correct preconditions.
+- VECVE-17 - Combining no prior continuous locks to a non continuous terminal should result in no change in user points.
+
+## Current Changes
+
 Due to a recent rebase (on Feb 26th) with changes to the MarketManager, inlcuding the removal of the `closePosition` function, some invariants are failing because the preconditions need to be adjusted to account for the automatic pruning of the position. 
 
 There are also incoming changes that need to be made to soft liquidations (liquidating through the DToken contract), and interest accrual that needs another adjustment to pull the internal individual account exchange rate, as opposed to the global one. 
@@ -299,13 +315,22 @@ Tips and tricks:
 
 1. [Slither](https://github.com/crytic/slither/)/[crytic-compile](https://github.com/crytic/crytic-compile)
 2. Echidna (currently running on echidna:master instead of release for reproducer traces - [binaries here](https://github.com/crytic/echidna/actions/runs/7804412004))
-3. Medusa (binaries for medusa:master available [here](https://github.com/crytic/medusa/actions/runs/7984175963))
+3. Medusa (see subsection below)
 4. Foundry
 5. Cloudexec
 
 see:
 https://github.com/curvance/curvance-contracts/blob/1ec341b7e3c2408abf3f3853a5a8145fc6bd67c3/cloudexec.toml#L8
 
+### Medusa Installation 
+
+There have been a significant number of changes for Medusa, which means we have not been using the latest release version. See below for installation instructions. The following assumes that you have golang installed. See [instructions](https://github.com/crytic/medusa/tree/dev/fix-call-seq-resolution?tab=readme-ov-file#building-from-source) for building from source. 
+
+```bash 
+git clone https://github.com/crytic/medusa.git
+git checkout dev/fix-call-seq-resolution
+go build
+```
 
 ### Installing cloudexec 
 
