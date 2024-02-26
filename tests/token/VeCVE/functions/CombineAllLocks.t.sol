@@ -6,7 +6,7 @@ import { VeCVE } from "contracts/token/VeCVE.sol";
 import { RewardsData } from "contracts/interfaces/ICVELocker.sol";
 
 contract CombineAllLocksTest is TestBaseVeCVE {
-    uint256 internal constant _INITIAL_AMOUNT = 30000e18;
+    uint256 internal constant _INITIAL_AMOUNT = 30e18;
 
     function setUp() public override {
         super.setUp();
