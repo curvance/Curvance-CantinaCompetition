@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Date:</td>
-            <td class="headerValue">2024-02-16 18:08:13</td>
+            <td class="headerValue">2024-02-20 21:56:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntry">1</td>
@@ -143,7 +143,7 @@
 <a name="81"><span class="lineNum">      81 </span>            :     function getUserApprovalIndex(</a>
 <a name="82"><span class="lineNum">      82 </span>            :         address user</a>
 <a name="83"><span class="lineNum">      83 </span>            :     ) public view returns (uint256) {</a>
-<a name="84"><span class="lineNum">      84 </span><span class="lineCov">          4 :         return centralRegistry.userApprovalIndex(user);</span></a>
+<a name="84"><span class="lineNum">      84 </span><span class="lineCov">       1031 :         return centralRegistry.userApprovalIndex(user);</span></a>
 <a name="85"><span class="lineNum">      85 </span>            :     }</a>
 <a name="86"><span class="lineNum">      86 </span>            : </a>
 <a name="87"><span class="lineNum">      87 </span>            :     /// @notice Returns whether a user has delegation disabled.</a>
@@ -154,7 +154,7 @@
 <a name="92"><span class="lineNum">      92 </span>            :     function hasDelegatingDisabled(</a>
 <a name="93"><span class="lineNum">      93 </span>            :         address user</a>
 <a name="94"><span class="lineNum">      94 </span>            :     ) public view returns (bool) {</a>
-<a name="95"><span class="lineNum">      95 </span><span class="lineCov">          2 :         return centralRegistry.delegatingDisabled(user);</span></a>
+<a name="95"><span class="lineNum">      95 </span><span class="lineCov">        515 :         return centralRegistry.delegatingDisabled(user);</span></a>
 <a name="96"><span class="lineNum">      96 </span>            :     }</a>
 <a name="97"><span class="lineNum">      97 </span>            : </a>
 <a name="98"><span class="lineNum">      98 </span>            :     /// @notice Approves or restricts `delegate`'s authority to operate</a>
@@ -171,14 +171,14 @@
 <a name="109"><span class="lineNum">     109 </span>            :         address delegate,</a>
 <a name="110"><span class="lineNum">     110 </span>            :         bool isApproved</a>
 <a name="111"><span class="lineNum">     111 </span>            :     ) external {</a>
-<a name="112"><span class="lineNum">     112 </span><span class="lineCov">          2 :         if (hasDelegatingDisabled(msg.sender)) {</span></a>
+<a name="112"><span class="lineNum">     112 </span><span class="lineCov">        515 :         if (hasDelegatingDisabled(msg.sender)) {</span></a>
 <a name="113"><span class="lineNum">     113 </span><span class="lineNoCov">          0 :             revert Delegable__DelegatingDisabled();</span></a>
 <a name="114"><span class="lineNum">     114 </span>            :         }</a>
 <a name="115"><span class="lineNum">     115 </span>            : </a>
-<a name="116"><span class="lineNum">     116 </span><span class="lineCov">          2 :         uint256 approvalIndex = getUserApprovalIndex(msg.sender);</span></a>
-<a name="117"><span class="lineNum">     117 </span><span class="lineCov">          2 :         _isDelegate[msg.sender][approvalIndex][delegate] = isApproved;</span></a>
+<a name="116"><span class="lineNum">     116 </span><span class="lineCov">        515 :         uint256 approvalIndex = getUserApprovalIndex(msg.sender);</span></a>
+<a name="117"><span class="lineNum">     117 </span><span class="lineCov">        515 :         _isDelegate[msg.sender][approvalIndex][delegate] = isApproved;</span></a>
 <a name="118"><span class="lineNum">     118 </span>            : </a>
-<a name="119"><span class="lineNum">     119 </span><span class="lineCov">          2 :         emit DelegateApproval(</span></a>
+<a name="119"><span class="lineNum">     119 </span><span class="lineCov">        515 :         emit DelegateApproval(</span></a>
 <a name="120"><span class="lineNum">     120 </span>            :             msg.sender, </a>
 <a name="121"><span class="lineNum">     121 </span>            :             delegate, </a>
 <a name="122"><span class="lineNum">     122 </span>            :             approvalIndex, </a>
@@ -199,7 +199,7 @@
 <a name="137"><span class="lineNum">     137 </span>            :         address user,</a>
 <a name="138"><span class="lineNum">     138 </span>            :         address delegate</a>
 <a name="139"><span class="lineNum">     139 </span>            :     ) public view returns (bool) {</a>
-<a name="140"><span class="lineNum">     140 </span><span class="lineCov">          2 :         return _isDelegate[user][getUserApprovalIndex(user)][delegate];</span></a>
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">        516 :         return _isDelegate[user][getUserApprovalIndex(user)][delegate];</span></a>
 <a name="141"><span class="lineNum">     141 </span>            :     }</a>
 <a name="142"><span class="lineNum">     142 </span>            :     </a>
 <a name="143"><span class="lineNum">     143 </span>            : }</a>
