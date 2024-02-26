@@ -31,26 +31,21 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
         if (success) {
             uint256 isMintPaused = marketManager.mintPaused(mtoken);
             if (state) {
-                // ac-market-2
                 assertWithMsg(
                     isMintPaused == 2,
-                    "LENDTROLLER - setMintPaused() true succeed set isMintPaused = 2"
+                    "AC-MARKET-2 setMintPaused() true succeed set isMintPaused = 2"
                 );
             } else {
-                // ac-market-3
                 assertWithMsg(
                     isMintPaused == 1,
-                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
+                    "AC-MARKET-3 setMintPaused() false should set mintPaused[mtoken] to 1"
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
             // ac-market-1
             assertWithMsg(
                 false,
-                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
+                "AC-MARKET-1 setMintPaused() expected to be successful with correct preconditions"
             );
         }
     }
@@ -71,27 +66,24 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
         if (success) {
             uint256 redeemPaused = marketManager.redeemPaused();
             if (state == true) {
-                // ac-market-5
                 assertEq(
                     redeemPaused,
                     2,
-                    "LENDTROLLER - setRedeemPaused() true expected to set redeemPaused = 2 "
+                    "AC-MARKET-5 setRedeemPaused() true expected to set redeemPaused = 2 "
                 );
             } else {
-                // ac-market-6
                 assertEq(
                     redeemPaused,
                     1,
-                    "LENDTROLLER - setRedeemPaused false expected to set redeemPaused = 1"
+                    "AC-MARKET-6 setRedeemPaused false expected to set redeemPaused = 1"
                 );
             }
         } else {
             uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-            // ac-market-1
+
             assertWithMsg(
                 errorSelector == marketManager_unauthorizedSelectorHash,
-                "LENDTROLLER - setRedeemPaused() expected to be successful with correct preconditions"
+                "AC-MARKET-4 setRedeemPaused() expected to be successful with correct preconditions"
             );
         }
     }
@@ -114,22 +106,19 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
                 assertEq(
                     transferPaused,
                     2,
-                    "LENDTROLLER - setTransferPaused() true expected to set TransferPaused = 2 "
+                    "AC-MARKET-8 setTransferPaused() true expected to set TransferPaused = 2 "
                 );
             } else {
                 assertEq(
                     transferPaused,
                     1,
-                    "LENDTROLLER - setTransferPaused false expected to set TransferPaused = 1"
+                    "AC-MARKET-9 setTransferPaused false expected to set TransferPaused = 1"
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-
             assertWithMsg(
                 false,
-                "LENDTROLLER - setTransferPaused() expected to be successful with correct preconditions"
+                "AC-MARKET-7 setTransferPaused() expected to be successful with correct preconditions"
             );
         }
     }
@@ -149,34 +138,29 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
         if (success) {
             uint256 seizePaused = marketManager.seizePaused();
             if (state == true) {
-                // ac-market-11
                 assertEq(
                     seizePaused,
                     2,
-                    "LENDTROLLER - setSeizePaused() true expected to set seizePaused = 2 "
+                    "AC-MARKET-11 setSeizePaused() true expected to set seizePaused = 2 "
                 );
             } else {
                 assertEq(
-                    // ac-market-12
                     seizePaused,
                     1,
-                    "LENDTROLLER - setSeizePaused false expected to set seizePaused = 1"
+                    "AC-MARKET-12 setSeizePaused false expected to set seizePaused = 1"
                 );
             }
         } else {
-            uint256 errorSelector = extractErrorSelector(revertData);
-            emit LogUint256("error:", errorSelector);
-            // ac-market-10
             assertWithMsg(
                 false,
-                "LENDTROLLER - setSeizePaused() expected to be successful with correct preconditions"
+                "AC-MARKET-10 setSeizePaused() expected to be successful with correct preconditions"
             );
         }
     }
 
-    /// @custom:property ac-market-3 Calling setBorrowPaused with correct preconditions should succeed.
-    /// @custom:property Calling setBorrowPaused(mtoken, true) should set isBorrowPaused to 2.
-    /// @custom:property Calling setBorrowPaused(mtoken, false) should set isBorrowPaused to 1.
+    /// @custom:property ac-market-13 Calling setBorrowPaused with correct preconditions should succeed.
+    /// @custom:property ac-market-14 Calling setBorrowPaused(mtoken, true) should set isBorrowPaused to 2.
+    /// @custom:property ac-market-15 Calling setBorrowPaused(mtoken, false) should set isBorrowPaused to 1.
     /// @custom:precondition address(this) has dao permissions
     /// @custom:precondition mtoken must be listed token in marketManager
     function setBorrowPaused_should_succeed(
@@ -198,12 +182,12 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
             if (state) {
                 assertWithMsg(
                     isBorrowPaused == 2,
-                    "LENDTROLLER - setMintPaused() true succeed set isBorrowPaused = 2"
+                    "AC-MARKET-14 setMintPaused() true succeed set isBorrowPaused = 2"
                 );
             } else {
                 assertWithMsg(
                     isBorrowPaused == 1,
-                    "LENDTROLLER - setMintPaused() false should set mintPaused[mtoken] to 1"
+                    "AC-MARKET-15 setMintPaused() false should set mintPaused[mtoken] to 1"
                 );
             }
         } else {
@@ -212,7 +196,7 @@ contract FuzzMarketManagerRBAC is StatefulBaseMarket {
 
             assertWithMsg(
                 false,
-                "LENDTROLLER - setMintPaused() expected to be successful with correct preconditions"
+                "AC-MARKET-13 setMintPaused() expected to be successful with correct preconditions"
             );
         }
     }

@@ -1,9 +1,12 @@
-testMode: assertion # run to detect failed assertions 
-coverage: true  # turns coverage saving "on" 
-corpusDir: "output/market-manager-rebase-0123" # saves coverage into ./output/echidna-corpus
-cryticArgs: ["--ignore-compile"] # do not recompile the contracts when echidna runs 
-testMaxGas: 1250000000 # increases test max gas for future complex operations 
-codeSize: 0xfffffffffff # increase the code size 
-testLimit: 400000 # this is the # of iterations Echidna will attempt before it shuts down
-workers: 5 # increases the # of workers/threads to run 
-# format: text
+testMode: assertion # run to detect failed assertions
+coverage: true # turns coverage saving "on"
+corpusDir: "output/echidna-corpus" # saves coverage into ./output/echidna-corpus
+cryticArgs: ["--ignore-compile"] # do not recompile the contracts when echidna runs
+testMaxGas: 1250000000 # increases test max gas for future complex operations
+codeSize: 0xfffffffffff # increase the code size
+testLimit: 600000 # this is the # of iterations Echidna will attempt before it shuts down
+workers: 5 # increases the # of workers/threads to run
+format: text # this defaults to text mode as opposed to using Echidna UI 
+maxTimeDelay: 2689117 # this increases the time delay that Echidna can test in the system 
+maxBlockDelay: 2689117 #this increases the block delay that Echidna can test
+seqLen: 200 # this increases the # of sequences Echidna can use to determine exploitability 

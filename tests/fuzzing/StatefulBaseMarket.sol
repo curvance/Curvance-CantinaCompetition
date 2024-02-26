@@ -36,6 +36,8 @@ import { IMToken } from "contracts/interfaces/market/IMToken.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ERC165Checker } from "contracts/libraries/external/ERC165Checker.sol";
 
+// import { AuxiliaryDataDeployer } from "./deployers/AuxiliaryDataDeployer.s.sol";
+
 contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     IHevm constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
     address internal _WETH_ADDRESS;
@@ -137,10 +139,6 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         // _deployComplexZapper();
         emit LogString("DEPLOYED: PositionFolding");
         _deployPositionFolding();
-        emit LogString("DEPLOYED: Adding dUSDC to router");
-        oracleRouter.addMTokenSupport(address(dUSDC));
-        // emit LogString("DEPLOYED: Adding cBalReth to router");
-        // oracleRouter.addMTokenSupport(address(cBALRETH));
     }
 
     function _deployCentralRegistry() internal {
@@ -208,8 +206,11 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     function _deployChainlinkAdaptors() internal {
+        // TODO: These numbers should be pulled into const variables
+        // setup chainlink usdcUdc with 8 deciamsl, starting price = 1e8, maxAnswer = 1e11, minAnswer = 1
         chainlinkUsdcUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
-        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e11, 1e6);
+        // setup chainlink daiUSD with 8 decimals, starting price = 1e8, maxAnswer = 1e50, minAnswer = 1e6
+        chainlinkDaiUsd = new MockV3Aggregator(8, 1e8, 1e50, 1e6);
         chainlinkUsdcEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkRethEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
         chainlinkDaiEth = new MockV3Aggregator(18, 1e18, 1e24, 1e13);
@@ -437,7 +438,7 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
         );
     }
 
-    function mint_and_approve(
+    function _mintAndApprove(
         address underlyingAddress,
         address mtoken,
         uint256 amount
@@ -526,12 +527,12 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             true
         );
 
-        dualChainlinkAdaptor.addAsset(
-            address(cUSDC),
-            address(mockUsdcFeed),
-            0,
-            true
-        );
+        // dualChainlinkAdaptor.addAsset(
+        //     address(cUSDC),
+        //     address(mockUsdcFeed),
+        //     0,
+        //     true
+        // );
         mockDaiFeed = new MockDataFeed(address(chainlinkDaiUsd));
         chainlinkAdaptor.addAsset(
             address(cDAI),
@@ -545,17 +546,14 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             0,
             true
         );
-        dualChainlinkAdaptor.addAsset(
-            address(cDAI),
-            address(mockDaiFeed),
-            0,
-            true
-        );
-
-        mockUsdcFeed.setMockUpdatedAt(block.timestamp);
-        mockDaiFeed.setMockUpdatedAt(block.timestamp);
-        mockUsdcFeed.setMockAnswer(1e8);
-        mockDaiFeed.setMockAnswer(1e8);
+        // dualChainlinkAdaptor.addAsset(
+        //     address(cDAI),
+        //     address(mockDaiFeed),
+        //     0,
+        //     true
+        // );
+        _setPriceToDefault();
+        emit LogUint256("set price to default", 1e8);
         chainlinkUsdcUsd.updateRoundData(
             0,
             1e8,
@@ -568,7 +566,9 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             block.timestamp,
             block.timestamp
         );
+        emit LogString("DEPLOYED: Adding cDAI to router");
         oracleRouter.addMTokenSupport(address(cDAI));
+        emit LogString("DEPLOYED: Adding cUSDC to router");
         oracleRouter.addMTokenSupport(address(cUSDC));
         oracleRouter.addMTokenSupport(address(dDAI));
         oracleRouter.addMTokenSupport(address(dUSDC));
@@ -577,12 +577,15 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
     }
 
     // If the price is stale, update the round data and update lastRoundUpdate
-    function check_price_feed() internal {
+    function _checkPriceFeed() internal {
         // if lastRoundUpdate timestamp is stale
         if (lastRoundUpdate > block.timestamp) {
             lastRoundUpdate = block.timestamp;
         }
-        if (block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours) {
+        if (
+            block.timestamp - chainlinkUsdcUsd.latestTimestamp() > 24 hours ||
+            block.timestamp - chainlinkDaiUsd.latestTimestamp() > 24 hours
+        ) {
             // TODO: Change this to a loop to loop over marketManager.assetsOf()
             // Save a mapping of assets -> chainlink oracle
             // call updateRoundData on each oracle
@@ -599,14 +602,18 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
                 block.timestamp
             );
         }
+        _setPriceToDefault();
+        lastRoundUpdate = block.timestamp;
+    }
+
+    function _setPriceToDefault() private {
         mockUsdcFeed.setMockUpdatedAt(block.timestamp);
         mockDaiFeed.setMockUpdatedAt(block.timestamp);
         mockUsdcFeed.setMockAnswer(1e8);
         mockDaiFeed.setMockAnswer(1e8);
-        lastRoundUpdate = block.timestamp;
     }
 
-    function is_supported_dtoken(address dtoken) internal view {
+    function _isSupportedDToken(address dtoken) internal view {
         require(dtoken == address(dUSDC) || dtoken == address(dDAI));
     }
 
@@ -626,5 +633,10 @@ contract StatefulBaseMarket is PropertiesAsserts, ErrorConstants {
             mToken
         );
         return collateralPosted;
+    }
+
+    function _getCooldownTimestampFor() internal view returns (uint256) {
+        uint256 downtime = marketManager.accountAssets(address(this));
+        return downtime;
     }
 }

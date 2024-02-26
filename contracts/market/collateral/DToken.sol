@@ -27,7 +27,7 @@ import { IMToken, AccountSnapshot } from "contracts/interfaces/market/IMToken.so
 ///
 ///      The "dToken" employs a share/asset structure with slightly different
 ///      configuration, and terminology (to prevent confusion). The variable
-///      terms "tokens", and "amount" are used to refer to dTokens values, 
+///      terms "tokens", and "amount" are used to refer to dTokens values,
 ///      and underlying asset values. When you see "Tokens" that is associated
 ///      with dTokens, when you see "amount" that is associated with
 ///      underlying assets.
@@ -381,9 +381,9 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     ///         of underlying token debt to lenders, remaining debt shortfall
     ///        is recognized equally by lenders due to `account` default.
     /// @dev Only market manager contract can call this function.
-    ///      Updates pending interest prior to execution of the repay, 
+    ///      Updates pending interest prior to execution of the repay,
     ///      inside the market manager contract.
-    /// @param liquidator The account liquidating `account`'s collateral, 
+    /// @param liquidator The account liquidating `account`'s collateral,
     ///                   and repaying a portion of `account`'s debt.
     /// @param account The account being liquidated and repaid on behalf of.
     /// @param repayRatio The ratio of outstanding debt that `liquidator`
@@ -520,8 +520,8 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
 
     /// @notice Used by the position folding contract to redeem underlying tokens
     ///         from the market, on behalf of `account` to apply a complex action.
-    /// @dev Only Position folding contract can call this function. 
-    ///      Updates interest before executing the redemption. 
+    /// @dev Only Position folding contract can call this function.
+    ///      Updates interest before executing the redemption.
     ///      This function may seem weird at first since dTokens can not be
     ///      collateralized, but with this technology a user can redeem lent
     ///      assets and route them directly into collateral deposits in a
@@ -560,7 +560,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         marketManager.canRedeem(address(this), account, 0);
     }
 
-    /// @notice Deposits underlying assets into the market, 
+    /// @notice Deposits underlying assets into the market,
     ///         and receives dTokens.
     /// @dev Updates pending interest before executing the mint inside
     ///      the internal helper function.
@@ -571,7 +571,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         return true;
     }
 
-    /// @notice Deposits underlying assets into the market, 
+    /// @notice Deposits underlying assets into the market,
     ///         and `recipient` receives dTokens.
     /// @dev Updates pending interest before executing the mint inside
     ///      the internal helper function.
@@ -761,7 +761,9 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     ///         of `account`, in underlying assets, safely.
     /// @param account The account address to have their balance measured.
     /// @return The amount of underlying owned by `account`.
-    function balanceOfUnderlyingSafe(address account) external returns (uint256) {
+    function balanceOfUnderlyingSafe(
+        address account
+    ) external returns (uint256) {
         return ((exchangeRateWithUpdateSafe() * balanceOf[account]) / WAD);
     }
 
@@ -858,7 +860,11 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     ///         total borrows, safely.
     /// @dev Used for third party integrations.
     /// @return Total borrows underlying token, with pending interest applied.
-    function totalBorrowsWithUpdateSafe() external nonReentrant returns (uint256) {
+    function totalBorrowsWithUpdateSafe()
+        external
+        nonReentrant
+        returns (uint256)
+    {
         // Update pending interest.
         accrueInterest();
 
@@ -896,7 +902,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
 
         // Calculate debt balance using the interest index:
         // debtBalanceCached calculation:
-        // ((Account's principal * DToken's exchange rate) / 
+        // ((Account's principal * DToken's exchange rate) /
         // Account's exchange rate).
         return
             (accountDebt.principal * marketData.exchangeRate) /
@@ -906,7 +912,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @notice Returns the decimals of the dToken.
     /// @dev We pull directly from underlying incase its a proxy contract,
     ///      and changes decimals on us.
-    /// @return The number of decimals for this dToken, 
+    /// @return The number of decimals for this dToken,
     ///         matching the underlying token.
     function decimals() public view returns (uint8) {
         return IERC20(underlying).decimals();
@@ -930,7 +936,11 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     /// @notice Updates pending interest and returns the up-to-date exchange
     ///         rate from the underlying to the dToken, safely.
     /// @return Calculated exchange rate, in `WAD`.
-    function exchangeRateWithUpdateSafe() public nonReentrant returns (uint256) {
+    function exchangeRateWithUpdateSafe()
+        public
+        nonReentrant
+        returns (uint256)
+    {
         // Update pending interest.
         accrueInterest();
         return exchangeRateCached();
@@ -940,7 +950,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
     ///         to the dToken.
     /// @return Cached exchange rate, in `WAD`.
     function exchangeRateCached() public view returns (uint256) {
-        // We do not need to check for totalSupply = 0, because, 
+        // We do not need to check for totalSupply = 0, because,
         // when we list a market we mint `_BASE_UNDERLYING_RESERVE` initially.
         // exchangeRate calculation:
         // (Underlying Held + Total Borrows - Total Reserves) / Total Supply.
@@ -1226,7 +1236,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         // Check if we have enough underlying held to support the borrow.
         // We add _BASE_UNDERLYING_RESERVE to the calculation to ensure that
         // the market never actually runs out of assets and may introduce
-        // invariant manipulation. 
+        // invariant manipulation.
         // This also acts as a protective mechanism against trying to
         // manipulate totalBorrows above total underlying assets inside
         // the system since there will always be at least
@@ -1234,7 +1244,7 @@ contract DToken is Delegable, ERC165, ReentrancyGuard {
         if (
             marketUnderlyingHeld() - totalReserves <
             amount + _BASE_UNDERLYING_RESERVE
-            ) {
+        ) {
             revert DToken__InsufficientUnderlyingHeld();
         }
 

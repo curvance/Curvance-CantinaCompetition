@@ -13,31 +13,31 @@ contract TestStatefulDeployments is StatefulBaseMarket {
     function CentralRegistry_is_deployed_and_setup() public {
         assertWithMsg(
             centralRegistry.daoAddress() == address(this),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.daoAddress == address(this) failed"
+            "CURV-1: CentralRegistry.daoAddress == address(this) failed"
         );
         assertWithMsg(
             centralRegistry.timelock() == address(this),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.timelock() == address(this) failed"
+            "CURV-2: CentralRegistry.timelock() == address(this) failed"
         );
         assertWithMsg(
             centralRegistry.emergencyCouncil() == address(this),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.emergencyCouncil() == address(this) failed"
+            "CURV-3: CentralRegistry.emergencyCouncil() == address(this) failed"
         );
         assertWithMsg(
             centralRegistry.genesisEpoch() == 0,
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.genesisEpoch() == 0 failed"
+            "CURV-4: CentralRegistry.genesisEpoch() == 0 failed"
         );
         assertWithMsg(
             centralRegistry.sequencer() == address(0),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.sequencer == address(0) failed"
+            "CURV-5: CentralRegistry.sequencer == address(0) failed"
         );
         assertWithMsg(
             centralRegistry.hasDaoPermissions(address(this)),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.hasDaoPermissions[address(this)] failed"
+            "CURV-6: CentralRegistry.hasDaoPermissions[address(this)] failed"
         );
         assertWithMsg(
             centralRegistry.hasElevatedPermissions(address(this)),
-            "CENTRAL_REGISTRY DEPLOY FAILED: CentralRegistry.hasElevatedPermissinos(address(this)) failed"
+            "CURV-7: CentralRegistry.hasElevatedPermissinos(address(this)) failed"
         );
     }
 
@@ -48,20 +48,20 @@ contract TestStatefulDeployments is StatefulBaseMarket {
     function CentralRegistry_is_setup() public {
         assertWithMsg(
             address(centralRegistry.cve()) == address(cve),
-            "CVE SETUP FAILED: CentralRegistry.cve() == cve failed"
+            "CURV-8: CentralRegistry.cve() == cve failed"
         );
         assertWithMsg(
             address(centralRegistry.veCVE()) == address(veCVE),
-            "CVE SETUP FAILED: CentralRegistry.veCVE() == vecve failed"
+            "CURV-9: CentralRegistry.veCVE() == vecve failed"
         );
         assertWithMsg(
             address(centralRegistry.cveLocker()) == address(cveLocker),
-            "CVE SETUP FAILED: CentralRegistry.cveLocker != cveLocker"
+            "CURV-10: CentralRegistry.cveLocker != cveLocker"
         );
         assertWithMsg(
             address(centralRegistry.protocolMessagingHub()) ==
                 address(protocolMessagingHub),
-            "CVE SETUP FAILED: CentralRegistry.protocolMessagingHub == protocolMessagingHub"
+            "CURV-11: CentralRegistry.protocolMessagingHub == protocolMessagingHub"
         );
     }
 
@@ -72,19 +72,19 @@ contract TestStatefulDeployments is StatefulBaseMarket {
     function CVE_is_deployed() public {
         assertWithMsg(
             address(cve.centralRegistry()) == address(centralRegistry),
-            "CVE DEPLOY FAILED: CVE.centralRegistry == centralRegistry failed"
+            "CURV-12: CVE.centralRegistry == centralRegistry failed"
         );
         assertWithMsg(
             cve.builderAddress() == address(this),
-            "CVE DEPLOY FAILED: cve.builderAddress() == address(this) failed"
+            "CURV-13: cve.builderAddress() == address(this) failed"
         );
         assertWithMsg(
             cve.daoTreasuryAllocation() == 60900010 ether,
-            "CVE DEPLOY FAILED: CVE.daoTreasuryAllocation == 60900010 ether failed"
+            "CURV-14: CVE.daoTreasuryAllocation == 60900010 ether failed"
         );
         assertWithMsg(
             cve.builderAllocationPerMonth() > 0,
-            "CVE DEPLOY FAILED: CVE.builderAllocationPerMonth() > 0 failed"
+            "CURV-15: CVE.builderAllocationPerMonth() > 0 failed"
         );
     }
 
@@ -92,7 +92,7 @@ contract TestStatefulDeployments is StatefulBaseMarket {
     function MarketManager_is_deployed() public {
         assertWithMsg(
             address(marketManager.gaugePool()) == address(gaugePool),
-            "MarketManager DEPLOY FAILED: marketManager.gaugePool() == gaugePool failed"
+            "CURV-16: marketManager.gaugePool() == gaugePool failed"
         );
     }
 }
