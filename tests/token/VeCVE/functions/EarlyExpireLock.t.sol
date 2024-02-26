@@ -20,6 +20,17 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
         veCVE.createLock(30e18, false, rewardsData, "", 0);
     }
 
+    function test_earlyExpireLock_fail_whenVeCVEIsShutdown(
+        bool shouldLock,
+        bool isFreshLock,
+        bool isFreshLockContinuous
+    ) public setRewardsData(shouldLock, isFreshLock, isFreshLockContinuous) {
+        veCVE.shutdown();
+
+        vm.expectRevert(VeCVE.VeCVE__VeCVEShutdown.selector);
+        veCVE.earlyExpireLock(0, rewardsData, "", 0);
+    }
+
     function test_earlyExpireLock_fail_whenLockIndexExceeds() public {
         // no need to set rewardsData because it will revert before
         vm.expectRevert(VeCVE.VeCVE__InvalidLock.selector);
@@ -51,10 +62,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
 
     function test_earlyExpireLock_fail_expired() public {
         // no need to set rewardsData because it will revert before
-        (, uint40 unlockTime) = veCVE.userLocks(
-            address(this),
-            0
-        );
+        (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
 
         // cannot early expire expired lock
@@ -64,10 +72,7 @@ contract EarlyExpireLockTest is TestBaseVeCVE {
 
     function test_getUnlockPenatly_expiredLock() public {
         centralRegistry.setEarlyUnlockPenaltyMultiplier(3000);
-        (, uint40 unlockTime) = veCVE.userLocks(
-            address(this),
-            0
-        );
+        (, uint40 unlockTime) = veCVE.userLocks(address(this), 0);
         vm.warp(unlockTime);
 
         veCVE.getUnlockPenalty(address(this), 0);

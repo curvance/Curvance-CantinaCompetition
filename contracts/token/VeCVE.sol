@@ -9,7 +9,6 @@ import { ERC20 } from "contracts/libraries/external/ERC20.sol";
 
 import { IERC20 } from "contracts/interfaces/IERC20.sol";
 import { ICVE } from "contracts/interfaces/ICVE.sol";
-import { IVeCVE } from "contracts/interfaces/IVeCVE.sol";
 import { ICentralRegistry } from "contracts/interfaces/ICentralRegistry.sol";
 import { ICVELocker, RewardsData } from "contracts/interfaces/ICVELocker.sol";
 import { IProtocolMessagingHub } from "contracts/interfaces/IProtocolMessagingHub.sol";
@@ -554,7 +553,7 @@ contract VeCVE is ERC20, ReentrancyGuard {
         }
 
         // Record the new unlock data.
-        _incrementTokenUnlocks(msg.sender, freshLockEpoch(), lockedAmount);   
+        _incrementTokenUnlocks(msg.sender, freshLockEpoch(), lockedAmount);
     }
 
     /// @notice Processes an expired lock for the specified lock index,
