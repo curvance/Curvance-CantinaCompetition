@@ -1,3 +1,13 @@
+# Super-quickstart 
+
+Assuming you have Medusa and Echidna installed, it should be as easy as 
+
+`make el` for echidna 
+
+`make ml` for medusa 
+
+Instructions are down below for more info on how to install! 
+
 # Invariants being Tested
 
 ## Failed Invariants
@@ -267,7 +277,7 @@ There are also incoming changes that need to be made to soft liquidations (liqui
 | DTOK-14| If a user repays with amount = 0, they zero out their accountDebt for their account.                                                            | Passed |
 | DTOK-15| A user should be able to repay between 0 and their accountDebt with the repay function.                                                         |        |
 | DTOK-16| A user trying to soft liquidate another account should fail with a 0 amount.                                                                    | Passed |
-| DTOK-17| Repaying an amount with interest accruing should make totalBorrows equivalent to totalBorrows - preTotalBorrows - amount - (|new_exchange_rate - old_exchange_rate|*accountDebt) | Passed |
+| DTOK-17| Repaying an amount with interest accruing should make totalBorrows equivalent to `totalBorrows - preTotalBorrows - amount - abs(new_exchange_rate - old_exchange_rate)*accountDebt)` | Passed |
 | DTOK-18| The mint function should revert if amount * WAD / exchangRate == 0, when trying to deposit to the GaugePool.                                    | Passed |
 
 
