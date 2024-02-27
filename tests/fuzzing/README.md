@@ -101,7 +101,7 @@
 
 ## Market Manager - Functional Invariants
 
-                                                                                               | ID        | Property                                                                                                                     | Result |
+| ID        | Property                                                                                                                     | Result |
 |-----------|-----------------------------------------------------------------------------------------------------------------------------|--------|
 | MARKET-1  | Once a new token is listed, isListed(mtoken) should return true.                                                             | Passed |
 | MARKET-2  | A token already added to the MarketManager cannot be added again.                                                            | Passed |
