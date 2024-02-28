@@ -26,7 +26,14 @@ This testing suite helped find the following failed invariants during this revie
 
 ## Current Changes
 
-Due to a recent rebase (on Feb 26th) with changes to the MarketManager, inlcuding the removal of the `closePosition` function, some invariants are failing because the preconditions need to be adjusted to account for the automatic pruning of the position. 
+The following areas of the fuzzing suite are currently **being worked on:**
+
+1. Soft Liquidations (i.e: liquidating through the DToken contract)
+2. Checks for the automatic removal of positions
+
+The fuzzing suite on `develop` was after a rebase on February 26th, which involved changes to the MarketManager. This included the following changes, which have been made on the fuzzing suites. The following has **been fixed**, and will be updated on this branch once tested thoroughly.
+1. The removal of the public `closePosition` function, because functions now have pruning versions to automatically close positions.
+2. The `listToken` function error selector was changed in the rebase, which required the fuzzing suite to change the error check as well.
 
 There are also incoming changes that need to be made to soft liquidations (liquidating through the DToken contract), and interest accrual that needs another adjustment to pull the internal individual account exchange rate, as opposed to the global one. 
 
